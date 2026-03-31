@@ -55,7 +55,7 @@ class Product(models.Model):
         choices=GenderChoices.choices,
         default=GenderChoices.UNKNOWN
     )
-    quanity = models.IntegerField()
+    quantity = models.IntegerField()
     country = models.CharField(max_length=60)
     season = models.CharField(
         max_length=25,
@@ -65,8 +65,21 @@ class Product(models.Model):
     price = models.IntegerField()
     image = models.ImageField(null=True, upload_to=image_converter)
 
+    @property
+    def quantity_message(self):
+        if self.quantity < 5:
+            return "Закінчується"
+        elif self.quantity < 10:
+            return "Поспішіть придбати!"
+        else:
+            return "В наявності"
+        
+
     def __str__(self):
         return f"{self.vendor} {self.model_name}"
+    
+    class Meta:
+        unique_together = ("vendor", "model_name", "size")
 
 
 class Vendor(models.Model):
@@ -93,7 +106,7 @@ class CartItem(models.Model):
         on_delete=models.CASCADE,
         related_name="cart_items"
     )
-    quanity = models.IntegerField()
+    quantity = models.PositiveIntegerField(default=1, editable=False)
 
 
 class Order(models.Model):
@@ -110,8 +123,17 @@ class OrderItem(models.Model):
         related_name="items"
     )
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quanity = models.IntegerField()
+    quantity = models.IntegerField()
     price = models.IntegerField()
+
+    @staticmethod
+    def validate_product_quantity(
+        product: Product,
+        quantity: int,
+        error_to_raise: Exception
+    ):
+        if not (1 <= quantity <= product.quantity):
+            raise error_to_raise("Not available amount of product!")
 
 
 class Wishlist(models.Model):
