@@ -5,6 +5,7 @@ from shop.views import (
     ProductViewSet,
     VendorViewSet,
     CartViewSet,
+    WishlistViewSet
 )
 
 
@@ -14,6 +15,7 @@ router = routers.DefaultRouter()
 router.register("products", ProductViewSet)
 router.register("vendors", VendorViewSet)
 router.register("cart", CartViewSet)
+router.register("wishlist", WishlistViewSet)
 
 urlpatterns = [
     path("", include(router.urls))

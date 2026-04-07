@@ -11,7 +11,7 @@ def image_converter(instance, file_name: str) -> str:
     file_name = f"{slugify(instance.vendor.name + ' ' + instance.model_name)}" + \
     f"-{uuid.uuid4()}{extension}"
 
-    return os.path.join("uploads/products/", file_name)
+    return file_name
 
 
 class Product(models.Model):
@@ -99,14 +99,23 @@ class CartItem(models.Model):
     cart = models.ForeignKey(
         Cart,
         on_delete=models.CASCADE,
-        related_name="items"
+        related_name="cart_items"
     )
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
         related_name="cart_items"
     )
-    quantity = models.PositiveIntegerField(default=1, editable=False)
+    quantity = models.PositiveIntegerField(default=1, editable=True)
+
+    @staticmethod
+    def validate_product_quantity(
+        product: Product,
+        quantity: int,
+        error_to_raise: Exception
+    ):
+        if not (1 <= quantity <= product.quantity):
+            raise error_to_raise("Not available amount of product!")
 
 
 class Order(models.Model):

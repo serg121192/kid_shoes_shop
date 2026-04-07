@@ -7,7 +7,8 @@ from shop.models import (
     CartItem,
     Order,
     OrderItem,
-    Wishlist
+    Wishlist,
+    WishlistItem
 )
 
 
@@ -90,29 +91,80 @@ class VendorSerializer(serializers.ModelSerializer):
 
 
 class CartItemSerializer(serializers.ModelSerializer):
+    product = ProductListSerializer(many=False, read_only=True)
     class Meta:
         model = CartItem
         fields = [
-            "id",
             "product",
             "quantity"
         ]
 
 
 class CartSerializer(serializers.ModelSerializer):
-    items = CartItemSerializer(many=True, read_only=True)
+    cart_items = CartItemSerializer(many=True, read_only=True)
     class Meta:
         model = Cart
         fields = [
             "id",
             "user",
-            "items"
+            "cart_items"
         ]
 
 
-class AddItemSerializer(serializers.Serializer):
+class AddToCartSerializer(serializers.Serializer):
+    product = serializers.IntegerField()
+    quantity = serializers.IntegerField(required=False, default=1)
+
+    def validate(self, data):
+        try:
+            product = Product.objects.get(id=data["product"])
+            cart, _ = Cart.objects.get_or_create(user=self.context["request"].user)
+            cart_item = CartItem.objects.filter(cart=cart, product=product).first()
+        except Product.DoesNotExist:
+            raise serializers.ValidationError(
+                {
+                    "error": f"Product with id {data['product']} not found."
+                }
+            )
+        
+        if not (1 <= cart_item.quantity + data["quantity"] <= product.quantity):
+            raise serializers.ValidationError(
+                {
+                    "error": "Not available amount of product!"
+                }
+            )
+        
+        return data
+
+
+class RemoveFromCartSerializer(serializers.Serializer):
+    product = serializers.IntegerField()
+    quantity = serializers.IntegerField(required=False, default=1)
+
+
+class WishlistSerializer(serializers.ModelSerializer):
+    products = ProductListSerializer(many=True, read_only=True)
+    class Meta:
+        model = Wishlist
+        fields = [
+            "id",
+            "products",
+        ]
+
+
+class WishlistItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WishlistItem
+        fields = [
+            "id",
+            "wishlist"
+            "product"
+        ]
+
+
+class AddToWishlistSerializer(serializers.Serializer):
     product = serializers.IntegerField()
 
 
-class RemoveItemSerializer(serializers.Serializer):
+class RemoveFromWishlistSerializer(serializers.Serializer):
     product = serializers.IntegerField()
