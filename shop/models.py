@@ -63,7 +63,9 @@ class Product(models.Model):
     )
     size = models.IntegerField(choices=SizeChoices.choices)
     price = models.IntegerField()
+    discount = models.IntegerField(default=0)
     image = models.ImageField(null=True, upload_to=image_converter)
+    description = models.TextField(null=True, blank=True)
 
     @property
     def quantity_message(self):
@@ -73,6 +75,10 @@ class Product(models.Model):
             return "Поспішіть придбати!"
         else:
             return "В наявності"
+        
+    @property
+    def discounted_price(self):
+        return self.price - (self.price * self.discount // 100)
         
 
     def __str__(self):

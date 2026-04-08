@@ -26,6 +26,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "size",
             "season",
             "price",
+            "discount",
+            "discounted_price",
             "image"
         ]
 
@@ -48,7 +50,8 @@ class ProductListSerializer(ProductSerializer):
             "prod_type",
             "size",
             "image",
-            "price"
+            "discount",
+            "discounted_price"
         ]
 
 
@@ -67,7 +70,8 @@ class ProductRetrieveSerializer(ProductListSerializer):
             "quantity",
             "season",
             "size",
-            "price",
+            "discount",
+            "discounted_price",
             "image",
             "in_cart"
         ]
