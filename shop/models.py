@@ -4,6 +4,7 @@ import uuid
 from django.db import models
 from django.conf import settings
 from django.utils.text import slugify
+from django.core.exceptions import ValidationError
 
 
 def image_converter(instance, file_name: str) -> str:
@@ -17,9 +18,9 @@ def image_converter(instance, file_name: str) -> str:
 class Product(models.Model):
     class SeasonChoices(models.TextChoices):
         WINTER = "Winter"
-        SPRING = "Spring"
         SUMMER = "Summer"
-        AUTUMN = "Autumn"
+        DEMISEASON = "Demiseason"
+        FleaseDIMESEASON = "Flease Demiseason"
 
     class SizeChoices(models.IntegerChoices):
         small_19 = 19, "Newborn_19"
@@ -40,9 +41,9 @@ class Product(models.Model):
         UGI = "Ugi"
 
     class GenderChoices(models.TextChoices):
-        BOY = "Boy"
-        GIRL = "Girl"
-        UNKNOWN = "Unknown"
+        BOY = "boy", "Boy"
+        GIRL = "girl", "Girl"
+        UNISEX = "unisex", "Unisex"
 
     vendor = models.ForeignKey("Vendor", on_delete=models.CASCADE)
     model_name = models.CharField(max_length=100)
@@ -53,19 +54,19 @@ class Product(models.Model):
     gender = models.CharField(
         max_length=10,
         choices=GenderChoices.choices,
-        default=GenderChoices.UNKNOWN
+        blank=True,
+        default=GenderChoices.UNISEX
     )
-    quantity = models.IntegerField()
-    country = models.CharField(max_length=60)
+    quantity = models.PositiveIntegerField()
     season = models.CharField(
         max_length=25,
         choices=SeasonChoices.choices
     )
     size = models.IntegerField(choices=SizeChoices.choices)
-    price = models.IntegerField()
+    full_price = models.IntegerField()
     discount = models.IntegerField(default=0)
     image = models.ImageField(null=True, upload_to=image_converter)
-    description = models.TextField(null=True, blank=True)
+    description = models.TextField(null=True, blank=True, max_length=1100)
 
     @property
     def quantity_message(self):
@@ -78,8 +79,17 @@ class Product(models.Model):
         
     @property
     def discounted_price(self):
-        return self.price - (self.price * self.discount // 100)
-        
+        return self.full_price - (self.full_price * self.discount // 100)
+    
+    def reduce_stock(self, amount: int) -> None:
+        if amount > self.quantity:
+            raise ValueError("Not enough stock available")
+        self.quantity -= amount
+        self.save()
+
+    def clean(self):
+        if self.discount < 0 or self.discount > 100:
+            raise ValidationError("Discount must be between 0 and 100")
 
     def __str__(self):
         return f"{self.vendor} {self.model_name}"
@@ -100,6 +110,9 @@ class Cart(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE
     )
 
+    def clear(self):
+        self.cart_items.all().delete()
+
 
 class CartItem(models.Model):
     cart = models.ForeignKey(
@@ -114,21 +127,34 @@ class CartItem(models.Model):
     )
     quantity = models.PositiveIntegerField(default=1, editable=True)
 
-    @staticmethod
-    def validate_product_quantity(
-        product: Product,
-        quantity: int,
-        error_to_raise: Exception
-    ):
-        if not (1 <= quantity <= product.quantity):
-            raise error_to_raise("Not available amount of product!")
-
 
 class Order(models.Model):
+    class StatusChoices(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PROCESSING = "processing", "Processing"
+        COMPLETED = "completed", "Completed"
+        CANCELLED = "cancelled", "Cancelled"
+    
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE
     )
+    status = models.CharField(
+        max_length=20,
+        choices=StatusChoices.choices,
+        default=StatusChoices.PENDING
+    )
+    total_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00
+    )
+
+    def calculate_total_price(self):
+        total = sum(item.price * item.quantity for item in self.items.all())
+        self.total_price = total
+        self.save()
 
 
 class OrderItem(models.Model):
@@ -137,9 +163,9 @@ class OrderItem(models.Model):
         on_delete=models.CASCADE,
         related_name="items"
     )
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.IntegerField()
-    price = models.IntegerField()
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    quantity = models.PositiveIntegerField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
 
     @staticmethod
     def validate_product_quantity(

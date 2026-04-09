@@ -13,6 +13,11 @@ from shop.models import (
 
 
 class ProductSerializer(serializers.ModelSerializer):
+    discounted_price = serializers.DecimalField(
+        read_only=True,
+        max_digits=10,
+        decimal_places=2
+    )
     class Meta:
         model = Product
         fields = [
@@ -22,13 +27,13 @@ class ProductSerializer(serializers.ModelSerializer):
             "prod_type",
             "gender",
             "quantity",
-            "country",
             "size",
             "season",
-            "price",
+            "full_price",
             "discount",
             "discounted_price",
-            "image"
+            "image",
+            "description"
         ]
 
 
@@ -64,7 +69,6 @@ class ProductRetrieveSerializer(ProductListSerializer):
             "id",
             "vendor",
             "model_name",
-            "country",
             "prod_type",
             "gender",
             "quantity",
@@ -73,6 +77,7 @@ class ProductRetrieveSerializer(ProductListSerializer):
             "discount",
             "discounted_price",
             "image",
+            "description",
             "in_cart"
         ]
 
@@ -83,7 +88,20 @@ class ProductRetrieveSerializer(ProductListSerializer):
             return CartItem.objects.filter(cart=cart, product=obj).exists()
         
         return False
+    
 
+class ProductOrderSerializer(ProductListSerializer):
+    class Meta:
+        model = Product
+        fields = [
+            "id",
+            "vendor",
+            "model_name",
+            "prod_type",
+            "size",
+            "image",
+            "discounted_price"
+        ]
 
 class VendorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -105,13 +123,20 @@ class CartItemSerializer(serializers.ModelSerializer):
 
 
 class CartSerializer(serializers.ModelSerializer):
+    total_price = serializers.DecimalField(
+        read_only=True,
+        max_digits=10,
+        decimal_places=2
+    )
+
     cart_items = CartItemSerializer(many=True, read_only=True)
     class Meta:
         model = Cart
         fields = [
             "id",
             "user",
-            "cart_items"
+            "cart_items",
+            "total_price"
         ]
 
 
@@ -131,7 +156,8 @@ class AddToCartSerializer(serializers.Serializer):
                 }
             )
         
-        if not (1 <= cart_item.quantity + data["quantity"] <= product.quantity):
+        cart_item_quantity = cart_item.quantity if cart_item else 0
+        if not (1 <= cart_item_quantity + data["quantity"] <= product.quantity):
             raise serializers.ValidationError(
                 {
                     "error": "Not available amount of product!"
@@ -161,7 +187,7 @@ class WishlistItemSerializer(serializers.ModelSerializer):
         model = WishlistItem
         fields = [
             "id",
-            "wishlist"
+            "wishlist",
             "product"
         ]
 
@@ -172,3 +198,33 @@ class AddToWishlistSerializer(serializers.Serializer):
 
 class RemoveFromWishlistSerializer(serializers.Serializer):
     product = serializers.IntegerField()
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    product = ProductOrderSerializer(many=False, read_only=True)
+    class Meta:
+        model = OrderItem
+        fields = [
+            "product",
+            "quantity",
+            "price"
+        ]
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+    user = serializers.SlugRelatedField(
+        many=False,
+        read_only=True,
+        slug_field="email"
+    )
+    class Meta:
+        model = Order
+        fields = [
+            "id",
+            "created_at",
+            "user",
+            "status",
+            "total_price",
+            "items"
+        ]

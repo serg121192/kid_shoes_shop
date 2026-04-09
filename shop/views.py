@@ -28,7 +28,9 @@ from shop.serializers import (
     WishlistSerializer,
     WishlistItemSerializer,
     AddToWishlistSerializer,
-    RemoveFromWishlistSerializer
+    RemoveFromWishlistSerializer,
+    OrderSerializer,
+    OrderItemSerializer
 )
 
 
@@ -48,11 +50,13 @@ class ProductViewSet(viewsets.ModelViewSet):
 class VendorViewSet(viewsets.ModelViewSet):
     queryset = Vendor.objects.all()
     serializer_class = VendorSerializer
+    permission_classes = [DjangoModelPermissionsOrAnonReadOnly]
 
 
 class WishlistViewSet(viewsets.ModelViewSet):
     queryset = Wishlist.objects.all()
     serializer_class = WishlistSerializer
+    permission_classes = [DjangoModelPermissionsOrAnonReadOnly]
 
     @action(
         detail=False,
@@ -127,6 +131,7 @@ class WishlistViewSet(viewsets.ModelViewSet):
 class CartViewSet(viewsets.ModelViewSet):
     queryset = Cart.objects.all()
     serializer_class = CartSerializer
+    permission_classes = [DjangoModelPermissionsOrAnonReadOnly]
 
     @action(
         detail=False,
@@ -171,7 +176,6 @@ class CartViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED
         )
 
-    
     @action(
         detail=False, 
         methods=["post"],
@@ -220,3 +224,50 @@ class CartViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [DjangoModelPermissionsOrAnonReadOnly]
+
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="me/create_order"
+    )
+    def create_order(self, request: Request) -> Response:
+        # Implementation for creating an order from the user's cart
+        cart = Cart.objects.get(user=request.user)
+        if not cart.cart_items.exists():
+            return Response(
+                {
+                    "error": "Cart is empty"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        order = Order.objects.create(
+            user=request.user,
+            status=Order.StatusChoices.PENDING
+        )
+        total_price = 0
+
+        for cart_item in cart.cart_items.all():
+            OrderItem.objects.create(
+                order=order,
+                product=cart_item.product,
+                quantity=cart_item.quantity,
+                price=cart_item.product.discounted_price
+            )
+            total_price += cart_item.quantity * cart_item.product.discounted_price
+
+        order.total_price = total_price
+        order.save()
+
+        cart.cart_items.all().delete()
+
+        return Response(
+            OrderSerializer(order).data(),
+            status=status.HTTP_201_CREATED
+        )
