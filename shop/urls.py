@@ -15,9 +15,9 @@ app_name = "shop"
 router = routers.DefaultRouter()
 router.register("products", ProductViewSet)
 router.register("vendors", VendorViewSet)
-router.register("cart", CartViewSet)
-router.register("wishlist", WishlistViewSet)
-router.register("orders", OrderViewSet)
+router.register("cart", CartViewSet, basename="cart")
+router.register("wishlist", WishlistViewSet, basename="wishlist")
+router.register("orders", OrderViewSet, basename="order")
 
 urlpatterns = [
     path("", include(router.urls))

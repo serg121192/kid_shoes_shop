@@ -2,9 +2,11 @@ import os
 import uuid
 
 from django.db import models
+from django.db.models import F
 from django.conf import settings
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
 
 
 def image_converter(instance, file_name: str) -> str:
@@ -12,7 +14,7 @@ def image_converter(instance, file_name: str) -> str:
     file_name = f"{slugify(instance.vendor.name + ' ' + instance.model_name)}" + \
     f"-{uuid.uuid4()}{extension}"
 
-    return file_name
+    return f"products/{file_name}"
 
 
 class Product(models.Model):
@@ -20,7 +22,7 @@ class Product(models.Model):
         WINTER = "Winter"
         SUMMER = "Summer"
         DEMISEASON = "Demiseason"
-        FleaseDIMESEASON = "Flease Demiseason"
+        FleaseDEMISeason = "Flease Demiseason"
 
     class SizeChoices(models.IntegerChoices):
         small_19 = 19, "Newborn_19"
@@ -37,7 +39,7 @@ class Product(models.Model):
     class ProductTypeChoices(models.TextChoices):
         SHOE = "Shoe"
         SANDALS = "Sandals"
-        SNEACKERS = "Sneackers"
+        SNEAKERS = "Sneakers"
         UGI = "Ugi"
 
     class GenderChoices(models.TextChoices):
@@ -63,8 +65,14 @@ class Product(models.Model):
         choices=SeasonChoices.choices
     )
     size = models.IntegerField(choices=SizeChoices.choices)
-    full_price = models.IntegerField()
-    discount = models.IntegerField(default=0)
+    full_price = models.DecimalField(max_digits=10, decimal_places=2)
+    discount = models.IntegerField(
+        default=0,
+        validators=[
+            MinValueValidator(0),
+            MaxValueValidator(100)
+        ]
+    )
     image = models.ImageField(null=True, upload_to=image_converter)
     description = models.TextField(null=True, blank=True, max_length=1100)
 
@@ -84,12 +92,7 @@ class Product(models.Model):
     def reduce_stock(self, amount: int) -> None:
         if amount > self.quantity:
             raise ValueError("Not enough stock available")
-        self.quantity -= amount
-        self.save()
-
-    def clean(self):
-        if self.discount < 0 or self.discount > 100:
-            raise ValidationError("Discount must be between 0 and 100")
+        Product.objects.filter(id=self.id).update(quantity=F("quantity") - amount)
 
     def __str__(self):
         return f"{self.vendor} {self.model_name}"
@@ -106,8 +109,9 @@ class Vendor(models.Model):
 
 
 class Cart(models.Model):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
     )
 
     def clear(self):
@@ -175,6 +179,75 @@ class OrderItem(models.Model):
     ):
         if not (1 <= quantity <= product.quantity):
             raise error_to_raise("Not available amount of product!")
+
+
+ua_phone_validator = RegexValidator(
+    regex=r"^\+380\d{9}$",
+    message="Введіть номер у форматі +380XXXXXXXXX",
+)
+
+
+class DeliveryInfo(models.Model):
+    class DeliveryTypeChoices(models.TextChoices):
+        NP_WAREHOUSE = "np_warehouse", "НоваПошта: Відділення"
+        NP_POSTAMAT = "np_postamat", "НоваПошта: Поштомат"
+        NP_ADDRESS = "np_address", "НоваПошта: Адресна доставка"
+
+    order = models.OneToOneField(
+        Order,
+        on_delete=models.CASCADE,
+        related_name="delivery",
+    )
+    recipient_full_name = models.CharField(max_length=255)
+    recipient_phone = models.CharField(
+        max_length=20,
+        validators=[ua_phone_validator],
+    )
+    delivery_type = models.CharField(
+        max_length=20,
+        choices=DeliveryTypeChoices.choices,
+        default=DeliveryTypeChoices.NP_WAREHOUSE,
+    )
+
+    # Місто — обов'язкове для всіх типів доставки
+    city_name = models.CharField(max_length=255)
+    # UUID міста в системі НоваПошти (заповнюється при інтеграції з НП API)
+    city_ref = models.CharField(max_length=36, blank=True)
+
+    # Поля для відділення / поштомату
+    warehouse_address = models.CharField(max_length=500, blank=True)
+    # UUID відділення в системі НоваПошти (заповнюється при інтеграції з НП API)
+    warehouse_ref = models.CharField(max_length=36, blank=True)
+
+    # Поля для адресної доставки
+    street = models.CharField(max_length=255, blank=True)
+    building_number = models.CharField(max_length=20, blank=True)
+    apartment = models.CharField(max_length=20, blank=True)
+
+    # ТТН НоваПошти (заповнюється після створення відправлення через НП API)
+    tracking_number = models.CharField(max_length=14, blank=True)
+
+    def clean(self):
+        warehouse_types = (
+            self.DeliveryTypeChoices.NP_WAREHOUSE,
+            self.DeliveryTypeChoices.NP_POSTAMAT,
+        )
+        if self.delivery_type in warehouse_types:
+            if not self.warehouse_address and not self.warehouse_ref:
+                raise ValidationError(
+                    "Для цього типу доставки потрібна адреса або референс відділення."
+                )
+        elif self.delivery_type == self.DeliveryTypeChoices.NP_ADDRESS:
+            if not self.street or not self.building_number:
+                raise ValidationError(
+                    "Для адресної доставки вкажіть вулицю та номер будинку."
+                )
+
+    def __str__(self):
+        return (
+            f"Доставка для замовлення #{self.order_id} "
+            f"— {self.recipient_full_name}"
+        )
 
 
 class Wishlist(models.Model):

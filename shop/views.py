@@ -1,21 +1,28 @@
+from django.db import transaction
+from django.core.exceptions import ValidationError
+
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from rest_framework.permissions import (
-    DjangoModelPermissionsOrAnonReadOnly
-)
+from rest_framework.permissions import IsAuthenticated
+
+from shop.permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
+
+from shop.filters import ProductFilter
 
 from shop.models import (
     Product,
     Vendor,
-    Wishlist,
     Cart,
     CartItem,
     Order,
     OrderItem,
     Wishlist,
-    WishlistItem
+    WishlistItem,
+    DeliveryInfo,
 )
 from shop.serializers import (
     ProductSerializer,
@@ -30,33 +37,43 @@ from shop.serializers import (
     AddToWishlistSerializer,
     RemoveFromWishlistSerializer,
     OrderSerializer,
-    OrderItemSerializer
+    OrderItemSerializer,
+    DeliveryInfoSerializer,
 )
 
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
-    permission_classes = [DjangoModelPermissionsOrAnonReadOnly]
-    
+    queryset = Product.objects.select_related("vendor")
+    permission_classes = [IsAdminOrReadOnly]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = ProductFilter
+    search_fields = ["model_name", "vendor__name", "description"]
+    ordering_fields = ["full_price", "discount"]
+    ordering = ["full_price"]
+
     def get_serializer_class(self):
         if self.action == "list":
             return ProductListSerializer
         elif self.action == "retrieve":
             return ProductRetrieveSerializer
-        
+
         return ProductSerializer
 
 
 class VendorViewSet(viewsets.ModelViewSet):
     queryset = Vendor.objects.all()
     serializer_class = VendorSerializer
-    permission_classes = [DjangoModelPermissionsOrAnonReadOnly]
+    permission_classes = [IsAdminOrReadOnly]
 
 
 class WishlistViewSet(viewsets.ModelViewSet):
-    queryset = Wishlist.objects.all()
     serializer_class = WishlistSerializer
-    permission_classes = [DjangoModelPermissionsOrAnonReadOnly]
+    permission_classes = [IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        return Wishlist.objects.filter(
+            user=self.request.user
+        ).prefetch_related("items__product__vendor")
 
     @action(
         detail=False,
@@ -85,9 +102,6 @@ class WishlistViewSet(viewsets.ModelViewSet):
             product=product,
         )
 
-        if not created:
-            wishlist_item.save()
-
         return Response(
             {
                 "message": "Product added to Wishlist!"
@@ -102,7 +116,14 @@ class WishlistViewSet(viewsets.ModelViewSet):
         url_path="me/remove_wish"
     )
     def remove_item(self, request: Request) -> Response:
-        wishlist = Wishlist.objects.get(user=request.user)
+        try:
+            wishlist = Wishlist.objects.get(user=request.user)
+        except Wishlist.DoesNotExist:
+            return Response(
+                {"error": "Wishlist not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         product_id = serializer.validated_data["product"]
@@ -122,16 +143,20 @@ class WishlistViewSet(viewsets.ModelViewSet):
         except WishlistItem.DoesNotExist:
             return Response(
                 {
-                    "error": f"Product {items_product_id__model_name} not found in Wishlist!"
+                    "error": f"Product not found in Wishlist!"
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
 
 
 class CartViewSet(viewsets.ModelViewSet):
-    queryset = Cart.objects.all()
     serializer_class = CartSerializer
-    permission_classes = [DjangoModelPermissionsOrAnonReadOnly]
+    permission_classes = [IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        return Cart.objects.filter(
+            user=self.request.user
+        ).prefetch_related("cart_items__product__vendor")
 
     @action(
         detail=False,
@@ -183,7 +208,14 @@ class CartViewSet(viewsets.ModelViewSet):
         url_path="me/cart_remove"
     )
     def remove_item(self, request: Request) -> Response:
-        cart = Cart.objects.get(user=request.user)
+        try:
+            cart = Cart.objects.get(user=request.user)
+        except Cart.DoesNotExist:
+            return Response(
+                {"error": "Cart not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         product_id = serializer.validated_data["product"]
@@ -211,12 +243,6 @@ class CartViewSet(viewsets.ModelViewSet):
                     },
                     status=status.HTTP_200_OK
                 )
-            return Response(
-                {
-                    "message": "Item removed from cart"
-                },
-                status=status.HTTP_204_NO_CONTENT
-            )
         except CartItem.DoesNotExist:
             return Response(
                 {
@@ -227,40 +253,71 @@ class CartViewSet(viewsets.ModelViewSet):
         
 
 class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.all()
     serializer_class = OrderSerializer
-    permission_classes = [DjangoModelPermissionsOrAnonReadOnly]
+    permission_classes = [IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return Order.objects.all().prefetch_related(
+                "items__product__vendor"
+            )
+        return Order.objects.filter(
+            user=self.request.user
+        ).prefetch_related("items__product__vendor")
 
     @action(
         detail=False,
         methods=["post"],
-        url_path="me/create_order"
+        url_path="me/create_order",
     )
+    @transaction.atomic
     def create_order(self, request: Request) -> Response:
-        # Implementation for creating an order from the user's cart
-        cart = Cart.objects.get(user=request.user)
+        delivery_serializer = DeliveryInfoSerializer(data=request.data.get("delivery", {}))
+        if not delivery_serializer.is_valid():
+            return Response(
+                delivery_serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            cart = Cart.objects.get(user=request.user)
+        except Cart.DoesNotExist:
+            return Response(
+                {"error": "Cart not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         if not cart.cart_items.exists():
             return Response(
-                {
-                    "error": "Cart is empty"
-                },
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Cart is empty"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        
+
         order = Order.objects.create(
             user=request.user,
-            status=Order.StatusChoices.PENDING
+            status=Order.StatusChoices.PENDING,
         )
-        total_price = 0
 
-        for cart_item in cart.cart_items.all():
+        DeliveryInfo.objects.create(
+            order=order,
+            **delivery_serializer.validated_data,
+        )
+
+        total_price = 0
+        for cart_item in cart.cart_items.select_related("product").all():
+            OrderItem.validate_product_quantity(
+                product=cart_item.product,
+                quantity=cart_item.quantity,
+                error_to_raise=ValidationError,
+            )
             OrderItem.objects.create(
                 order=order,
                 product=cart_item.product,
                 quantity=cart_item.quantity,
-                price=cart_item.product.discounted_price
+                price=cart_item.product.discounted_price,
             )
             total_price += cart_item.quantity * cart_item.product.discounted_price
+            cart_item.product.reduce_stock(cart_item.quantity)
 
         order.total_price = total_price
         order.save()
@@ -268,6 +325,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         cart.cart_items.all().delete()
 
         return Response(
-            OrderSerializer(order).data(),
-            status=status.HTTP_201_CREATED
+            OrderSerializer(order).data,
+            status=status.HTTP_201_CREATED,
         )

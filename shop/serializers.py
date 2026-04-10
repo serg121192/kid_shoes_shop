@@ -8,7 +8,8 @@ from shop.models import (
     Order,
     OrderItem,
     Wishlist,
-    WishlistItem
+    WishlistItem,
+    DeliveryInfo,
 )
 
 
@@ -84,8 +85,9 @@ class ProductRetrieveSerializer(ProductListSerializer):
     def get_in_cart(self, obj):
         user = self.context["request"].user
         if user.is_authenticated:
-            cart, _ = Cart.objects.get_or_create(user=user)
-            return CartItem.objects.filter(cart=cart, product=obj).exists()
+            cart = Cart.objects.filter(user=user).first()
+            if cart:
+                return CartItem.objects.filter(cart=cart, product=obj).exists()
         
         return False
     
@@ -123,13 +125,9 @@ class CartItemSerializer(serializers.ModelSerializer):
 
 
 class CartSerializer(serializers.ModelSerializer):
-    total_price = serializers.DecimalField(
-        read_only=True,
-        max_digits=10,
-        decimal_places=2
-    )
-
+    total_price = serializers.SerializerMethodField()
     cart_items = CartItemSerializer(many=True, read_only=True)
+
     class Meta:
         model = Cart
         fields = [
@@ -139,6 +137,12 @@ class CartSerializer(serializers.ModelSerializer):
             "total_price"
         ]
 
+    def get_total_price(self, obj):
+        return sum(
+            item.product.discounted_price * item.quantity
+            for item in obj.cart_items.all()
+        )
+
 
 class AddToCartSerializer(serializers.Serializer):
     product = serializers.IntegerField()
@@ -147,23 +151,26 @@ class AddToCartSerializer(serializers.Serializer):
     def validate(self, data):
         try:
             product = Product.objects.get(id=data["product"])
-            cart, _ = Cart.objects.get_or_create(user=self.context["request"].user)
-            cart_item = CartItem.objects.filter(cart=cart, product=product).first()
         except Product.DoesNotExist:
             raise serializers.ValidationError(
-                {
-                    "error": f"Product with id {data['product']} not found."
-                }
+                {"error": f"Product with id {data['product']} not found."}
             )
-        
+
+        cart = Cart.objects.filter(
+            user=self.context["request"].user
+        ).first()
+        cart_item = (
+            CartItem.objects.filter(cart=cart, product=product).first()
+            if cart
+            else None
+        )
+
         cart_item_quantity = cart_item.quantity if cart_item else 0
         if not (1 <= cart_item_quantity + data["quantity"] <= product.quantity):
             raise serializers.ValidationError(
-                {
-                    "error": "Not available amount of product!"
-                }
+                {"error": "Not available amount of product!"}
             )
-        
+
         return data
 
 
@@ -211,13 +218,62 @@ class OrderItemSerializer(serializers.ModelSerializer):
         ]
 
 
+class DeliveryInfoSerializer(serializers.ModelSerializer):
+    """
+    Used when creating an order — accepts full delivery data from the client.
+    Read-only fields (city_ref, warehouse_ref, tracking_number) are managed
+    server-side and will be populated during Nova Poshta API integration.
+    """
+
+    class Meta:
+        model = DeliveryInfo
+        fields = [
+            "recipient_full_name",
+            "recipient_phone",
+            "delivery_type",
+            "city_name",
+            "city_ref",
+            "warehouse_address",
+            "warehouse_ref",
+            "street",
+            "building_number",
+            "apartment",
+            "tracking_number",
+        ]
+        read_only_fields = ["city_ref", "warehouse_ref", "tracking_number"]
+
+    def validate(self, data):
+        delivery_type = data.get("delivery_type", DeliveryInfo.DeliveryTypeChoices.NP_WAREHOUSE)
+        warehouse_types = (
+            DeliveryInfo.DeliveryTypeChoices.NP_WAREHOUSE,
+            DeliveryInfo.DeliveryTypeChoices.NP_POSTAMAT,
+        )
+        if delivery_type in warehouse_types:
+            if not data.get("warehouse_address"):
+                raise serializers.ValidationError(
+                    {"warehouse_address": "Вкажіть адресу відділення."}
+                )
+        elif delivery_type == DeliveryInfo.DeliveryTypeChoices.NP_ADDRESS:
+            if not data.get("street"):
+                raise serializers.ValidationError(
+                    {"street": "Вкажіть вулицю для адресної доставки."}
+                )
+            if not data.get("building_number"):
+                raise serializers.ValidationError(
+                    {"building_number": "Вкажіть номер будинку."}
+                )
+        return data
+
+
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
+    delivery = DeliveryInfoSerializer(read_only=True)
     user = serializers.SlugRelatedField(
         many=False,
         read_only=True,
-        slug_field="email"
+        slug_field="email",
     )
+
     class Meta:
         model = Order
         fields = [
@@ -226,5 +282,6 @@ class OrderSerializer(serializers.ModelSerializer):
             "user",
             "status",
             "total_price",
-            "items"
+            "delivery",
+            "items",
         ]

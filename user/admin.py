@@ -33,7 +33,7 @@ class UserAdmin(DjangoUserAdmin):
             },
         ),
         (
-            _("Importatnt_dates"),
+            _("Important_dates"),
             {
                 "fields": ("last_login", "date_joined"),
             },
