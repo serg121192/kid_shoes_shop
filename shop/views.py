@@ -134,12 +134,7 @@ class WishlistViewSet(viewsets.ModelViewSet):
                 product=product_id
             )
             wishlist_item.delete()
-            return Response(
-                {
-                    "message": "Product has successfully removed from Wishlist!"
-                },
-                status=status.HTTP_204_NO_CONTENT
-            )
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except WishlistItem.DoesNotExist:
             return Response(
                 {
@@ -256,13 +251,20 @@ class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [IsOwnerOrAdmin]
 
+    def create(self, request, *args, **kwargs):
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
     def get_queryset(self):
         if self.request.user.is_staff:
-            return Order.objects.all().prefetch_related(
+            return Order.objects.select_related(
+                "delivery"
+            ).prefetch_related(
                 "items__product__vendor"
             )
         return Order.objects.filter(
             user=self.request.user
+        ).select_related(
+            "delivery"
         ).prefetch_related("items__product__vendor")
 
     @action(
@@ -272,7 +274,8 @@ class OrderViewSet(viewsets.ModelViewSet):
     )
     @transaction.atomic
     def create_order(self, request: Request) -> Response:
-        delivery_serializer = DeliveryInfoSerializer(data=request.data.get("delivery", {}))
+        delivery_data = request.data.get("delivery") if isinstance(request.data.get("delivery"), dict) else request.data
+        delivery_serializer = DeliveryInfoSerializer(data=delivery_data)
         if not delivery_serializer.is_valid():
             return Response(
                 delivery_serializer.errors,

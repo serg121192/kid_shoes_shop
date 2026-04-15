@@ -22,7 +22,7 @@ class Product(models.Model):
         WINTER = "Winter"
         SUMMER = "Summer"
         DEMISEASON = "Demiseason"
-        FleaseDEMISeason = "Flease Demiseason"
+        FLEECE_DEMISEASON = "Fleece Demiseason"
 
     class SizeChoices(models.IntegerChoices):
         small_19 = 19, "Newborn_19"
@@ -78,15 +78,17 @@ class Product(models.Model):
 
     @property
     def quantity_message(self):
-        if self.quantity < 5:
-            return "Закінчується"
-        elif self.quantity < 10:
-            return "Поспішіть придбати!"
+        if self.quantity == 0:
+            return "Товар закінчився"
+        elif self.quantity < 5:
+            return "Товар закінчується. Поспішіть придбати!"
         else:
             return "В наявності"
         
     @property
     def discounted_price(self):
+        if self.full_price is None:
+            return None
         return self.full_price - (self.full_price * self.discount // 100)
     
     def reduce_stock(self, amount: int) -> None:
@@ -113,6 +115,9 @@ class Cart(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
     )
+
+    class Meta:
+        ordering = ["-id"]
 
     def clear(self):
         self.cart_items.all().delete()
@@ -154,6 +159,9 @@ class Order(models.Model):
         decimal_places=2,
         default=0.00
     )
+
+    class Meta:
+        ordering = ["-created_at"]
 
     def calculate_total_price(self):
         total = sum(item.price * item.quantity for item in self.items.all())
@@ -252,7 +260,7 @@ class DeliveryInfo(models.Model):
 
 class Wishlist(models.Model):
     products = models.ManyToManyField(Product, through="WishlistItem")
-    user = models.ForeignKey(
+    user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE
     )
 

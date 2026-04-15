@@ -54,6 +54,7 @@ class ProductListSerializer(ProductSerializer):
             "model_name",
             "exists",
             "prod_type",
+            "gender",
             "size",
             "image",
             "discount",
@@ -85,10 +86,10 @@ class ProductRetrieveSerializer(ProductListSerializer):
     def get_in_cart(self, obj):
         user = self.context["request"].user
         if user.is_authenticated:
-            cart = Cart.objects.filter(user=user).first()
-            if cart:
-                return CartItem.objects.filter(cart=cart, product=obj).exists()
-        
+            return CartItem.objects.filter(
+                cart__user=user, product=obj
+            ).exists()
+
         return False
     
 
