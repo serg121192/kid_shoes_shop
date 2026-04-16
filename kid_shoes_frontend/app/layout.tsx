@@ -10,8 +10,8 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "KidShoes — Дитяче взуття",
-  description: "Інтернет-магазин дитячого взуття",
+  title: "TAK i TAK",
+  description: "Так і Так Магазин дитячого взуття",
 };
 
 export default function RootLayout({
@@ -21,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="uk" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-gray-50">
+      <body className="min-h-full flex flex-col bg-slate-100">
         <AuthProvider>
           <Header />
           <main className="flex-1">{children}</main>

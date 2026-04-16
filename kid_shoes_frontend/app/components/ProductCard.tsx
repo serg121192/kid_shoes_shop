@@ -24,22 +24,22 @@ export default function ProductCard({
       className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col"
       style={
         product.gender === "girl"
-          ? { ["--hover-bg" as string]: "#fdf2f8" }
+          ? { ["--hover-bg" as string]: "#e18ca0" }
           : product.gender === "boy"
-            ? { ["--hover-bg" as string]: "#eff6ff" }
+            ? { ["--hover-bg" as string]: "#027cbb" }
             : undefined
       }
       onMouseEnter={(e) => {
         const el = e.currentTarget;
         if (product.gender === "girl") {
-          el.style.outline = "2px solid #fbcfe8";
-          el.style.backgroundColor = "#fdf2f8";
+          el.style.outline = "2px solid rgb(247, 57, 164)";
+          el.style.backgroundColor = "#fdf8f8";
         } else if (product.gender === "boy") {
-          el.style.outline = "2px solid #bfdbfe";
-          el.style.backgroundColor = "#eff6ff";
+          el.style.outline = "2px solid rgb(55, 106, 247)";
+          el.style.backgroundColor = "#c2efe0";
         } else {
-          el.style.outline = "2px solid #e9d5ff";
-          el.style.background = "linear-gradient(to right, #fdf2f8 50%, #eff6ff 50%)";
+          el.style.outline = "2px solid rgb(241, 168, 234)";
+          el.style.background = "linear-gradient(to right,rgb(248, 192, 223) 50%, #eff6ff 50%)";
         }
       }}
       onMouseLeave={(e) => {
@@ -57,6 +57,7 @@ export default function ProductCard({
               alt={`${product.vendor} ${product.model_name}`}
               fill
               unoptimized
+              loading="eager"
               className="object-cover hover:scale-105 transition-transform duration-300"
             />
           ) : (
