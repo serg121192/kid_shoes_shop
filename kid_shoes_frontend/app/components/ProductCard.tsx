@@ -1,12 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ProductList } from "@/app/types";
+import { getMediaUrl } from "@/app/lib/api";
 
 interface ProductCardProps {
   product: ProductList;
-  onAddToCart?: (productId: number) => void;
+  onAddToCart?: (productSizeId: number) => void;
   onToggleWishlist?: (productId: number) => void;
   isInWishlist?: boolean;
 }
@@ -18,42 +20,58 @@ export default function ProductCard({
   isInWishlist = false,
 }: ProductCardProps) {
   const hasDiscount = product.discount > 0;
+  const [selectedSizeId, setSelectedSizeId] = useState<number | null>(null);
+
+  const availableSizes = product.sizes ?? [];
+  const selectedSize = availableSizes.find((s) => s.id === selectedSizeId) ?? null;
+
+  const handleAddToCart = () => {
+    if (!onAddToCart || !selectedSizeId) return;
+    onAddToCart(selectedSizeId);
+  };
+
+  const mainImage = product.images?.find((img) => img.is_main) ?? product.images?.[0];
+  const imageUrl = mainImage ? getMediaUrl(mainImage.image) : getMediaUrl(product.image);
 
   return (
     <div
       className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col"
-      style={
-        product.gender === "girl"
-          ? { ["--hover-bg" as string]: "#e18ca0" }
-          : product.gender === "boy"
-            ? { ["--hover-bg" as string]: "#027cbb" }
-            : undefined
-      }
       onMouseEnter={(e) => {
         const el = e.currentTarget;
+        el.style.outline = "";
         if (product.gender === "girl") {
-          el.style.outline = "2px solid rgb(247, 57, 164)";
-          el.style.backgroundColor = "#fdf8f8";
+          el.style.background = [
+            "linear-gradient(105deg,rgb(255, 255, 255),rgb(255, 219, 239)) padding-box",
+            "linear-gradient(105deg,rgb(255, 255, 255), #f472b6) border-box",
+          ].join(", ");
+          el.style.border = "2px solid transparent";
         } else if (product.gender === "boy") {
-          el.style.outline = "2px solid rgb(55, 106, 247)";
-          el.style.backgroundColor = "#c2efe0";
+          el.style.background = [
+            "linear-gradient(105deg,rgb(255, 255, 255),rgb(212, 227, 247)) padding-box",
+            "linear-gradient(105deg,rgb(248, 250, 253),rgb(132, 189, 253)) border-box",
+          ].join(", ");
+          el.style.border = "2px solid transparent";
         } else {
-          el.style.outline = "2px solid rgb(241, 168, 234)";
-          el.style.background = "linear-gradient(to right,rgb(248, 192, 223) 50%, #eff6ff 50%)";
+          el.style.background = [
+            "linear-gradient(105deg,rgb(255, 219, 239),rgb(212, 227, 247)) padding-box",
+            "linear-gradient(105deg, #f9a8d4, #93c5fd) border-box",
+          ].join(", ");
+          el.style.border = "2px solid transparent";
         }
       }}
       onMouseLeave={(e) => {
         const el = e.currentTarget;
         el.style.outline = "";
-        el.style.backgroundColor = "";
         el.style.background = "";
+        el.style.backgroundColor = "";
+        el.style.border = "";
       }}
     >
       <Link href={`/products/${product.id}`} className="block relative">
         <div className="aspect-square bg-gray-100 relative overflow-hidden">
-          {product.image ? (
+          {imageUrl ? (
             <Image
-              src={product.image.startsWith("http") ? product.image : `http://127.0.0.1:8000${product.image}`}
+              src={imageUrl}
               alt={`${product.vendor} ${product.model_name}`}
               fill
               unoptimized
@@ -61,9 +79,7 @@ export default function ProductCard({
               className="object-cover hover:scale-105 transition-transform duration-300"
             />
           ) : (
-            <div className="flex items-center justify-center h-full text-6xl">
-              👟
-            </div>
+            <div className="flex items-center justify-center h-full text-6xl">👟</div>
           )}
           {hasDiscount && (
             <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
@@ -75,11 +91,10 @@ export default function ProductCard({
 
       <div className="p-4 flex flex-col flex-1">
         <Link href={`/products/${product.id}`}>
-          <h3 className="font-semibold text-gray-800 hover:text-indigo-600 transition-colors line-clamp-2">
+          <h3 className="font-semibold text-gray-800 hover:text-indigo-600 transition-colors line-clamp-2 text-sm">
             {product.vendor} {product.model_name}
           </h3>
         </Link>
-        <p className="text-sm text-gray-500 mt-1">Розмір {product.size}</p>
 
         <div className="mt-2 flex items-center gap-2 flex-wrap">
           <span className="font-bold text-indigo-600 text-lg">
@@ -92,9 +107,38 @@ export default function ProductCard({
           )}
         </div>
 
-        <p className={`text-xs mt-1 ${product.exists === "Товар закінчився" ? "text-gray-600" :
-          product.exists === "Товар закінчується. Поспішіть придбати!" ? "text-yellow-400" :
-            "text-green-400"
+        {/* Size chips */}
+        {availableSizes.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {availableSizes.map((sz) => {
+              const inStock = sz.quantity > 0;
+              const isSelected = sz.id === selectedSizeId;
+              return (
+                <button
+                  key={sz.id}
+                  onClick={() => inStock && setSelectedSizeId(isSelected ? null : sz.id)}
+                  disabled={!inStock}
+                  title={inStock ? `Розмір ${sz.size}` : `Розмір ${sz.size} — немає в наявності`}
+                  className={`text-xs font-medium px-2 py-1 rounded border transition-colors
+                    ${!inStock
+                      ? "border-gray-200 text-gray-300 cursor-not-allowed line-through"
+                      : isSelected
+                        ? "border-indigo-600 bg-indigo-600 text-white"
+                        : "border-gray-300 text-gray-600 hover:border-indigo-400 hover:text-indigo-600"
+                    }`}
+                >
+                  {sz.size}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <p className={`text-xs mt-1 ${product.exists === "Товар закінчився"
+          ? "text-gray-400"
+          : product.exists === "Товар закінчується. Поспішіть придбати!"
+            ? "text-yellow-500"
+            : "text-green-500"
           }`}>
           {product.exists}
         </p>
@@ -102,10 +146,16 @@ export default function ProductCard({
         <div className="mt-auto pt-3 flex gap-2">
           {onAddToCart && (
             <button
-              onClick={() => onAddToCart(product.id)}
-              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors"
+              onClick={handleAddToCart}
+              disabled={!selectedSizeId}
+              title={!selectedSizeId ? "Оберіть розмір" : ""}
+              className={`flex-1 text-sm font-medium py-2 px-3 rounded-lg transition-colors
+                ${selectedSizeId
+                  ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                }`}
             >
-              До кошика
+              {selectedSizeId ? "Додати в кошик" : "Обери розмір"}
             </button>
           )}
           {onToggleWishlist && (

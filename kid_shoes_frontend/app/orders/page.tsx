@@ -112,7 +112,7 @@ export default function OrdersPage() {
             <div className="border-t border-gray-100 px-5 py-3 flex flex-wrap gap-2">
               {order.items.map((item, idx) => (
                 <span key={idx} className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-1">
-                  {item.product.vendor} {item.product.model_name} × {item.quantity}
+                  {item.product_size.product.vendor} {item.product_size.product.model_name} р.{item.product_size.size} × {item.quantity}
                 </span>
               ))}
             </div>

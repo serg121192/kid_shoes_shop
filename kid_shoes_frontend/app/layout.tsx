@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/app/context/AuthContext";
+import { ShopProvider } from "@/app/context/ShopContext";
 import Header from "@/app/components/Header";
+import ToastContainer from "@/app/components/Toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,8 +25,11 @@ export default function RootLayout({
     <html lang="uk" className={`${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-slate-100">
         <AuthProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
+          <ShopProvider>
+            <Header />
+            <main className="flex-1">{children}</main>
+            <ToastContainer />
+          </ShopProvider>
         </AuthProvider>
       </body>
     </html>

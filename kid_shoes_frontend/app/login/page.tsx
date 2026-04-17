@@ -2,11 +2,15 @@
 
 import { useState, FormEvent } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { AxiosError } from "axios";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const justRegistered = searchParams.get("registered") === "1";
+  const justReset = searchParams.get("reset") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -37,6 +41,18 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-gray-900 mt-3">Вхід до KidShoes</h1>
           <p className="text-gray-500 mt-1">Введіть свої дані для входу</p>
         </div>
+
+        {justRegistered && (
+          <div className="bg-green-50 text-green-800 rounded-xl px-4 py-3 text-sm mb-6 text-center">
+            Реєстрацію завершено! Тепер увійдіть до акаунту.
+          </div>
+        )}
+
+        {justReset && (
+          <div className="bg-green-50 text-green-800 rounded-xl px-4 py-3 text-sm mb-6 text-center">
+            Пароль успішно змінено! Увійдіть з новим паролем.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -80,6 +96,12 @@ export default function LoginPage() {
           >
             {isLoading ? "Входимо..." : "Увійти"}
           </button>
+
+          <p className="text-center text-sm">
+            <Link href="/forgot-password" className="text-gray-500 hover:text-indigo-600 hover:underline">
+              Забули пароль?
+            </Link>
+          </p>
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-6">

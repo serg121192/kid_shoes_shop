@@ -1,0 +1,257 @@
+{% extends "admin/base.html" %}
+
+{% block branding %}
+<h1 id="site-name">
+  <a href="{% url 'admin:index' %}">👟 TAK i TAK</a>
+</h1>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  :root {
+    /* Основний акцент — indigo-600 */
+    --primary: #4f46e5;
+    --primary-fg: #ffffff;
+
+    /* Другорядний — indigo-700 */
+    --secondary: #4338ca;
+
+    /* Хедер — колір хедера основного сайту */
+    --header-bg: #b2f1f0;
+    --header-color: #1f2937;
+    --header-link-color: #374151;
+    --header-branding-color: #1f2937;
+
+    /* Хлібні крихти */
+    --breadcrumbs-bg: #4f46e5;
+    --breadcrumbs-fg: #e0e7ff;
+    --breadcrumbs-link-fg: #c7d2fe;
+    --breadcrumbs-link-hover: #ffffff;
+
+    /* Посилання */
+    --link-fg: #4f46e5;
+    --link-hover-color: #3730a3;
+    --link-selected-fg: #4338ca;
+
+    /* Фон сторінки */
+    --body-bg: #f1f5f9;
+    --body-fg: #1f2937;
+    --darkened-bg: #e2e8f0;
+    --selected-bg: #e0e7ff;
+    --selected-row: #eef2ff;
+    --border-color: #cbd5e1;
+
+    /* Кнопки */
+    --button-fg: #ffffff;
+    --button-bg: #4f46e5;
+    --button-hover-bg: #4338ca;
+    --default-button-bg: #4f46e5;
+    --default-button-hover-bg: #3730a3;
+
+    /* Кнопка закрити / сіра */
+    --close-button-bg: #6b7280;
+    --close-button-hover-bg: #374151;
+
+    /* Object tools (кнопки у верхньому правому куті форми) */
+    --object-tools-fg: #ffffff;
+    --object-tools-bg: #6366f1;
+    --object-tools-hover-bg: #4338ca;
+
+    /* Sidebar */
+    --sidebar-width: 220px;
+
+    /* Повідомлення — колір фону, іконку залишаємо стандартну */
+    --message-success-bg: #d1fae5;
+    --message-warning-bg: #fef3c7;
+    --message-error-bg: #fee2e2;
+    --message-info-bg: #e0e7ff;
+  }
+
+  /* ── Хедер ─────────────────────────────────── */
+  #header {
+    background: var(--header-bg);
+    border-bottom: 2px solid #7ee8e7;
+  }
+
+  #branding h1,
+  #branding h1 a,
+  #branding h1 a:link,
+  #branding h1 a:visited {
+    color: #1f2937;
+    font-weight: 700;
+    font-size: 1.3rem;
+    letter-spacing: -0.01em;
+  }
+
+  #user-tools,
+  #user-tools a {
+    color: #374151;
+  }
+
+  #user-tools a:hover {
+    color: #4f46e5;
+    text-decoration: underline;
+  }
+
+  /* ── Таблиці / секції ────────────────────────── */
+  div.module h2,
+  div.module caption,
+  thead th {
+    background: #4f46e5;
+    color: #ffffff;
+  }
+
+  /* Парні рядки таблиці */
+  .results tbody tr:nth-child(even) {
+    background: #f8faff;
+  }
+
+  .results tbody tr:hover {
+    background: #eef2ff;
+  }
+
+  /* ── Sidebar ─────────────────────────────────── */
+  #nav-sidebar {
+    background: #ffffff;
+    border-right: 1px solid #e2e8f0;
+  }
+
+  #nav-sidebar .module h2 {
+    background: #4f46e5;
+    color: #ffffff;
+  }
+
+  #nav-sidebar .current-app .section:link,
+  #nav-sidebar .current-app .section:visited {
+    color: #4f46e5;
+    font-weight: 600;
+  }
+
+  /* ── Кнопки ──────────────────────────────────── */
+  .button,
+  input[type=submit],
+  input[type=button],
+  .submit-row input,
+  a.button {
+    background: #4f46e5;
+    color: #ffffff;
+    border-radius: 6px;
+    border: none;
+    transition: background 0.15s ease;
+  }
+
+  .button:hover,
+  input[type=submit]:hover,
+  input[type=button]:hover,
+  .submit-row input:hover,
+  a.button:hover {
+    background: #4338ca;
+    color: #ffffff;
+  }
+
+  .button.default,
+  input[type=submit].default,
+  .submit-row input.default {
+    background: #4f46e5;
+  }
+
+  /* Кнопка "Зберегти і додати інший" та "Зберегти і продовжити" */
+  .submit-row input[name="_addanother"],
+  .submit-row input[name="_continue"] {
+    background: #6366f1;
+  }
+
+  /* Кнопка Видалити — залишаємо червоною */
+  .deletelink,
+  a.deletelink {
+    background: #ef4444;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 3px 8px;
+  }
+
+  .deletelink:hover,
+  a.deletelink:hover {
+    background: #dc2626;
+    color: #ffffff;
+  }
+
+  /* ── Фільтр праворуч ─────────────────────────── */
+  #changelist-filter {
+    background: #ffffff;
+    border-left: 1px solid #e2e8f0;
+  }
+
+  #changelist-filter h2 {
+    background: #4f46e5;
+    color: #ffffff;
+  }
+
+  #changelist-filter h3 {
+    color: #374151;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  #changelist-filter li.selected a {
+    color: #4f46e5;
+    font-weight: 600;
+  }
+
+  /* ── Форма ───────────────────────────────────── */
+  .form-row {
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  fieldset.module {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+
+  fieldset.module h2 {
+    border-radius: 7px 7px 0 0;
+  }
+
+  /* Inline секції */
+  .inline-group h2 {
+    background: #6366f1;
+    color: #ffffff;
+    border-radius: 6px 6px 0 0;
+  }
+
+  .inline-related h3 {
+    background: #e0e7ff;
+    color: #3730a3;
+    border-bottom: 1px solid #c7d2fe;
+  }
+
+  /* ── Пагінація ───────────────────────────────── */
+  .paginator a:link,
+  .paginator a:visited {
+    color: #4f46e5;
+  }
+
+  .paginator .this-page {
+    background: #4f46e5;
+    color: #ffffff;
+    border-radius: 4px;
+    padding: 2px 8px;
+  }
+
+  /* ── Пошук ───────────────────────────────────── */
+  #changelist-search input[type=text] {
+    border: 1px solid #c7d2fe;
+    border-radius: 6px;
+    padding: 4px 10px;
+    outline: none;
+  }
+
+  #changelist-search input[type=text]:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 2px #e0e7ff;
+  }
+
+  /* ── Повідомлення (через CSS-змінні Django) ─────── */
+</style>
+{% endblock %}

@@ -4,15 +4,12 @@ from shop.models import Product
 
 
 class ProductFilter(django_filters.FilterSet):
-    min_price = django_filters.NumberFilter(
-        field_name="full_price", lookup_expr="gte"
-    )
-    max_price = django_filters.NumberFilter(
-        field_name="full_price", lookup_expr="lte"
-    )
+    min_price = django_filters.NumberFilter(field_name="full_price", lookup_expr="gte")
+    max_price = django_filters.NumberFilter(field_name="full_price", lookup_expr="lte")
     has_discount = django_filters.BooleanFilter(
         field_name="discount", method="filter_has_discount"
     )
+    size = django_filters.NumberFilter(field_name="sizes__size", lookup_expr="exact")
 
     def filter_has_discount(self, queryset, name, value):
         if value:
@@ -26,5 +23,4 @@ class ProductFilter(django_filters.FilterSet):
             "prod_type": ["exact"],
             "gender": ["exact"],
             "season": ["exact"],
-            "size": ["exact"],
         }

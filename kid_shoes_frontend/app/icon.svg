@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
+  <circle cx="80" cy="80" r="76" fill="#b2f1f0"/>
+  <rect x="48" y="30" width="36" height="9" fill="#1f2937"/>
+  <rect x="62" y="39" width="8" height="36" fill="#1f2937"/>
+  <rect x="76" y="17" width="8" height="8" fill="#9ca3af"/>
+  <rect x="76" y="44" width="8" height="17" fill="#9ca3af"/>
+  <rect x="90" y="30" width="8" height="36" fill="#1f2937"/>
+  <rect x="76" y="66" width="36" height="9" fill="#1f2937"/>
+  <text x="80" y="110" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="21" fill="#1f2937" text-anchor="middle">TAK I TAK</text>
+</svg>

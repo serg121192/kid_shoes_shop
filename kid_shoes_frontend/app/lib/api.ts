@@ -56,3 +56,11 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+const MEDIA_BASE = process.env.NEXT_PUBLIC_MEDIA_BASE ?? "http://127.0.0.1:8000";
+
+export function getMediaUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `${MEDIA_BASE}${path}`;
+}

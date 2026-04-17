@@ -1,6 +1,5 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
-from django.utils.translation import gettext as _
 
 from user.models import User
 
@@ -12,16 +11,16 @@ class UserAdmin(DjangoUserAdmin):
             None,
             {
                 "fields": ("email", "password"),
-            }
+            },
         ),
         (
-            _("Personal_info"),
+            "Особиста інформація",
             {
                 "fields": ("first_name", "last_name"),
             },
         ),
         (
-            _("Permissions"),
+            "Права доступу",
             {
                 "fields": (
                     "is_active",
@@ -29,11 +28,11 @@ class UserAdmin(DjangoUserAdmin):
                     "is_superuser",
                     "groups",
                     "user_permissions",
-                )
+                ),
             },
         ),
         (
-            _("Important_dates"),
+            "Важливі дати",
             {
                 "fields": ("last_login", "date_joined"),
             },
@@ -49,5 +48,6 @@ class UserAdmin(DjangoUserAdmin):
         ),
     )
     list_display = ("email", "first_name", "last_name", "is_staff")
+    list_display_links = ("email",)
     search_fields = ("email", "first_name", "last_name")
     ordering = ("email",)

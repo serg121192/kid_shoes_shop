@@ -1,33 +1,65 @@
+export interface ProductImage {
+  id: number;
+  image: string;
+  is_main: boolean;
+  order: number;
+}
+
+export interface ProductVideo {
+  id: number;
+  video: string;
+  title: string;
+  order: number;
+}
+
 export interface Vendor {
   id: number;
   name: string;
 }
 
-// Returned by list endpoint (ProductListSerializer)
-export interface ProductList {
+export interface ProductSize {
   id: number;
-  vendor: string; // SlugField returns vendor name as string
-  model_name: string;
-  exists: string; // quantity_message
-  prod_type: "Shoe" | "Sandals" | "Sneakers" | "Ugi";
-  gender: "boy" | "girl" | "unisex";
   size: number;
-  image: string | null;
-  discount: number;
-  discounted_price: string;
+  quantity: number;
 }
 
-// Returned by detail endpoint (ProductRetrieveSerializer)
-export interface Product extends ProductList {
-  gender: "boy" | "girl" | "unisex";
-  quantity: number;
-  season: "Winter" | "Summer" | "Demiseason" | "Fleece Demiseason";
-  description: string | null;
+export interface ProductSizeWithCart extends ProductSize {
   in_cart: boolean;
 }
 
-export interface CartItem {
+// Returned by list endpoint (ProductListSerializer)
+export interface ProductList {
+  id: number;
+  vendor: string;
+  model_name: string;
+  exists: string; // quantity_message (aggregate across all sizes)
+  prod_type: "Shoe" | "Sandals" | "Sneakers" | "Ugi";
+  gender: "boy" | "girl" | "unisex";
+  image: string | null;
+  discount: number;
+  discounted_price: string;
+  sizes: ProductSize[];
+  images: ProductImage[];
+}
+
+// Returned by detail endpoint (ProductRetrieveSerializer)
+export interface Product extends Omit<ProductList, "sizes"> {
+  sizes: ProductSizeWithCart[];
+  season: "Winter" | "Summer" | "Demiseason" | "Fleece Demiseason";
+  description: string | null;
+  in_wishlist: boolean;
+  images: ProductImage[];
+  videos: ProductVideo[];
+}
+
+export interface CartItemProductSize {
+  id: number;
+  size: number;
   product: ProductList;
+}
+
+export interface CartItem {
+  product_size: CartItemProductSize;
   quantity: number;
 }
 
@@ -52,8 +84,14 @@ export interface DeliveryInfo {
   tracking_number: string;
 }
 
+export interface OrderItemProductSize {
+  id: number;
+  size: number;
+  product: Pick<ProductList, "id" | "vendor" | "model_name" | "prod_type" | "image" | "discounted_price">;
+}
+
 export interface OrderItem {
-  product: ProductList;
+  product_size: OrderItemProductSize;
   quantity: number;
   price: string;
 }
@@ -68,7 +106,6 @@ export interface Order {
   delivery: DeliveryInfo | null;
 }
 
-// WishlistSerializer returns { id, products: ProductList[] }
 export interface Wishlist {
   id: number;
   products: ProductList[];

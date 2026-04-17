@@ -4,7 +4,7 @@ import { useState, useEffect, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import api from "@/app/lib/api";
+import api, { getMediaUrl } from "@/app/lib/api";
 import { Order } from "@/app/types";
 import { useAuth } from "@/app/context/AuthContext";
 import { ArrowLeft, Package } from "lucide-react";
@@ -39,12 +39,10 @@ export default function OrderDetailPage({
     const router = useRouter();
     const [order, setOrder] = useState<Order | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [cancelling, setCancelling] = useState(false);
 
     useEffect(() => {
-        if (!authLoading && !isAuthenticated) {
-            router.push("/login");
-            return;
-        }
+        if (!authLoading && !isAuthenticated) { router.push("/login"); return; }
         if (!authLoading && isAuthenticated) {
             api.get<Order>(`/shop/orders/${id}/`)
                 .then((r) => setOrder(r.data))
@@ -52,6 +50,22 @@ export default function OrderDetailPage({
                 .finally(() => setIsLoading(false));
         }
     }, [authLoading, isAuthenticated, id, router]);
+
+    const handleCancel = async () => {
+        if (!order || !confirm("Скасувати замовлення?")) return;
+        setCancelling(true);
+        try {
+            const response = await api.post<Order>(`/shop/orders/${order.id}/cancel/`);
+            setOrder(response.data);
+        } catch (err: unknown) {
+            const msg =
+                (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+                "Не вдалося скасувати замовлення";
+            alert(msg);
+        } finally {
+            setCancelling(false);
+        }
+    };
 
     if (authLoading || isLoading) {
         return (
@@ -85,9 +99,20 @@ export default function OrderDetailPage({
                             })}
                         </p>
                     </div>
-                    <span className={`text-sm font-semibold px-3 py-1.5 rounded-full ${STATUS_COLORS[order.status]}`}>
-                        {STATUS_LABELS[order.status]}
-                    </span>
+                    <div className="flex items-center gap-3">
+                        <span className={`text-sm font-semibold px-3 py-1.5 rounded-full ${STATUS_COLORS[order.status]}`}>
+                            {STATUS_LABELS[order.status]}
+                        </span>
+                        {order.status === "pending" && (
+                            <button
+                                onClick={handleCancel}
+                                disabled={cancelling}
+                                className="text-sm font-medium px-3 py-1.5 rounded-full border border-red-300 text-red-500 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                            >
+                                {cancelling ? "Скасовуємо..." : "Скасувати"}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -98,36 +123,37 @@ export default function OrderDetailPage({
                     Товари
                 </h2>
                 <div className="space-y-4">
-                    {order.items.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-4">
-                            <Link href={`/products/${item.product.id}`} className="shrink-0">
-                                <div className="w-16 h-16 bg-gray-100 rounded-lg relative overflow-hidden">
-                                    {item.product.image ? (
-                                        <Image
-                                            src={item.product.image.startsWith("http") ? item.product.image : `http://127.0.0.1:8000${item.product.image}`}
-                                            alt={item.product.model_name}
-                                            fill
-                                            unoptimized
-                                            className="object-cover"
-                                        />
-                                    ) : (
-                                        <div className="flex items-center justify-center h-full text-2xl">👟</div>
-                                    )}
-                                </div>
-                            </Link>
-                            <div className="flex-1 min-w-0">
-                                <Link href={`/products/${item.product.id}`}>
-                                    <p className="font-medium text-gray-800 hover:text-indigo-600 transition-colors">
-                                        {item.product.vendor} {item.product.model_name}
-                                    </p>
+                    {order.items.map((item, idx) => {
+                        const { product_size, quantity, price } = item;
+                        const product = product_size.product;
+                        const imageUrl = getMediaUrl(product.image);
+                        return (
+                            <div key={idx} className="flex items-center gap-4">
+                                <Link href={`/products/${product.id}`} className="shrink-0">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-lg relative overflow-hidden">
+                                        {imageUrl ? (
+                                            <Image src={imageUrl} alt={product.model_name} fill unoptimized className="object-cover" />
+                                        ) : (
+                                            <div className="flex items-center justify-center h-full text-2xl">👟</div>
+                                        )}
+                                    </div>
                                 </Link>
-                                <p className="text-sm text-gray-500">Розмір {item.product.size} · {item.quantity} шт</p>
+                                <div className="flex-1 min-w-0">
+                                    <Link href={`/products/${product.id}`}>
+                                        <p className="font-medium text-gray-800 hover:text-indigo-600 transition-colors">
+                                            {product.vendor} {product.model_name}
+                                        </p>
+                                    </Link>
+                                    <p className="text-sm text-gray-500">
+                                        Розмір {product_size.size} · {quantity} шт
+                                    </p>
+                                </div>
+                                <p className="font-bold text-gray-900 shrink-0">
+                                    {(Number(price) * quantity).toFixed(2)} грн
+                                </p>
                             </div>
-                            <p className="font-bold text-gray-900 shrink-0">
-                                {(Number(item.price) * item.quantity).toFixed(2)} грн
-                            </p>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <div className="border-t border-gray-100 mt-4 pt-4 flex justify-between items-center">
