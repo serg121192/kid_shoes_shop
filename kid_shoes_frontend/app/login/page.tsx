@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import { AxiosError } from "axios";
+import Logo from "@/app/components/Logo";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -26,7 +27,7 @@ export default function LoginPage() {
       const axiosErr = err as AxiosError<{ detail?: string }>;
       setError(
         axiosErr.response?.data?.detail ||
-          "Невірний email або пароль"
+        "Невірний email або пароль"
       );
     } finally {
       setIsLoading(false);
@@ -35,10 +36,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-sm p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <span className="text-5xl">👟</span>
-          <h1 className="text-2xl font-bold text-gray-900 mt-3">Вхід до KidShoes</h1>
+      <div className="bg-emerald-50 rounded-2xl shadow-sm p-8 w-full max-w-md">
+        <div className="flex flex-col items-center mb-8">
+          <Logo className="h-[120px] w-[120px] shrink-0" />
+          <h1 className="text-2xl font-bold text-gray-900 mt-3">Вхід</h1>
           <p className="text-gray-500 mt-1">Введіть свої дані для входу</p>
         </div>
 
@@ -92,7 +93,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
+            className="w-full bg-emerald-600 hover:bg-emerald-800 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
           >
             {isLoading ? "Входимо..." : "Увійти"}
           </button>
@@ -106,7 +107,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Немає акаунту?{" "}
-          <Link href="/register" className="text-indigo-600 hover:underline font-medium">
+          <Link href="/register" className="text-emerald-500 hover:underline font-medium">
             Зареєструватися
           </Link>
         </p>

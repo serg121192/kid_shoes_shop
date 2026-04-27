@@ -91,13 +91,14 @@ export default function ProductCard({
 
       <div className="p-4 flex flex-col flex-1">
         <Link href={`/products/${product.id}`}>
-          <h3 className="font-semibold text-gray-800 hover:text-indigo-600 transition-colors line-clamp-2 text-sm">
-            {product.vendor} {product.model_name}
+          <h3 className="font-bold text-gray-700 transition-colors line-clamp-2 text-xl">
+            {product.vendor}
           </h3>
         </Link>
+        <span className="font-medium text-cyan-600 text-sm">{product.model_name}</span>
 
         <div className="mt-2 flex items-center gap-2 flex-wrap">
-          <span className="font-bold text-indigo-600 text-lg">
+          <span className="font-bold text-rose-400 text-lg">
             {Number(product.discounted_price).toFixed(2)} грн
           </span>
           {hasDiscount && (
@@ -123,8 +124,8 @@ export default function ProductCard({
                     ${!inStock
                       ? "border-gray-200 text-gray-300 cursor-not-allowed line-through"
                       : isSelected
-                        ? "border-indigo-600 bg-indigo-600 text-white"
-                        : "border-gray-300 text-gray-600 hover:border-indigo-400 hover:text-indigo-600"
+                        ? "border-teal-500 bg-teal-400 text-white"
+                        : "border-teal-300 text-gray-400 hover:border-teal-500 hover:text-gray-500"
                     }`}
                 >
                   {sz.size}
@@ -151,8 +152,8 @@ export default function ProductCard({
               title={!selectedSizeId ? "Оберіть розмір" : ""}
               className={`flex-1 text-sm font-medium py-2 px-3 rounded-lg transition-colors
                 ${selectedSizeId
-                  ? "bg-indigo-600 hover:bg-indigo-700 text-white"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  ? "bg-teal-600 hover:bg-teal-800 text-white"
+                  : "bg-teal-50 text-gray-400 cursor-not-allowed"
                 }`}
             >
               {selectedSizeId ? "Додати в кошик" : "Обери розмір"}

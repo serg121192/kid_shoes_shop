@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-sm p-8 w-full max-w-md">
+      <div className="bg-emerald-50 rounded-2xl shadow-sm p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <span className="text-5xl">🔒</span>
           <h1 className="text-2xl font-bold text-gray-900 mt-3">Новий пароль</h1>
@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
+            className="w-full bg-emerald-600 hover:bg-emerald-800 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
           >
             {isLoading ? "Зберігаємо..." : "Зберегти пароль"}
           </button>

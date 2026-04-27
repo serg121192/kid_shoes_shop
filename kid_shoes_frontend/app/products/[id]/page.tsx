@@ -110,11 +110,11 @@ export default function ProductDetailPage({
       setProduct((prev) =>
         prev
           ? {
-              ...prev,
-              sizes: prev.sizes.map((s) =>
-                s.id === selectedSize.id ? { ...s, in_cart: true } : s
-              ),
-            }
+            ...prev,
+            sizes: prev.sizes.map((s) =>
+              s.id === selectedSize.id ? { ...s, in_cart: true } : s
+            ),
+          }
           : prev
       );
       setSelectedSize((prev) => prev ? { ...prev, in_cart: true } : prev);
@@ -172,7 +172,7 @@ export default function ProductDetailPage({
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-2 text-gray-500 hover:text-indigo-600 mb-6 transition-colors"
+        className="flex items-center gap-2 text-gray-500 hover:text-teal-400 mb-6 transition-colors"
       >
         <ArrowLeft size={18} />
         Назад до каталогу
@@ -181,7 +181,7 @@ export default function ProductDetailPage({
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         <div className="grid md:grid-cols-2 gap-0">
           {/* Gallery */}
-          <div className="flex flex-col bg-gray-100">
+          <div className="flex flex-col bg-white">
             {/* Main viewer */}
             <div className="aspect-square relative group">
               {activeItem?.kind === "video" ? (
@@ -249,11 +249,10 @@ export default function ProductDetailPage({
                     <button
                       key={idx}
                       onClick={() => setActiveIndex(idx)}
-                      className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                        isActive
-                          ? "border-indigo-600 shadow-md"
-                          : "border-transparent hover:border-indigo-300"
-                      }`}
+                      className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${isActive
+                        ? "border-indigo-600 shadow-md"
+                        : "border-transparent hover:border-indigo-300"
+                        }`}
                     >
                       {item.kind === "video" ? (
                         <div className="w-full h-full bg-gray-800 flex items-center justify-center">
@@ -284,16 +283,16 @@ export default function ProductDetailPage({
           </div>
 
           {/* Info */}
-          <div className="p-8 flex flex-col">
-            <p className="text-sm text-indigo-600 font-medium uppercase tracking-wide">
+          <div className="p-8 flex flex-col bg-white">
+            <p className="text-2xl text-gray-700 font-bold uppercase tracking-wide">
               {product.vendor}
             </p>
-            <h1 className="text-2xl font-bold text-gray-900 mt-1">{product.model_name}</h1>
+            <h1 className="text-medium font-medium text-cyan-600 mt-1">{product.model_name}</h1>
 
             <div className="flex items-center gap-3 mt-4">
               {hasDiscount ? (
                 <>
-                  <span className="text-3xl font-bold text-indigo-600">
+                  <span className="text-2xl font-bold text-rose-400">
                     {Number(product.discounted_price).toFixed(2)} грн
                   </span>
                   <span className="text-xl text-gray-400 line-through">
@@ -301,13 +300,13 @@ export default function ProductDetailPage({
                   </span>
                 </>
               ) : (
-                <span className="text-3xl font-bold text-indigo-600">
+                <span className="text-2xl font-bold text-rose-400">
                   {Number(product.discounted_price).toFixed(2)} грн
                 </span>
               )}
             </div>
 
-            <p className="text-sm text-green-600 mt-1">{product.exists}</p>
+            <p className="text-sm text-yellow-400 mt-1">{product.exists}</p>
 
             {/* Attributes */}
             <div className="mt-6 grid grid-cols-2 gap-3">
@@ -316,7 +315,7 @@ export default function ProductDetailPage({
                 { label: "Тип", value: TYPE_LABELS[product.prod_type] ?? product.prod_type },
                 { label: "Стать", value: GENDER_LABELS[product.gender] ?? product.gender },
               ].map(({ label, value }) => (
-                <div key={label} className="bg-gray-50 rounded-lg px-4 py-3">
+                <div key={label} className="bg-teal-50 rounded-lg px-4 py-3">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
                   <p className="font-medium text-gray-800 mt-0.5">{value}</p>
                 </div>
@@ -332,7 +331,7 @@ export default function ProductDetailPage({
               <p className="text-sm font-medium text-gray-700 mb-2">
                 Розмір:{" "}
                 {selectedSize ? (
-                  <span className="text-indigo-600 font-bold">{selectedSize.size}</span>
+                  <span className="text-teal-500 font-bold">{selectedSize.size}</span>
                 ) : (
                   <span className="text-gray-400">оберіть розмір</span>
                 )}
@@ -357,10 +356,10 @@ export default function ProductDetailPage({
                         ${!inStock
                           ? "border-gray-200 text-gray-300 cursor-not-allowed line-through"
                           : isSelected
-                            ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
+                            ? "border-gray-700 bg-teal-400 text-white shadow-sm"
                             : sz.in_cart
                               ? "border-green-400 text-green-600 hover:border-green-500"
-                              : "border-gray-300 text-gray-700 hover:border-indigo-400 hover:text-indigo-600"
+                              : "border-gray-300 text-gray-700 hover:border-teal-400 hover:text-teal-600"
                         }`}
                     >
                       {sz.size}
@@ -404,13 +403,12 @@ export default function ProductDetailPage({
               <button
                 onClick={handleAddToCart}
                 disabled={cartLoading || !selectedSize || selectedSize.quantity === 0}
-                className={`flex-1 flex items-center justify-center gap-2 font-semibold py-3 rounded-xl transition-colors ${
-                  inCart
-                    ? "bg-green-100 text-green-700 hover:bg-green-200"
-                    : !selectedSize
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white"
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 font-semibold py-3 rounded-xl transition-colors ${inCart
+                  ? "bg-green-100 text-green-700 hover:bg-green-200"
+                  : !selectedSize
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-teal-600 hover:bg-teal-800 disabled:bg-gray-300 text-white"
+                  }`}
               >
                 <ShoppingCart size={18} />
                 {inCart
@@ -423,11 +421,10 @@ export default function ProductDetailPage({
               </button>
               <button
                 onClick={handleToggleWishlist}
-                className={`p-3 rounded-xl border-2 transition-colors ${
-                  inWishlist
-                    ? "border-red-400 bg-red-50 text-red-500"
-                    : "border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-400"
-                }`}
+                className={`p-3 rounded-xl border-2 transition-colors ${inWishlist
+                  ? "border-red-400 bg-red-50 text-red-500"
+                  : "border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-400"
+                  }`}
                 title={inWishlist ? "Видалити з вибраного" : "Додати до вибраного"}
               >
                 <Heart size={20} fill={inWishlist ? "currentColor" : "none"} />

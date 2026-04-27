@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import api from "@/app/lib/api";
 import { AxiosError } from "axios";
+import Logo from "@/app/components/Logo";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -54,11 +55,11 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
-      <div className="bg-white rounded-2xl shadow-sm p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <span className="text-5xl">👟</span>
+      <div className="bg-emerald-50 rounded-2xl shadow-sm p-8 w-full max-w-md">
+        <div className="flex flex-col items-center mb-8">
+          <Logo className="h-[120px] w-[120px] shrink-0" />
           <h1 className="text-2xl font-bold text-gray-900 mt-3">Реєстрація</h1>
-          <p className="text-gray-500 mt-1">Створіть акаунт у KidShoes</p>
+          <p className="text-gray-500 mt-1">Вітаємо у нашому магазині! Створіть аккаунт:</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -73,9 +74,8 @@ export default function RegisterPage() {
                 value={formData[name]}
                 onChange={handleChange}
                 placeholder={placeholder}
-                className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors[name] ? "border-red-400" : "border-gray-300"
-                }`}
+                className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${errors[name] ? "border-red-400" : "border-gray-300"
+                  }`}
               />
               {errors[name] && (
                 <p className="text-xs text-red-600 mt-1">{errors[name]}</p>
@@ -92,7 +92,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-lg transition-colors mt-2"
+            className="w-full bg-emerald-600 hover:bg-emerald-800 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-lg transition-colors mt-2"
           >
             {isLoading ? "Реєструємо..." : "Зареєструватися"}
           </button>
@@ -100,7 +100,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Вже є акаунт?{" "}
-          <Link href="/login" className="text-indigo-600 hover:underline font-medium">
+          <Link href="/login" className="text-emerald-600 hover:underline font-medium">
             Увійти
           </Link>
         </p>

@@ -145,12 +145,12 @@ export default function CartPage() {
 
               <div className="flex-1 min-w-0">
                 <Link href={`/products/${product.id}`}>
-                  <h3 className="font-semibold text-gray-800 hover:text-indigo-600 transition-colors truncate">
+                  <h3 className="font-semibold text-gray-800 hover:text-[#72a1ff] transition-colors truncate">
                     {product.vendor} {product.model_name}
                   </h3>
                 </Link>
                 <p className="text-sm text-gray-500">Розмір {product_size.size}</p>
-                <p className="font-bold text-indigo-600 mt-1">
+                <p className="font-bold text-[#5291ff] mt-1">
                   {Number(product.discounted_price).toFixed(2)} грн / шт
                 </p>
               </div>

@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="uk" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-slate-100">
+      <body className="min-h-full flex flex-col bg-white">
         <AuthProvider>
           <ShopProvider>
             <Header />

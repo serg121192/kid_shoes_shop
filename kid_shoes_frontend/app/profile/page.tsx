@@ -100,7 +100,7 @@ export default function ProfilePage() {
     <div className="max-w-xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-bold text-gray-900 mb-8">Мій профіль</h1>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-sm p-8 space-y-5">
+      <form onSubmit={handleSubmit} className="bg-emerald-50 rounded-2xl shadow-sm p-8 space-y-5">
         {/* Profile fields */}
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Особисті дані</h2>
@@ -112,9 +112,8 @@ export default function ProfilePage() {
                 name={name}
                 value={formData[name]}
                 onChange={handleChange}
-                className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors[name] ? "border-red-400" : "border-gray-300"
-                }`}
+                className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${errors[name] ? "border-red-400" : "border-gray-300"
+                  }`}
               />
               {errors[name] && <p className="text-xs text-red-600 mt-1">{errors[name]}</p>}
             </div>
@@ -141,9 +140,8 @@ export default function ProfilePage() {
                 value={passwordData[name as keyof typeof passwordData]}
                 onChange={handleChange}
                 minLength={8}
-                className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
-                  errors[name] ? "border-red-400" : "border-gray-300"
-                }`}
+                className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${errors[name] ? "border-red-400" : "border-gray-300"
+                  }`}
                 placeholder="мін. 8 символів"
               />
               {errors[name] && <p className="text-xs text-red-600 mt-1">{errors[name]}</p>}
@@ -161,7 +159,7 @@ export default function ProfilePage() {
         <button
           type="submit"
           disabled={isSaving}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
+          className="w-full bg-emerald-600 hover:bg-emerald-800 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
         >
           {isSaving ? "Зберігаємо..." : "Зберегти зміни"}
         </button>
