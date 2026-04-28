@@ -1,8 +1,10 @@
 {% extends "admin/base.html" %}
+{% load static %}
 
 {% block branding %}
 <h1 id="site-name">
-  <a href="{% url 'admin:index' %}">👟 TAK i TAK</a>
+  <a href="{% url 'admin:index' %}">
+    <img src="{% static 'admin/logo.svg' %}" alt="Logo">TAK i TAK</a>
 </h1>
 {% endblock %}
 
@@ -10,32 +12,32 @@
 {{ block.super }}
 <style>
   :root {
-    /* Основний акцент — indigo-600 */
-    --primary: #4f46e5;
+    /* Основний акцент — teal-600 */
+    --primary: #0d9488;
     --primary-fg: #ffffff;
 
-    /* Другорядний — indigo-700 */
-    --secondary: #4338ca;
+    /* Другорядний — teal-700 */
+    --secondary: #0f766e;
 
     /* Хедер — колір хедера основного сайту */
-    --header-bg: #b2f1f0;
-    --header-color: #1f2937;
-    --header-link-color: #374151;
-    --header-branding-color: #1f2937;
+    --header-bg: #cddada;
+    --header-color: #0f766e;
+    --header-link-color: #2dd4bf;
+    --header-branding-color: #14b8a6;
 
     /* Хлібні крихти */
-    --breadcrumbs-bg: #4f46e5;
+    --breadcrumbs-bg: #0d9488;
     --breadcrumbs-fg: #e0e7ff;
     --breadcrumbs-link-fg: #c7d2fe;
     --breadcrumbs-link-hover: #ffffff;
 
     /* Посилання */
-    --link-fg: #4f46e5;
-    --link-hover-color: #3730a3;
-    --link-selected-fg: #4338ca;
+    --link-fg: #0d9488;
+    --link-hover-color: #14b8a6;
+    --link-selected-fg: #2dd4bf;
 
     /* Фон сторінки */
-    --body-bg: #f1f5f9;
+    --body-bg: #f0fdfa;
     --body-fg: #1f2937;
     --darkened-bg: #e2e8f0;
     --selected-bg: #e0e7ff;
@@ -44,10 +46,10 @@
 
     /* Кнопки */
     --button-fg: #ffffff;
-    --button-bg: #4f46e5;
-    --button-hover-bg: #4338ca;
-    --default-button-bg: #4f46e5;
-    --default-button-hover-bg: #3730a3;
+    --button-bg: #2dd4bf;
+    --button-hover-bg: #2dd4bf;
+    --default-button-bg: #2dd4bf;
+    --default-button-hover-bg: #2dd4bf;
 
     /* Кнопка закрити / сіра */
     --close-button-bg: #6b7280;
@@ -55,11 +57,11 @@
 
     /* Object tools (кнопки у верхньому правому куті форми) */
     --object-tools-fg: #ffffff;
-    --object-tools-bg: #6366f1;
-    --object-tools-hover-bg: #4338ca;
+    --object-tools-bg: teal-400;
+    --object-tools-hover-bg: teal-600;
 
     /* Sidebar */
-    --sidebar-width: 220px;
+    --sidebar-width: 300px;
 
     /* Повідомлення — колір фону, іконку залишаємо стандартну */
     --message-success-bg: #d1fae5;
@@ -71,7 +73,9 @@
   /* ── Хедер ─────────────────────────────────── */
   #header {
     background: var(--header-bg);
-    border-bottom: 2px solid #7ee8e7;
+    border-bottom: 2px solid gray-400;
+    display: flex;
+    align-items: center;
   }
 
   #branding h1,
@@ -90,7 +94,7 @@
   }
 
   #user-tools a:hover {
-    color: #4f46e5;
+    color: #2dd4bf;
     text-decoration: underline;
   }
 
@@ -98,8 +102,8 @@
   div.module h2,
   div.module caption,
   thead th {
-    background: #4f46e5;
-    color: #ffffff;
+    background: #2dd4bf;
+    color: white;
   }
 
   /* Парні рядки таблиці */
@@ -114,17 +118,17 @@
   /* ── Sidebar ─────────────────────────────────── */
   #nav-sidebar {
     background: #ffffff;
-    border-right: 1px solid #e2e8f0;
+    border-right: 2px solid #2dd4bf;
   }
 
   #nav-sidebar .module h2 {
-    background: #4f46e5;
-    color: #ffffff;
+    background: teal-800;
+    color: gray-200;
   }
 
   #nav-sidebar .current-app .section:link,
   #nav-sidebar .current-app .section:visited {
-    color: #4f46e5;
+    color: white;
     font-weight: 600;
   }
 
@@ -134,8 +138,8 @@
   input[type=button],
   .submit-row input,
   a.button {
-    background: #4f46e5;
-    color: #ffffff;
+    background: teal-400;
+    color: gray-600;
     border-radius: 6px;
     border: none;
     transition: background 0.15s ease;
