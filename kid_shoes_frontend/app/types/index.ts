@@ -35,7 +35,7 @@ export interface ProductList {
   exists: string; // quantity_message (aggregate across all sizes)
   prod_type: "Shoe" | "Sandals" | "Sneakers" | "Ugi";
   gender: "boy" | "girl" | "unisex";
-  image: string | null;
+  full_price: string;
   discount: number;
   discounted_price: string;
   sizes: ProductSize[];
@@ -45,17 +45,29 @@ export interface ProductList {
 // Returned by detail endpoint (ProductRetrieveSerializer)
 export interface Product extends Omit<ProductList, "sizes"> {
   sizes: ProductSizeWithCart[];
+  full_price: string;
   season: "Winter" | "Summer" | "Demiseason" | "Fleece Demiseason";
   description: string | null;
   in_wishlist: boolean;
   images: ProductImage[];
   videos: ProductVideo[];
+  avg_rating: number | null;
+  review_count: number;
+}
+
+export interface CartProduct {
+  id: number;
+  vendor: string;
+  model_name: string;
+  discounted_price: string;
+  main_image: string | null;
 }
 
 export interface CartItemProductSize {
   id: number;
   size: number;
-  product: ProductList;
+  quantity: number;
+  product: CartProduct;
 }
 
 export interface CartItem {
@@ -87,7 +99,9 @@ export interface DeliveryInfo {
 export interface OrderItemProductSize {
   id: number;
   size: number;
-  product: Pick<ProductList, "id" | "vendor" | "model_name" | "prod_type" | "image" | "discounted_price">;
+  product: Pick<ProductList, "id" | "vendor" | "model_name" | "prod_type" | "discounted_price"> & {
+    main_image: string | null;
+  };
 }
 
 export interface OrderItem {
@@ -104,6 +118,15 @@ export interface Order {
   total_price: string;
   items: OrderItem[];
   delivery: DeliveryInfo | null;
+}
+
+export interface Review {
+  id: number;
+  user_name: string;
+  rating: number;
+  text: string;
+  created_at: string;
+  is_own: boolean;
 }
 
 export interface Wishlist {

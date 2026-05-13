@@ -31,7 +31,7 @@ export default function ProductCard({
   };
 
   const mainImage = product.images?.find((img) => img.is_main) ?? product.images?.[0];
-  const imageUrl = mainImage ? getMediaUrl(mainImage.image) : getMediaUrl(product.image);
+  const imageUrl = mainImage ? getMediaUrl(mainImage.image) : null;
 
   return (
     <div
@@ -101,9 +101,9 @@ export default function ProductCard({
           <span className="font-bold text-rose-400 text-lg">
             {Number(product.discounted_price).toFixed(2)} грн
           </span>
-          {hasDiscount && (
+          {hasDiscount && product.full_price && (
             <span className="text-sm text-gray-400 line-through">
-              {(Number(product.discounted_price) / (1 - product.discount / 100)).toFixed(2)} грн
+              {Number(product.full_price).toFixed(2)} грн
             </span>
           )}
         </div>

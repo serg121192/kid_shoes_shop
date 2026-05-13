@@ -1,4 +1,7 @@
 from rest_framework import serializers
+from django.core.validators import MinValueValidator
+
+from django.db.models import Avg
 
 from shop.models import (
     Product,
@@ -13,6 +16,7 @@ from shop.models import (
     Wishlist,
     WishlistItem,
     DeliveryInfo,
+    Review,
 )
 
 
@@ -64,7 +68,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             "id", "vendor", "model_name", "prod_type", "gender",
             "season", "full_price", "discount", "discounted_price",
-            "image", "description",
+            "description",
         ]
 
 
@@ -73,6 +77,9 @@ class ProductListSerializer(serializers.ModelSerializer):
         many=False, read_only=True, slug_field="name"
     )
     exists = serializers.CharField(source="quantity_message", read_only=True)
+    full_price = serializers.DecimalField(
+        read_only=True, max_digits=10, decimal_places=2
+    )
     discounted_price = serializers.DecimalField(
         read_only=True, max_digits=10, decimal_places=2
     )
@@ -83,9 +90,36 @@ class ProductListSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             "id", "vendor", "model_name", "exists",
-            "prod_type", "gender", "image",
-            "discount", "discounted_price", "sizes", "images",
+            "prod_type", "gender",
+            "full_price", "discount", "discounted_price", "sizes", "images",
         ]
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    is_own = serializers.SerializerMethodField()
+    product = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), write_only=True
+    )
+
+    class Meta:
+        model = Review
+        fields = ["id", "product", "user_name", "rating", "text", "created_at", "is_own"]
+        read_only_fields = ["id", "user_name", "created_at", "is_own"]
+
+    def get_user_name(self, obj):
+        return obj.user.first_name or obj.user.email.split("@")[0]
+
+    def get_is_own(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return obj.user_id == request.user.id
+        return False
+
+    def validate_rating(self, value):
+        if not 1 <= value <= 5:
+            raise serializers.ValidationError("Оцінка має бути від 1 до 5.")
+        return value
 
 
 class ProductRetrieveSerializer(serializers.ModelSerializer):
@@ -93,11 +127,16 @@ class ProductRetrieveSerializer(serializers.ModelSerializer):
         many=False, read_only=True, slug_field="name"
     )
     exists = serializers.CharField(source="quantity_message", read_only=True)
+    full_price = serializers.DecimalField(
+        read_only=True, max_digits=10, decimal_places=2
+    )
     discounted_price = serializers.DecimalField(
         read_only=True, max_digits=10, decimal_places=2
     )
     sizes = serializers.SerializerMethodField()
     in_wishlist = serializers.SerializerMethodField()
+    avg_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
 
     images = ProductImageSerializer(many=True, read_only=True)
     videos = ProductVideoSerializer(many=True, read_only=True)
@@ -107,10 +146,11 @@ class ProductRetrieveSerializer(serializers.ModelSerializer):
         fields = [
             "id", "vendor", "model_name", "exists",
             "prod_type", "gender", "season",
-            "discount", "discounted_price",
-            "image", "description",
+            "full_price", "discount", "discounted_price",
+            "description",
             "sizes", "in_wishlist",
             "images", "videos",
+            "avg_rating", "review_count",
         ]
 
     def get_sizes(self, obj):
@@ -126,19 +166,50 @@ class ProductRetrieveSerializer(serializers.ModelSerializer):
             ).exists()
         return False
 
+    def get_avg_rating(self, obj):
+        result = obj.reviews.aggregate(avg=Avg("rating"))["avg"]
+        return round(result, 1) if result else None
+
+    def get_review_count(self, obj):
+        return obj.reviews.count()
+
 
 class ProductOrderSerializer(serializers.ModelSerializer):
-    """Minimal product info embedded inside order/cart items."""
+    """Minimal product info embedded inside order items."""
     vendor = serializers.SlugRelatedField(
         many=False, read_only=True, slug_field="name"
     )
     discounted_price = serializers.DecimalField(
         read_only=True, max_digits=10, decimal_places=2
     )
+    main_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ["id", "vendor", "model_name", "prod_type", "image", "discounted_price"]
+        fields = ["id", "vendor", "model_name", "prod_type", "main_image", "discounted_price"]
+
+    def get_main_image(self, obj):
+        img = obj.images.filter(is_main=True).first() or obj.images.first()
+        return img.image.url if img else None
+
+
+class CartProductSerializer(serializers.ModelSerializer):
+    """Minimal product info for cart display."""
+    vendor = serializers.SlugRelatedField(
+        many=False, read_only=True, slug_field="name"
+    )
+    discounted_price = serializers.DecimalField(
+        read_only=True, max_digits=10, decimal_places=2
+    )
+    main_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = ["id", "vendor", "model_name", "discounted_price", "main_image"]
+
+    def get_main_image(self, obj):
+        img = obj.images.filter(is_main=True).first() or obj.images.first()
+        return img.image.url if img else None
 
 
 # ── Vendor ─────────────────────────────────────────────────────────────────────
@@ -152,11 +223,11 @@ class VendorSerializer(serializers.ModelSerializer):
 # ── Cart ───────────────────────────────────────────────────────────────────────
 
 class CartItemProductSizeSerializer(serializers.ModelSerializer):
-    product = ProductListSerializer(read_only=True)
+    product = CartProductSerializer(read_only=True)
 
     class Meta:
         model = ProductSize
-        fields = ["id", "size", "product"]
+        fields = ["id", "size", "quantity", "product"]
 
 
 class CartItemSerializer(serializers.ModelSerializer):
@@ -213,7 +284,11 @@ class AddToCartSerializer(serializers.Serializer):
 
 class RemoveFromCartSerializer(serializers.Serializer):
     product_size = serializers.IntegerField()
-    quantity = serializers.IntegerField(required=False, default=1)
+    quantity = serializers.IntegerField(
+        required=False,
+        default=1,
+        validators=[MinValueValidator(1)],
+    )
 
 
 # ── Wishlist ───────────────────────────────────────────────────────────────────
@@ -297,6 +372,10 @@ class DeliveryInfoSerializer(serializers.ModelSerializer):
                     {"building_number": "Вкажіть номер будинку."}
                 )
         return data
+
+
+class OrderStatusSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=Order.StatusChoices.choices)
 
 
 class OrderSerializer(serializers.ModelSerializer):

@@ -1,0 +1,33 @@
+/* ── Order row colors ─────────────────────────────────────────── */
+
+#result_list tbody tr.order-pending td {
+  background-color: #fff1f2 !important;
+}
+#result_list tbody tr.order-pending:hover td {
+  background-color: #ffe4e6 !important;
+}
+
+#result_list tbody tr.order-processing td {
+  background-color: #fffbeb !important;
+}
+#result_list tbody tr.order-processing:hover td {
+  background-color: #fef9c3 !important;
+}
+
+#result_list tbody tr.order-completed td {
+  background-color: #eff6ff !important;
+}
+#result_list tbody tr.order-completed:hover td {
+  background-color: #dbeafe !important;
+}
+
+#result_list tbody tr.order-cancelled td {
+  background-color: #f9fafb !important;
+  color: #9ca3af;
+}
+#result_list tbody tr.order-cancelled:hover td {
+  background-color: #f3f4f6 !important;
+}
+#result_list tbody tr.order-cancelled td a {
+  color: #9ca3af;
+}

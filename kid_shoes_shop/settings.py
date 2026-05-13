@@ -47,11 +47,13 @@ INSTALLED_APPS = [
     "rest_framework",
     "django_filters",
     "drf_spectacular",
-    "debug_toolbar",
     "corsheaders",
     "shop",
     "user",
 ]
+
+if DEBUG:
+    INSTALLED_APPS += ["debug_toolbar"]
 
 INTERNAL_IPS = [
     "127.0.0.1",
@@ -60,8 +62,13 @@ INTERNAL_IPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+]
+
+if DEBUG:
+    MIDDLEWARE.insert(2, "debug_toolbar.middleware.DebugToolbarMiddleware")
+
+MIDDLEWARE += [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -160,8 +167,14 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "200/day", "user": "1000/day"},
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "200/day",
+        "user": "1000/day",
+        "login": "10/min",
+        "token_refresh": "30/min",
+    },
     "DEFAULT_AUTHENTICATION_CLASSES": (
+        "user.authentication.CookieJWTAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",

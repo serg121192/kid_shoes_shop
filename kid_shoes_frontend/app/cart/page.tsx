@@ -126,8 +126,8 @@ export default function CartPage() {
         {cart.cart_items.map((item) => {
           const { product_size, quantity } = item;
           const product = product_size.product;
-          const imageUrl = getMediaUrl(product.image);
-          const stockQty = product.sizes.find((s) => s.id === product_size.id)?.quantity ?? 0;
+          const imageUrl = getMediaUrl(product.main_image);
+          const stockQty = product_size.quantity;
           return (
             <div
               key={product_size.id}

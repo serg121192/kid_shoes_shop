@@ -5,14 +5,15 @@ from django.db import models
 from django.db.models import F, Sum
 from django.conf import settings
 from django.utils.text import slugify
-from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
 
 
 def image_converter(instance, file_name: str) -> str:
+    """Kept for migration compatibility only — no longer used by any model field."""
     _, extension = os.path.splitext(file_name)
-    file_name = f"{slugify(instance.vendor.name + ' ' + instance.model_name)}" + \
-    f"-{uuid.uuid4()}{extension}"
+    file_name = (
+        f"{slugify(instance.vendor.name + ' ' + instance.model_name)}-{uuid.uuid4()}{extension}"
+    )
     return f"products/{file_name}"
 
 
@@ -35,18 +36,6 @@ class Product(models.Model):
         DEMISEASON = "Demiseason", "Демісезон"
         FLEECE_DEMISEASON = "Fleece Demiseason", "Демісезон флісовий"
 
-    class SizeChoices(models.IntegerChoices):
-        small_19 = 19, "Новонароджений 19"
-        small_20 = 20, "Новонароджений 20"
-        small_21 = 21, "Новонароджений 21"
-        small_22 = 22, "Новонароджений 22"
-        small_23 = 23, "Дошкільний 23"
-        small_24 = 24, "Дошкільний 24"
-        small_25 = 25, "Дошкільний 25"
-        small_26 = 26, "Дошкільний 26"
-        small_27 = 27, "Дошкільний 27"
-        medium_28 = 28, "Шкільний 28"
-
     class ProductTypeChoices(models.TextChoices):
         SHOE = "Shoe", "Черевики"
         SANDALS = "Sandals", "Сандалі"
@@ -56,7 +45,7 @@ class Product(models.Model):
     class GenderChoices(models.TextChoices):
         BOY = "boy", "Хлопчик"
         GIRL = "girl", "Дівчинка"
-        UNISEX = "unisex", "Унісекс"
+        UNISEX = "unisex", "Хлопчик/Дівчинка"
 
     vendor = models.ForeignKey("Vendor", on_delete=models.CASCADE, verbose_name="Виробник")
     model_name = models.CharField(max_length=100, verbose_name="Назва моделі")
@@ -86,7 +75,6 @@ class Product(models.Model):
         ],
         verbose_name="Знижка (%)",
     )
-    image = models.ImageField(null=True, blank=True, upload_to=image_converter, verbose_name="Зображення")
     description = models.TextField(null=True, blank=True, max_length=1100, verbose_name="Опис")
 
     @property
@@ -115,13 +103,42 @@ class Product(models.Model):
 
 
 class ProductSize(models.Model):
+    class SizeChoices(models.IntegerChoices):
+        small_18 = 18, "18"
+        small_19 = 19, "19"
+        small_20 = 20, "20"
+        small_21 = 21, "21"
+        small_22 = 22, "22"
+        small_23 = 23, "23"
+        small_24 = 24, "24"
+        small_25 = 25, "25"
+        small_26 = 26, "26"
+        small_27 = 27, "27"
+        medium_28 = 28, "28"
+        medium_29 = 29, "29"
+        medium_30 = 30, "30"
+        medium_31 = 31, "31"
+        medium_32 = 32, "32"
+        medium_33 = 33, "33"
+        medium_34 = 34, "34"
+        medium_35 = 35, "35"
+        medium_36 = 36, "36"
+        medium_37 = 37, "37"
+        medium_38 = 38, "38"
+        medium_39 = 39, "39"
+        medium_40 = 40, "40"
+        medium_41 = 41, "41"
+        medium_42 = 42, "42"
+        medium_43 = 43, "43"
+        medium_44 = 44, "44"
+
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
         related_name="sizes",
         verbose_name="Товар",
     )
-    size = models.IntegerField(choices=Product.SizeChoices.choices, verbose_name="Розмір")
+    size = models.IntegerField(choices=SizeChoices.choices, verbose_name="Розмір")
     quantity = models.PositiveIntegerField(default=0, verbose_name="Кількість")
 
     def reduce_stock(self, amount: int) -> None:
@@ -137,6 +154,9 @@ class ProductSize(models.Model):
 
     def __str__(self):
         return f"{self.product} — розмір {self.size}"
+
+
+Product.SizeChoices = ProductSize.SizeChoices
 
 
 class Vendor(models.Model):
@@ -158,7 +178,6 @@ class Cart(models.Model):
     )
 
     class Meta:
-        ordering = ["-id"]
         verbose_name = "Кошик"
         verbose_name_plural = "Кошики"
 
@@ -177,7 +196,6 @@ class CartItem(models.Model):
         ProductSize,
         on_delete=models.CASCADE,
         related_name="cart_items",
-        null=True,
         verbose_name="Розмір товару",
     )
     quantity = models.PositiveIntegerField(default=1, verbose_name="Кількість")
@@ -218,10 +236,8 @@ class Order(models.Model):
         verbose_name = "Замовлення"
         verbose_name_plural = "Замовлення"
 
-    def calculate_total_price(self):
-        total = sum(item.price * item.quantity for item in self.items.all())
-        self.total_price = total
-        self.save()
+    def __str__(self):
+        return f"Замовлення № {self.id}" if self.id else "Нове замовлення"
 
 
 class OrderItem(models.Model):
@@ -232,7 +248,7 @@ class OrderItem(models.Model):
         verbose_name="Замовлення",
     )
     product_size = models.ForeignKey(
-        ProductSize, on_delete=models.PROTECT, null=True, verbose_name="Розмір товару"
+        ProductSize, on_delete=models.PROTECT, verbose_name="Розмір товару"
     )
     quantity = models.PositiveIntegerField(verbose_name="Кількість")
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Ціна (грн)")
@@ -240,6 +256,9 @@ class OrderItem(models.Model):
     class Meta:
         verbose_name = "Позиція замовлення"
         verbose_name_plural = "Позиції замовлення"
+
+    def __str__(self):
+        return f"{self.product_size} × {self.quantity} шт."
 
     @staticmethod
     def validate_product_quantity(
@@ -289,22 +308,6 @@ class DeliveryInfo(models.Model):
     building_number = models.CharField(max_length=20, blank=True, verbose_name="Номер будинку")
     apartment = models.CharField(max_length=20, blank=True, verbose_name="Квартира")
     tracking_number = models.CharField(max_length=14, blank=True, verbose_name="Номер відстеження")
-
-    def clean(self):
-        warehouse_types = (
-            self.DeliveryTypeChoices.NP_WAREHOUSE,
-            self.DeliveryTypeChoices.NP_POSTAMAT,
-        )
-        if self.delivery_type in warehouse_types:
-            if not self.warehouse_address and not self.warehouse_ref:
-                raise ValidationError(
-                    "Для цього типу доставки потрібна адреса або референс відділення."
-                )
-        elif self.delivery_type == self.DeliveryTypeChoices.NP_ADDRESS:
-            if not self.street or not self.building_number:
-                raise ValidationError(
-                    "Для адресної доставки вкажіть вулицю та номер будинку."
-                )
 
     def __str__(self):
         return (
@@ -363,6 +366,37 @@ class ProductVideo(models.Model):
 
     def __str__(self):
         return f"Відео {self.product}" + (f" — {self.title}" if self.title else "")
+
+
+class Review(models.Model):
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="reviews",
+        verbose_name="Товар",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="reviews",
+        verbose_name="Користувач",
+    )
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name="Оцінка",
+    )
+    text = models.TextField(max_length=1000, blank=True, verbose_name="Текст відгуку")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Оновлено")
+
+    class Meta:
+        unique_together = ("product", "user")
+        ordering = ["-created_at"]
+        verbose_name = "Відгук"
+        verbose_name_plural = "Відгуки"
+
+    def __str__(self):
+        return f"Відгук {self.user.email} на {self.product} — {self.rating}★"
 
 
 class Wishlist(models.Model):

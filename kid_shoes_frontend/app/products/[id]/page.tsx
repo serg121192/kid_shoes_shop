@@ -8,6 +8,7 @@ import { Product, ProductSizeWithCart, ProductImage, ProductVideo } from "@/app/
 import { useAuth } from "@/app/context/AuthContext";
 import { useShop } from "@/app/context/ShopContext";
 import { ShoppingCart, Heart, ArrowLeft, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import ReviewSection from "@/app/components/ReviewSection";
 
 const SEASON_LABELS: Record<string, string> = {
   Winter: "Зима",
@@ -19,7 +20,7 @@ const SEASON_LABELS: Record<string, string> = {
 const GENDER_LABELS: Record<string, string> = {
   boy: "Хлопчик",
   girl: "Дівчинка",
-  unisex: "Унісекс",
+  unisex: "Хлопчик/Дівчинка",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -36,7 +37,7 @@ export default function ProductDetailPage({
 }) {
   const { id } = use(params);
   const { isAuthenticated } = useAuth();
-  const { showToast, setCartCount, setWishlistCount } = useShop();
+  const { showToast, setWishlistCount, refreshCounts } = useShop();
   const router = useRouter();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -45,6 +46,10 @@ export default function ProductDetailPage({
   const [inWishlist, setInWishlist] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [cartLoading, setCartLoading] = useState(false);
+  const [reviewStats, setReviewStats] = useState<{ avg: number | null; count: number }>({
+    avg: null,
+    count: 0,
+  });
 
   // Gallery state
   type MediaItem =
@@ -60,6 +65,7 @@ export default function ProductDetailPage({
         const data = response.data;
         setProduct(data);
         setInWishlist(data.in_wishlist);
+        setReviewStats({ avg: data.avg_rating, count: data.review_count });
         const firstAvailable = data.sizes.find((s) => s.quantity > 0) ?? null;
         setSelectedSize(firstAvailable);
 
@@ -118,7 +124,7 @@ export default function ProductDetailPage({
           : prev
       );
       setSelectedSize((prev) => prev ? { ...prev, in_cart: true } : prev);
-      setCartCount((c) => c + quantity);
+      await refreshCounts();
       showToast("Товар успішно додано до кошику!");
     } catch (err: unknown) {
       const msg =
@@ -160,7 +166,6 @@ export default function ProductDetailPage({
   if (!product) return null;
 
   const hasDiscount = product.discount > 0;
-  const fallbackImageUrl = getMediaUrl(product.image);
   const inCart = selectedSize?.in_cart ?? false;
   const maxQty = selectedSize?.quantity ?? 1;
 
@@ -178,7 +183,7 @@ export default function ProductDetailPage({
         Назад до каталогу
       </button>
 
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden p-0">
         <div className="grid md:grid-cols-2 gap-0">
           {/* Gallery */}
           <div className="flex flex-col bg-white">
@@ -193,15 +198,10 @@ export default function ProductDetailPage({
                 />
               ) : (
                 <>
-                  {(activeItem?.kind === "image"
-                    ? getMediaUrl((activeItem.data as ProductImage).image)
-                    : fallbackImageUrl) ? (
+                  {activeItem?.kind === "image" &&
+                  getMediaUrl((activeItem.data as ProductImage).image) ? (
                     <Image
-                      src={
-                        activeItem?.kind === "image"
-                          ? getMediaUrl((activeItem.data as ProductImage).image)!
-                          : fallbackImageUrl!
-                      }
+                      src={getMediaUrl((activeItem.data as ProductImage).image)!}
                       alt={`${product.vendor} ${product.model_name}`}
                       fill
                       unoptimized
@@ -296,7 +296,7 @@ export default function ProductDetailPage({
                     {Number(product.discounted_price).toFixed(2)} грн
                   </span>
                   <span className="text-xl text-gray-400 line-through">
-                    {(Number(product.discounted_price) / (1 - product.discount / 100)).toFixed(2)} грн
+                    {Number(product.full_price).toFixed(2)} грн
                   </span>
                 </>
               ) : (
@@ -306,6 +306,25 @@ export default function ProductDetailPage({
               )}
             </div>
 
+            {reviewStats.avg !== null && (
+              <div className="flex items-center gap-1.5 mt-2">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <svg
+                    key={n}
+                    width={16}
+                    height={16}
+                    viewBox="0 0 24 24"
+                    fill={n <= Math.round(reviewStats.avg!) ? "#fbbf24" : "none"}
+                    stroke="#fbbf24"
+                    strokeWidth={2}
+                  >
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                ))}
+                <span className="text-sm font-semibold text-amber-500">{reviewStats.avg.toFixed(1)}</span>
+                <span className="text-xs text-gray-400">({reviewStats.count} {reviewStats.count === 1 ? "відгук" : reviewStats.count < 5 ? "відгуки" : "відгуків"})</span>
+              </div>
+            )}
             <p className="text-sm text-yellow-400 mt-1">{product.exists}</p>
 
             {/* Attributes */}
@@ -323,7 +342,7 @@ export default function ProductDetailPage({
             </div>
 
             {product.description && (
-              <p className="mt-6 text-gray-600 text-sm leading-relaxed">{product.description}</p>
+              <p className="mt-6 text-gray-600 text-sm leading-relaxed whitespace-pre-line">{product.description}</p>
             )}
 
             {/* Size selection */}
@@ -431,6 +450,23 @@ export default function ProductDetailPage({
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Reviews */}
+        <div className="px-8 pb-8">
+          <ReviewSection
+            productId={product.id}
+            avgRating={reviewStats.avg}
+            reviewCount={reviewStats.count}
+            onReviewChange={async () => {
+              const res = await import("@/app/lib/api").then((m) =>
+                m.default.get<{ avg_rating: number | null; review_count: number }>(
+                  `/shop/products/${id}/`
+                )
+              );
+              setReviewStats({ avg: res.data.avg_rating, count: res.data.review_count });
+            }}
+          />
         </div>
       </div>
     </div>

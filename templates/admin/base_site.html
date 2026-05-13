@@ -1,261 +1,596 @@
 {% extends "admin/base.html" %}
-{% load static %}
+{% load static admin_extras %}
+
+{# ── Force light theme and hide the toggle ── #}
+{% block extrahead %}
+{{ block.super }}
+<script>
+  (function () {
+    document.documentElement.setAttribute("data-theme", "light");
+    try { localStorage.setItem("django-admin-theme", "light"); } catch (_) {}
+  })();
+</script>
+{% endblock %}
 
 {% block branding %}
+{% pending_orders_count as pending_count %}
 <h1 id="site-name">
   <a href="{% url 'admin:index' %}">
-    <img src="{% static 'admin/logo.svg' %}" alt="Logo">TAK i TAK</a>
+    <img src="{% static 'admin/logo.svg' %}" alt="Logo">TAK i TAK
+  </a>
 </h1>
+{% if pending_count %}
+<a href="{% url 'admin:shop_order_changelist' %}?status=pending"
+   class="pending-orders-badge">
+  {{ pending_count }} нових замовлень
+</a>
+{% endif %}
 {% endblock %}
 
 {% block extrastyle %}
 {{ block.super }}
 <style>
-  :root {
-    /* Основний акцент — teal-600 */
-    --primary: #0d9488;
+  /* ═══════════════════════════════════════════════════════════
+     Palette reference (main site):
+       header-bg  : #cddada   (bg-[#cddada])
+       teal-400   : #2dd4bf
+       teal-500   : #14b8a6
+       teal-600   : #0d9488   ← primary accent
+       teal-700   : #0f766e
+       teal-800   : #115e59
+       teal-50    : #f0fdfa   ← page bg
+       teal-100   : #ccfbf1
+       gray-50    : #f9fafb
+       gray-100   : #f3f4f6
+       gray-200   : #e5e7eb
+       gray-300   : #d1d5db
+       gray-500   : #6b7280
+       gray-700   : #374151
+       gray-800   : #1f2937
+       rose-400   : #fb7185   ← delete / error
+       indigo-400 : #818cf8   ← object tools accent
+  ═══════════════════════════════════════════════════════════ */
+
+  /* ── Django Admin CSS variables ──────────────────────────────
+     Set in :root AND [data-theme="dark"] so the built-in toggle
+     never overrides our palette.
+  ──────────────────────────────────────────────────────────── */
+  :root,
+  [data-theme="light"],
+  [data-theme="dark"] {
+    /* Primary accent */
+    --primary:    #0d9488;
     --primary-fg: #ffffff;
+    --secondary:  #0f766e;
+    --accent:     #2dd4bf;
 
-    /* Другорядний — teal-700 */
-    --secondary: #0f766e;
+    /* Header */
+    --header-bg:              #cddada;
+    --header-color:           #374151;
+    --header-link-color:      #374151;
+    --header-branding-color:  #1f2937;
 
-    /* Хедер — колір хедера основного сайту */
-    --header-bg: #cddada;
-    --header-color: #0f766e;
-    --header-link-color: #2dd4bf;
-    --header-branding-color: #14b8a6;
-
-    /* Хлібні крихти */
-    --breadcrumbs-bg: #0d9488;
-    --breadcrumbs-fg: #e0e7ff;
-    --breadcrumbs-link-fg: #c7d2fe;
+    /* Breadcrumbs */
+    --breadcrumbs-bg:         #0d9488;
+    --breadcrumbs-fg:         #f0fdfa;
+    --breadcrumbs-link-fg:    #ccfbf1;
     --breadcrumbs-link-hover: #ffffff;
 
-    /* Посилання */
-    --link-fg: #0d9488;
-    --link-hover-color: #14b8a6;
-    --link-selected-fg: #2dd4bf;
+    /* Links */
+    --link-fg:          #0d9488;
+    --link-hover-color: #0f766e;
+    --link-selected-fg: #0d9488;
 
-    /* Фон сторінки */
-    --body-bg: #f0fdfa;
-    --body-fg: #1f2937;
-    --darkened-bg: #e2e8f0;
-    --selected-bg: #e0e7ff;
-    --selected-row: #eef2ff;
-    --border-color: #cbd5e1;
+    /* Body */
+    --body-bg:          #f0fdfa;
+    --body-fg:          #1f2937;
+    --body-quiet-color: #6b7280;
+    --body-loud-color:  #1f2937;
 
-    /* Кнопки */
-    --button-fg: #ffffff;
-    --button-bg: #2dd4bf;
-    --button-hover-bg: #2dd4bf;
-    --default-button-bg: #2dd4bf;
-    --default-button-hover-bg: #2dd4bf;
+    /* Surfaces */
+    --darkened-bg: #e5e7eb;
+    --selected-bg: #ccfbf1;
+    --selected-row: #f0fdfa;
 
-    /* Кнопка закрити / сіра */
-    --close-button-bg: #6b7280;
-    --close-button-hover-bg: #374151;
+    /* Borders */
+    --border-color:   #d1d5db;
+    --hairline-color: #e5e7eb;
 
-    /* Object tools (кнопки у верхньому правому куті форми) */
-    --object-tools-fg: #ffffff;
-    --object-tools-bg: teal-400;
-    --object-tools-hover-bg: teal-600;
+    /* Buttons */
+    --button-fg:               #ffffff;
+    --button-bg:               #0d9488;
+    --button-hover-bg:         #0f766e;
+    --default-button-bg:       #0d9488;
+    --default-button-hover-bg: #0f766e;
+    --close-button-bg:         #6b7280;
+    --close-button-hover-bg:   #4b5563;
+    --delete-button-bg:        #ef4444;
+    --delete-button-hover-bg:  #dc2626;
 
-    /* Sidebar */
-    --sidebar-width: 300px;
+    /* Object tools (top-right buttons in change form) */
+    --object-tools-fg:       #ffffff;
+    --object-tools-bg:       #0d9488;
+    --object-tools-hover-bg: #0f766e;
 
-    /* Повідомлення — колір фону, іконку залишаємо стандартну */
+    /* Nav sidebar */
+    --nav-sidebar-header-bg: #0d9488;
+
+    /* Messages */
     --message-success-bg: #d1fae5;
     --message-warning-bg: #fef3c7;
-    --message-error-bg: #fee2e2;
-    --message-info-bg: #e0e7ff;
+    --message-error-bg:   #fee2e2;
+    --message-info-bg:    #e0e7ff;
+
+    /* Error */
+    --error-fg: #ef4444;
   }
 
-  /* ── Хедер ─────────────────────────────────── */
+  /* ── Hide built-in theme toggle ──────────────────────────── */
+  #toggle-nav-sidebar + *,
+  .theme-toggle,
+  [data-toggle-theme],
+  button[title="Toggle theme"],
+  button[title="Перемкнути тему"],
+  #nav-sidebar .toggle-nav-sidebar {
+    display: none !important;
+  }
+
+  /* ── Header ──────────────────────────────────────────────── */
   #header {
-    background: var(--header-bg);
-    border-bottom: 2px solid gray-400;
-    display: flex;
-    align-items: center;
+    background: #cddada !important;
+    border-bottom: 2px solid #b2cece;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    position: relative !important;
+    min-height: 80px;
+    padding: 12px 200px 12px 16px;
+    box-sizing: border-box;
   }
 
-  #branding h1,
+  #branding {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  #branding h1 {
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+  }
+
+  #branding h1 img {
+    height: 52px;
+    width: auto;
+    display: block;
+  }
+
   #branding h1 a,
   #branding h1 a:link,
   #branding h1 a:visited {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    white-space: nowrap;
     color: #1f2937;
     font-weight: 700;
-    font-size: 1.3rem;
+    font-size: 1.6rem;
     letter-spacing: -0.01em;
+    text-decoration: none;
+  }
+
+  #branding h1 a:hover {
+    color: #0d9488;
+  }
+
+  /* User tools — pinned to the right */
+  #user-tools {
+    position: absolute !important;
+    right: 16px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    white-space: nowrap;
   }
 
   #user-tools,
-  #user-tools a {
+  #user-tools a,
+  #user-tools a:link,
+  #user-tools a:visited {
     color: #374151;
+    font-size: 0.8rem;
   }
 
   #user-tools a:hover {
-    color: #2dd4bf;
+    color: #0d9488;
     text-decoration: underline;
   }
 
-  /* ── Таблиці / секції ────────────────────────── */
+  /* ── Pending orders badge ─────────────────────────────────── */
+  .pending-orders-badge {
+    display: inline-flex;
+    align-items: center;
+    background: #ef4444;
+    color: #ffffff !important;
+    padding: 3px 13px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none !important;
+    line-height: 1.5;
+    animation: badge-pulse 2.5s ease-in-out infinite;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .pending-orders-badge:hover {
+    background: #dc2626;
+    animation: none;
+  }
+  @keyframes badge-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.7; }
+  }
+
+  /* ── Breadcrumbs ─────────────────────────────────────────── */
+  div.breadcrumbs {
+    background: #0d9488;
+    color: #f0fdfa;
+    padding: 8px 16px;
+    font-size: 0.8rem;
+  }
+  div.breadcrumbs a {
+    color: #ccfbf1;
+  }
+  div.breadcrumbs a:hover {
+    color: #ffffff;
+  }
+
+  /* ── Body / page ─────────────────────────────────────────── */
+  html, body {
+    background: #f0fdfa;
+    color: #1f2937;
+  }
+
+  /* ── Links ───────────────────────────────────────────────── */
+  a:link, a:visited { color: #0d9488; }
+  a:hover           { color: #0f766e; }
+
+  /* ── Module headers (section h2 and table captions) ─────── */
   div.module h2,
-  div.module caption,
+  div.module caption {
+    background: #0d9488;
+    color: #ffffff;
+  }
+
+  /* ── Table column headers ─────────────────────────────────
+     White background, dark text; sortable links turn teal on hover.
+  ──────────────────────────────────────────────────────────── */
   thead th {
-    background: #2dd4bf;
-    color: white;
+    background: #ffffff;
+    color: #374151;
+    border-bottom: 2px solid #0d9488;
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
-  /* Парні рядки таблиці */
-  .results tbody tr:nth-child(even) {
-    background: #f8faff;
+  thead th a:link,
+  thead th a:visited {
+    color: #374151;
+    text-decoration: none;
   }
 
-  .results tbody tr:hover {
-    background: #eef2ff;
+  thead th:hover {
+    background: #f0fdfa;
+    color: #0d9488;
   }
 
-  /* ── Sidebar ─────────────────────────────────── */
+  thead th:hover a:link,
+  thead th:hover a:visited,
+  thead th a:hover {
+    color: #0d9488;
+    text-decoration: none;
+  }
+
+  /* Sort indicator arrows stay visible */
+  thead th.sorted {
+    background: #f0fdfa;
+    color: #0d9488;
+  }
+  thead th.sorted a:link,
+  thead th.sorted a:visited {
+    color: #0d9488;
+  }
+
+  /* ── Table rows ──────────────────────────────────────────── */
+  #result_list tbody tr:nth-child(even) td {
+    background: #f8fffe;
+  }
+  #result_list tbody tr:hover td {
+    background: #ccfbf1 !important;
+  }
+
+  /* ── Selected checkbox rows ──────────────────────────────── */
+  tr.selected td { background: #ccfbf1 !important; }
+
+  /* ── Sidebar ─────────────────────────────────────────────── */
   #nav-sidebar {
     background: #ffffff;
     border-right: 2px solid #2dd4bf;
   }
 
-  #nav-sidebar .module h2 {
-    background: teal-800;
-    color: gray-200;
+  #nav-sidebar .module > h2 {
+    background: #0d9488;
+    color: #ffffff;
+  }
+
+  #nav-sidebar a:link,
+  #nav-sidebar a:visited {
+    color: #374151;
+  }
+  #nav-sidebar a:hover {
+    color: #0d9488;
   }
 
   #nav-sidebar .current-app .section:link,
   #nav-sidebar .current-app .section:visited {
-    color: white;
-    font-weight: 600;
+    color: #0d9488;
+    font-weight: 700;
+    background: #f0fdfa;
   }
 
-  /* ── Кнопки ──────────────────────────────────── */
+  /* ── Buttons ─────────────────────────────────────────────── */
   .button,
-  input[type=submit],
-  input[type=button],
+  input[type="submit"],
+  input[type="button"],
   .submit-row input,
   a.button {
-    background: teal-400;
-    color: gray-600;
+    background: #0d9488;
+    color: #ffffff;
     border-radius: 6px;
     border: none;
-    transition: background 0.15s ease;
+    padding: 6px 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
   }
-
   .button:hover,
-  input[type=submit]:hover,
-  input[type=button]:hover,
+  input[type="submit"]:hover,
+  input[type="button"]:hover,
   .submit-row input:hover,
   a.button:hover {
-    background: #4338ca;
+    background: #0f766e;
     color: #ffffff;
   }
 
-  .button.default,
-  input[type=submit].default,
-  .submit-row input.default {
-    background: #4f46e5;
-  }
-
-  /* Кнопка "Зберегти і додати інший" та "Зберегти і продовжити" */
+  /* "Save and add another" / "Save and continue editing" */
   .submit-row input[name="_addanother"],
   .submit-row input[name="_continue"] {
-    background: #6366f1;
+    background: #14b8a6;
+  }
+  .submit-row input[name="_addanother"]:hover,
+  .submit-row input[name="_continue"]:hover {
+    background: #0d9488;
   }
 
-  /* Кнопка Видалити — залишаємо червоною */
+  /* Delete button */
   .deletelink,
   a.deletelink {
     background: #ef4444;
     color: #ffffff;
     border-radius: 6px;
-    padding: 3px 8px;
+    padding: 3px 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.8rem;
+    transition: background 0.15s;
   }
-
   .deletelink:hover,
   a.deletelink:hover {
     background: #dc2626;
     color: #ffffff;
   }
 
-  /* ── Фільтр праворуч ─────────────────────────── */
+  /* Object tools (top-right of change form) */
+  ul.object-tools a {
+    background: #14b8a6;
+    color: #ffffff;
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  ul.object-tools a:hover {
+    background: #0d9488;
+  }
+  ul.object-tools .deletelink {
+    background: #ef4444;
+  }
+  ul.object-tools .deletelink:hover {
+    background: #dc2626;
+  }
+
+  /* ── Filter sidebar ──────────────────────────────────────── */
   #changelist-filter {
     background: #ffffff;
-    border-left: 1px solid #e2e8f0;
+    border-left: 1px solid #e5e7eb;
+    border-radius: 0 8px 8px 0;
   }
-
   #changelist-filter h2 {
-    background: #4f46e5;
+    background: #0d9488;
     color: #ffffff;
+    border-radius: 0 8px 0 0;
   }
-
   #changelist-filter h3 {
     color: #374151;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
-
   #changelist-filter li.selected a {
-    color: #4f46e5;
-    font-weight: 600;
+    color: #0d9488;
+    font-weight: 700;
   }
+  #changelist-filter a:link,
+  #changelist-filter a:visited { color: #374151; }
+  #changelist-filter a:hover   { color: #0d9488; }
 
-  /* ── Форма ───────────────────────────────────── */
+  /* ── Forms ───────────────────────────────────────────────── */
   .form-row {
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f3f4f6;
   }
 
   fieldset.module {
-    border: 1px solid #e2e8f0;
+    border: 1px solid #e5e7eb;
     border-radius: 8px;
     margin-bottom: 16px;
+    background: #ffffff;
   }
-
   fieldset.module h2 {
     border-radius: 7px 7px 0 0;
-  }
-
-  /* Inline секції */
-  .inline-group h2 {
-    background: #6366f1;
+    background: #0d9488;
     color: #ffffff;
-    border-radius: 6px 6px 0 0;
+    padding: 8px 12px;
   }
 
+  /* ── Inline sections ─────────────────────────────────────── */
+  .inline-group {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .inline-group h2 {
+    background: #14b8a6;
+    color: #ffffff;
+    border-radius: 0;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
   .inline-related h3 {
-    background: #e0e7ff;
-    color: #3730a3;
-    border-bottom: 1px solid #c7d2fe;
+    background: #f0fdfa;
+    color: #0f766e;
+    border-bottom: 1px solid #ccfbf1;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
-  /* ── Пагінація ───────────────────────────────── */
+  /* ── Inputs ──────────────────────────────────────────────── */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="url"],
+  input[type="number"],
+  textarea,
+  select {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 5px 10px;
+    background: #ffffff;
+    color: #1f2937;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input[type="text"]:focus,
+  input[type="password"]:focus,
+  input[type="email"]:focus,
+  textarea:focus,
+  select:focus {
+    border-color: #0d9488;
+    outline: none;
+    box-shadow: 0 0 0 3px #ccfbf1;
+  }
+
+  /* ── Search bar ──────────────────────────────────────────── */
+  #changelist-search input[type="text"] {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 5px 10px;
+  }
+  #changelist-search input[type="text"]:focus {
+    border-color: #0d9488;
+    box-shadow: 0 0 0 3px #ccfbf1;
+  }
+
+  /* ── Pagination ──────────────────────────────────────────── */
   .paginator a:link,
   .paginator a:visited {
-    color: #4f46e5;
+    color: #0d9488;
+    font-weight: 600;
   }
-
+  .paginator a:hover { color: #0f766e; }
   .paginator .this-page {
-    background: #4f46e5;
+    background: #0d9488;
     color: #ffffff;
     border-radius: 4px;
     padding: 2px 8px;
   }
 
-  /* ── Пошук ───────────────────────────────────── */
-  #changelist-search input[type=text] {
-    border: 1px solid #c7d2fe;
+  /* ── Dashboard app/model cards ───────────────────────────── */
+  #content-main .app-shop h2,
+  #content-main .app-user h2 {
+    background: #0d9488;
+    color: #ffffff;
+    border-radius: 6px 6px 0 0;
+    padding: 8px 12px;
+  }
+
+  /* ── Messages (flash) ────────────────────────────────────── */
+  ul.messagelist li {
     border-radius: 6px;
-    padding: 4px 10px;
-    outline: none;
+    margin-bottom: 6px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+  ul.messagelist li.success { background: #d1fae5; color: #065f46; }
+  ul.messagelist li.warning { background: #fef3c7; color: #92400e; }
+  ul.messagelist li.error   { background: #fee2e2; color: #991b1b; }
+  ul.messagelist li.info    { background: #e0e7ff; color: #3730a3; }
+
+  /* ── Help text ───────────────────────────────────────────── */
+  .help, p.help { color: #6b7280; font-size: 0.8rem; }
+
+  /* ── Calendar / date picker ──────────────────────────────── */
+  .calendarbox, .clockbox {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    box-shadow: none;
+  }
+  .calendar caption, .calendarbox h2 {
+    background: #0d9488;
+    color: #ffffff;
+    border-radius: 6px 6px 0 0;
+  }
+  td.selected a { background: #0d9488; color: #ffffff; border-radius: 4px; }
+  td.today a    { background: #ccfbf1; color: #0f766e; border-radius: 4px; font-weight: 700; }
+
+  /* ── Admin index: recent actions ─────────────────────────── */
+  #recent-actions-module h2 {
+    background: #0d9488;
+    color: #ffffff;
+  }
+  #recent-actions-module h3 {
+    color: #374151;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
-  #changelist-search input[type=text]:focus {
-    border-color: #4f46e5;
-    box-shadow: 0 0 0 2px #e0e7ff;
+  /* ── Popup windows ───────────────────────────────────────── */
+  .related-widget-wrapper-link:focus,
+  .related-widget-wrapper-link:hover {
+    color: #0d9488;
   }
-
-  /* ── Повідомлення (через CSS-змінні Django) ─────── */
 </style>
 {% endblock %}

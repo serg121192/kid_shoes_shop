@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from shop.models import Product, Vendor
+from shop.models import Product, ProductSize, Vendor
 
 User = get_user_model()
 
@@ -24,14 +24,16 @@ def create_product(vendor: Vendor, **kwargs) -> Product:
         "model_name": "Air Max",
         "prod_type": Product.ProductTypeChoices.SNEAKERS,
         "gender": Product.GenderChoices.UNISEX,
-        "quantity": 10,
         "season": Product.SeasonChoices.SUMMER,
-        "size": Product.SizeChoices.small_25,
         "full_price": Decimal("1200.00"),
         "discount": 0,
     }
     defaults.update(kwargs)
     return Product.objects.create(vendor=vendor, **defaults)
+
+
+def create_product_size(product: Product, size: int = 25, quantity: int = 10) -> ProductSize:
+    return ProductSize.objects.create(product=product, size=size, quantity=quantity)
 
 
 def create_user(
@@ -42,7 +44,7 @@ def create_user(
     return User.objects.create_user(
         email=email,
         password=password,
-        is_staff=is_staff
+        is_staff=is_staff,
     )
 
 
@@ -51,6 +53,7 @@ class ProductListTests(APITestCase):
     def setUp(self):
         self.vendor = create_vendor()
         self.product = create_product(self.vendor)
+        create_product_size(self.product)
 
     def test_list_unauthenticated_allowed(self):
         res = self.client.get(PRODUCTS_URL)
@@ -65,10 +68,10 @@ class ProductListTests(APITestCase):
         self.assertIn("exists", product)
         self.assertIn("discounted_price", product)
         self.assertNotIn("description", product)
-        self.assertNotIn("quantity", product)
 
     def test_filter_by_size(self):
-        create_product(self.vendor, model_name="Other", size=Product.SizeChoices.small_27)
+        other = create_product(self.vendor, model_name="Other")
+        create_product_size(other, size=27)
 
         res = self.client.get(PRODUCTS_URL, {"size": 25})
 
@@ -86,7 +89,12 @@ class ProductListTests(APITestCase):
         self.assertEqual(res.data["count"], 1)
 
     def test_filter_by_prod_type(self):
-        create_product(self.vendor, model_name="Sandal X", prod_type=Product.ProductTypeChoices.SANDALS)
+        sandal = create_product(
+            self.vendor,
+            model_name="Sandal X",
+            prod_type=Product.ProductTypeChoices.SANDALS,
+        )
+        create_product_size(sandal, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"prod_type": Product.ProductTypeChoices.SNEAKERS})
 
@@ -94,7 +102,8 @@ class ProductListTests(APITestCase):
         self.assertEqual(res.data["count"], 1)
 
     def test_filter_min_price(self):
-        create_product(self.vendor, model_name="Cheap", full_price=Decimal("200.00"))
+        cheap = create_product(self.vendor, model_name="Cheap", full_price=Decimal("200.00"))
+        create_product_size(cheap, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"min_price": 500})
 
@@ -103,7 +112,8 @@ class ProductListTests(APITestCase):
         self.assertEqual(res.data["results"][0]["model_name"], "Air Max")
 
     def test_filter_max_price(self):
-        create_product(self.vendor, model_name="Expensive", full_price=Decimal("5000.00"))
+        expensive = create_product(self.vendor, model_name="Expensive", full_price=Decimal("5000.00"))
+        create_product_size(expensive, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"max_price": 2000})
 
@@ -112,7 +122,8 @@ class ProductListTests(APITestCase):
         self.assertEqual(res.data["results"][0]["model_name"], "Air Max")
 
     def test_filter_has_discount_true(self):
-        create_product(self.vendor, model_name="On Sale", discount=20)
+        sale = create_product(self.vendor, model_name="On Sale", discount=20)
+        create_product_size(sale, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"has_discount": True})
 
@@ -121,7 +132,8 @@ class ProductListTests(APITestCase):
         self.assertEqual(res.data["results"][0]["model_name"], "On Sale")
 
     def test_filter_has_discount_false(self):
-        create_product(self.vendor, model_name="On Sale", discount=20)
+        sale = create_product(self.vendor, model_name="On Sale", discount=20)
+        create_product_size(sale, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"has_discount": False})
 
@@ -130,7 +142,8 @@ class ProductListTests(APITestCase):
         self.assertEqual(res.data["results"][0]["model_name"], "Air Max")
 
     def test_search_by_model_name(self):
-        create_product(self.vendor, model_name="React Zoom")
+        other = create_product(self.vendor, model_name="React Zoom")
+        create_product_size(other, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"search": "React"})
 
@@ -140,7 +153,8 @@ class ProductListTests(APITestCase):
 
     def test_search_by_vendor_name(self):
         other_vendor = create_vendor(name="Puma")
-        create_product(other_vendor, model_name="Suede")
+        puma_product = create_product(other_vendor, model_name="Suede")
+        create_product_size(puma_product, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"search": "Puma"})
 
@@ -148,7 +162,8 @@ class ProductListTests(APITestCase):
         self.assertEqual(res.data["count"], 1)
 
     def test_ordering_by_price_ascending(self):
-        create_product(self.vendor, model_name="Cheap", full_price=Decimal("500.00"))
+        cheap = create_product(self.vendor, model_name="Cheap", full_price=Decimal("500.00"))
+        create_product_size(cheap, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"ordering": "full_price"})
 
@@ -157,7 +172,8 @@ class ProductListTests(APITestCase):
         self.assertEqual(prices, sorted(prices))
 
     def test_ordering_by_price_descending(self):
-        create_product(self.vendor, model_name="Cheap", full_price=Decimal("500.00"))
+        cheap = create_product(self.vendor, model_name="Cheap", full_price=Decimal("500.00"))
+        create_product_size(cheap, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"ordering": "-full_price"})
 
@@ -171,6 +187,7 @@ class ProductDetailTests(APITestCase):
     def setUp(self):
         self.vendor = create_vendor()
         self.product = create_product(self.vendor)
+        self.product_size = create_product_size(self.product)
 
     def test_retrieve_unauthenticated_allowed(self):
         res = self.client.get(detail_url(self.product.id))
@@ -182,13 +199,16 @@ class ProductDetailTests(APITestCase):
         res = self.client.get(detail_url(self.product.id))
 
         self.assertIn("description", res.data)
-        self.assertIn("quantity", res.data)
-        self.assertIn("in_cart", res.data)
+        self.assertIn("full_price", res.data)
+        self.assertIn("sizes", res.data)
+        self.assertIn("in_wishlist", res.data)
 
-    def test_retrieve_in_cart_false_when_not_authenticated(self):
+    def test_retrieve_size_in_cart_false_when_not_authenticated(self):
         res = self.client.get(detail_url(self.product.id))
 
-        self.assertFalse(res.data["in_cart"])
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        for sz in res.data["sizes"]:
+            self.assertFalse(sz["in_cart"])
 
     def test_retrieve_nonexistent_returns_404(self):
         res = self.client.get(detail_url(99999))
@@ -206,6 +226,7 @@ class ProductDetailTests(APITestCase):
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(Decimal(res.data["discounted_price"]), Decimal("800.00"))
+        self.assertEqual(Decimal(res.data["full_price"]), Decimal("1000.00"))
 
 
 class ProductCreateTests(APITestCase):
@@ -217,9 +238,7 @@ class ProductCreateTests(APITestCase):
             "model_name": "React",
             "prod_type": Product.ProductTypeChoices.SNEAKERS,
             "gender": Product.GenderChoices.UNISEX,
-            "quantity": 5,
             "season": Product.SeasonChoices.SUMMER,
-            "size": Product.SizeChoices.small_25,
             "full_price": "999.00",
             "discount": 0,
         }
@@ -261,6 +280,7 @@ class ProductUpdateTests(APITestCase):
     def setUp(self):
         self.vendor = create_vendor()
         self.product = create_product(self.vendor)
+        create_product_size(self.product)
 
     def test_update_unauthenticated_returns_401(self):
         res = self.client.patch(detail_url(self.product.id), {"discount": 10})
@@ -291,6 +311,7 @@ class ProductDeleteTests(APITestCase):
     def setUp(self):
         self.vendor = create_vendor()
         self.product = create_product(self.vendor)
+        create_product_size(self.product)
 
     def test_delete_unauthenticated_returns_401(self):
         res = self.client.delete(detail_url(self.product.id))

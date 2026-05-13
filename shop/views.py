@@ -7,7 +7,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from shop.permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from shop.filters import ProductFilter
@@ -22,6 +22,7 @@ from shop.models import (
     Wishlist,
     WishlistItem,
     DeliveryInfo,
+    Review,
 )
 from shop.serializers import (
     ProductSerializer,
@@ -36,8 +37,10 @@ from shop.serializers import (
     AddToWishlistSerializer,
     RemoveFromWishlistSerializer,
     OrderSerializer,
+    OrderStatusSerializer,
     OrderItemSerializer,
     DeliveryInfoSerializer,
+    ReviewSerializer,
 )
 
 
@@ -67,6 +70,7 @@ class VendorViewSet(viewsets.ModelViewSet):
 class WishlistViewSet(viewsets.ModelViewSet):
     serializer_class = WishlistSerializer
     permission_classes = [IsOwnerOrAdmin]
+    pagination_class = None
 
     def get_queryset(self):
         return Wishlist.objects.filter(
@@ -127,7 +131,10 @@ class CartViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Cart.objects.filter(
             user=self.request.user
-        ).prefetch_related("cart_items__product_size__product__vendor")
+        ).prefetch_related(
+            "cart_items__product_size__product__vendor",
+            "cart_items__product_size__product__images",
+        ).order_by("-id")
 
     @action(
         detail=False,
@@ -229,12 +236,21 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         total_price = 0
         for cart_item in cart.cart_items.select_related("product_size__product").all():
-            product_size = cart_item.product_size
-            OrderItem.validate_product_quantity(
-                product_size=product_size,
-                quantity=cart_item.quantity,
-                error_to_raise=ValidationError,
+            product_size = ProductSize.objects.select_for_update().get(
+                id=cart_item.product_size_id
             )
+            product_size.product = cart_item.product_size.product
+            try:
+                OrderItem.validate_product_quantity(
+                    product_size=product_size,
+                    quantity=cart_item.quantity,
+                    error_to_raise=ValidationError,
+                )
+            except ValidationError as exc:
+                return Response(
+                    {"error": exc.message},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             OrderItem.objects.create(
                 order=order,
                 product_size=product_size,
@@ -250,7 +266,18 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=["post"], url_path="cancel")
+    @action(detail=True, methods=["patch"], url_path="update_status")
+    def update_status(self, request: Request, pk=None) -> Response:
+        if not request.user.is_staff:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        order = self.get_object()
+        serializer = OrderStatusSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        order.status = serializer.validated_data["status"]
+        order.save()
+        return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="cancel", permission_classes=[IsAuthenticated])
     def cancel_order(self, request: Request, pk=None) -> Response:
         order = self.get_object()
         if order.status != Order.StatusChoices.PENDING:
@@ -261,3 +288,44 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.status = Order.StatusChoices.CANCELLED
         order.save()
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
+
+
+class ReviewViewSet(viewsets.ModelViewSet):
+    serializer_class = ReviewSerializer
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [AllowAny()]
+        if self.action == "create":
+            return [IsAuthenticated()]
+        return [IsOwnerOrAdmin()]
+
+    def get_queryset(self):
+        qs = Review.objects.select_related("user")
+        product_id = self.request.query_params.get("product")
+        if product_id:
+            qs = qs.filter(product_id=product_id)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        if Review.objects.filter(
+            product_id=request.data.get("product"), user=request.user
+        ).exists():
+            return Response(
+                {"error": "Ви вже залишили відгук для цього товару."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().create(request, *args, **kwargs)
+
+    @action(detail=False, methods=["get"], url_path="my", permission_classes=[IsAuthenticated])
+    def my_review(self, request: Request) -> Response:
+        product_id = request.query_params.get("product")
+        if not product_id:
+            return Response({"error": "Потрібен параметр product."}, status=status.HTTP_400_BAD_REQUEST)
+        review = Review.objects.filter(product_id=product_id, user=request.user).first()
+        if not review:
+            return Response(None, status=status.HTTP_200_OK)
+        return Response(ReviewSerializer(review, context={"request": request}).data)

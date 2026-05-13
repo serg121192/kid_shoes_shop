@@ -73,7 +73,8 @@ export default function WishlistPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {wishlist.products.map((product) => {
-                    const imageUrl = getMediaUrl(product.image);
+                    const mainImg = product.images?.find((i) => i.is_main) ?? product.images?.[0];
+                    const imageUrl = mainImg ? getMediaUrl(mainImg.image) : null;
                     const availableSizes = product.sizes.filter((s) => s.quantity > 0);
                     return (
                         <div key={product.id} className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">

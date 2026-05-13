@@ -5,19 +5,23 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
   if (config.url && !config.url.endsWith("/")) {
     config.url = config.url + "/";
   }
-
-  const token = localStorage.getItem("access_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
   return config;
 });
+
+let isRefreshing = false;
+let refreshSubscribers: Array<() => void> = [];
+
+function onRefreshed() {
+  refreshSubscribers.forEach((cb) => cb());
+  refreshSubscribers = [];
+}
 
 api.interceptors.response.use(
   (response) => response,
@@ -25,28 +29,24 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      const refreshToken = localStorage.getItem("refresh_token");
-      if (!refreshToken) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        window.location.href = "/login";
-        return Promise.reject(error);
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          refreshSubscribers.push(() => resolve(api(originalRequest)));
+        });
       }
 
+      originalRequest._retry = true;
+      isRefreshing = true;
+
       try {
-        const response = await axios.post("/api/user/token/refresh/", {
-          refresh: refreshToken,
-        });
-        const newAccess = response.data.access;
-        localStorage.setItem("access_token", newAccess);
-        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+        await axios.post("/api/user/token/refresh/", {}, { withCredentials: true });
+        isRefreshing = false;
+        onRefreshed();
         return api(originalRequest);
       } catch {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        window.location.href = "/login";
+        isRefreshing = false;
+        refreshSubscribers = [];
+        window.dispatchEvent(new Event("auth:expired"));
         return Promise.reject(error);
       }
     }

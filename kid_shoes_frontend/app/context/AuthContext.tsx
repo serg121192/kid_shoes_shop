@@ -17,7 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -38,25 +38,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      refreshUser().finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
-    }
+    refreshUser().finally(() => setIsLoading(false));
   }, [refreshUser]);
 
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setUser(null);
+      router.push("/login");
+    };
+    window.addEventListener("auth:expired", handleAuthExpired);
+    return () => window.removeEventListener("auth:expired", handleAuthExpired);
+  }, [router]);
+
   const login = async (email: string, password: string) => {
-    const response = await api.post("/user/token/", { email, password });
-    localStorage.setItem("access_token", response.data.access);
-    localStorage.setItem("refresh_token", response.data.refresh);
+    await api.post("/user/token/", { email, password });
     await refreshUser();
     router.push("/products");
   };
 
-  const logout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+  const logout = async () => {
+    try {
+      await api.post("/user/logout/", {});
+    } catch {
+      // ignore errors — cookies will expire naturally
+    }
     setUser(null);
     router.push("/login");
   };
