@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/app/context/AuthContext";
 import { useShop } from "@/app/context/ShopContext";
-import { ShoppingCart, Heart, Package, LogOut, LogIn, UserCircle } from "lucide-react";
+import {
+  ShoppingCart, Heart, Package, LogOut, LogIn,
+  UserCircle, Menu, X,
+} from "lucide-react";
 import Logo from "@/app/components/Logo";
 
 function Badge({ count }: { count: number }) {
@@ -18,29 +22,42 @@ function Badge({ count }: { count: number }) {
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuth();
   const { cartCount, wishlistCount } = useShop();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const closeMobile = () => setMobileOpen(false);
 
   return (
     <header className="bg-[#cddada] shadow-md sticky top-0 z-50">
-      <div className="px-6">
-        <div className="flex items-center h-24">
+      <div className="px-4 sm:px-6">
+        <div className="flex items-center h-20 sm:h-24">
 
-          {/* Left spacer */}
-          <div className="flex-1" />
-
-          {/* Logo + tagline — centered */}
+          {/* Mobile: logo left-aligned */}
           <Link
             href="/products"
-            className="flex items-center gap-3 shrink-0"
+            onClick={closeMobile}
+            className="flex items-center gap-2 sm:hidden"
+            aria-label="На головну"
+          >
+            <Logo className="h-14 w-14 shrink-0" />
+          </Link>
+
+          {/* Desktop: left spacer */}
+          <div className="hidden sm:flex flex-1" />
+
+          {/* Desktop: Logo + tagline centered */}
+          <Link
+            href="/products"
+            className="hidden sm:flex items-center gap-3 shrink-0"
             aria-label="На головну"
           >
             <Logo className="h-[84px] w-[84px] shrink-0" />
-            <span className="text-3xl font-medium text-gray-700 whitespace-nowrap">
+            <span className="text-2xl lg:text-3xl font-medium text-gray-700 whitespace-nowrap">
               Магазин дитячого взуття
             </span>
           </Link>
 
-          {/* Right — nav */}
-          <div className="flex-1 flex justify-end">
+          {/* Desktop: right nav */}
+          <div className="hidden sm:flex flex-1 justify-end">
             <nav className="flex items-center gap-4">
               {isAuthenticated ? (
                 <>
@@ -76,7 +93,7 @@ export default function Header() {
                     title="Профіль"
                   >
                     <UserCircle size={20} />
-                    <span className="text-sm hidden sm:block">
+                    <span className="text-sm hidden lg:block">
                       {user?.first_name || user?.email}
                     </span>
                   </Link>
@@ -100,8 +117,87 @@ export default function Header() {
               )}
             </nav>
           </div>
+
+          {/* Mobile: cart icon + hamburger button */}
+          <div className="flex sm:hidden items-center gap-3 ml-auto">
+            {isAuthenticated && (
+              <Link href="/cart" onClick={closeMobile} className="relative text-gray-700" title="Кошик">
+                <ShoppingCart size={24} />
+                <Badge count={cartCount} />
+              </Link>
+            )}
+            <button
+              onClick={() => setMobileOpen((v) => !v)}
+              className="text-gray-700 p-1"
+              aria-label={mobileOpen ? "Закрити меню" : "Відкрити меню"}
+            >
+              {mobileOpen ? <X size={26} /> : <Menu size={26} />}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Mobile dropdown menu */}
+      {mobileOpen && (
+        <div className="sm:hidden bg-[#cddada] border-t border-[#b8caca] px-4 py-2 flex flex-col">
+          {isAuthenticated ? (
+            <>
+              <Link
+                href="/products"
+                onClick={closeMobile}
+                className="flex items-center gap-3 py-3 border-b border-[#b8caca] text-gray-700 hover:text-teal-600 transition-colors"
+              >
+                <span className="font-medium">Каталог</span>
+              </Link>
+              <Link
+                href="/wishlist"
+                onClick={closeMobile}
+                className="flex items-center gap-3 py-3 border-b border-[#b8caca] text-gray-700 hover:text-teal-600 transition-colors"
+              >
+                <Heart size={20} />
+                <span>Вибране</span>
+                {wishlistCount > 0 && (
+                  <span className="ml-auto bg-rose-400 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                    {wishlistCount > 99 ? "99+" : wishlistCount}
+                  </span>
+                )}
+              </Link>
+              <Link
+                href="/orders"
+                onClick={closeMobile}
+                className="flex items-center gap-3 py-3 border-b border-[#b8caca] text-gray-700 hover:text-teal-600 transition-colors"
+              >
+                <Package size={20} />
+                <span>Замовлення</span>
+              </Link>
+              <Link
+                href="/profile"
+                onClick={closeMobile}
+                className="flex items-center gap-3 py-3 border-b border-[#b8caca] text-gray-700 hover:text-teal-600 transition-colors"
+              >
+                <UserCircle size={20} />
+                <span>{user?.first_name || user?.email || "Профіль"}</span>
+              </Link>
+              <button
+                onClick={() => { logout(); closeMobile(); }}
+                className="flex items-center gap-3 py-3 text-gray-700 hover:text-red-500 transition-colors w-full text-left"
+              >
+                <LogOut size={20} />
+                <span>Вийти</span>
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              onClick={closeMobile}
+              className="flex items-center gap-3 py-3 text-gray-700 hover:text-teal-600 transition-colors"
+            >
+              <LogIn size={20} />
+              <span className="font-medium">Увійти</span>
+            </Link>
+          )}
+        </div>
+      )}
     </header>
   );
 }

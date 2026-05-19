@@ -210,8 +210,17 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@kidshoes.com")
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
+NP_SENDER_PHONES = os.getenv("NP_SENDER_PHONES", "")
+NP_SENDER_CITY_REF = os.getenv("NP_SENDER_CITY_REF", "")
+NP_SENDER_WAREHOUSE_REF = os.getenv("NP_SENDER_WAREHOUSE_REF", "")
+NP_SENDER_LAST_NAME = os.getenv("NP_SENDER_LAST_NAME", "")
+NP_SENDER_FIRST_NAME = os.getenv("NP_SENDER_FIRST_NAME", "")
+NP_SENDER_MIDDLE_NAME = os.getenv("NP_SENDER_MIDDLE_NAME", "")
+
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
 }
+
+NOVA_POSHTA_API_KEY = os.getenv("NOVA_POSHTA_API_KEY", default="")

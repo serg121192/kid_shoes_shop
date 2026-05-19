@@ -126,7 +126,7 @@ export default function OrderDetailPage({
                     {order.items.map((item, idx) => {
                         const { product_size, quantity, price } = item;
                         const product = product_size.product;
-                        const imageUrl = getMediaUrl(product.image);
+                        const imageUrl = getMediaUrl(product.main_image);
                         return (
                             <div key={idx} className="flex items-center gap-4">
                                 <Link href={`/products/${product.id}`} className="shrink-0">

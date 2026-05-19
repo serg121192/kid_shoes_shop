@@ -225,14 +225,14 @@ export default function ProductDetailPage({
                   <button
                     onClick={() => setActiveIndex((i) => Math.max(0, i - 1))}
                     disabled={!hasPrev}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow transition-opacity opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow transition-opacity opacity-60 hover:opacity-100 disabled:opacity-0"
                   >
                     <ChevronLeft size={20} className="text-gray-700" />
                   </button>
                   <button
                     onClick={() => setActiveIndex((i) => Math.min(mediaItems.length - 1, i + 1))}
                     disabled={!hasNext}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow transition-opacity opacity-0 group-hover:opacity-100 disabled:opacity-0"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow transition-opacity opacity-60 hover:opacity-100 disabled:opacity-0"
                   >
                     <ChevronRight size={20} className="text-gray-700" />
                   </button>

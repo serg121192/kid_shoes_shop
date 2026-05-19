@@ -349,7 +349,7 @@ class DeliveryInfoSerializer(serializers.ModelSerializer):
             "street", "building_number", "apartment",
             "tracking_number",
         ]
-        read_only_fields = ["city_ref", "warehouse_ref", "tracking_number"]
+        read_only_fields = ["tracking_number"]
 
     def validate(self, data):
         delivery_type = data.get("delivery_type", DeliveryInfo.DeliveryTypeChoices.NP_WAREHOUSE)

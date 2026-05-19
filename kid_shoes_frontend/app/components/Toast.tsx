@@ -9,11 +9,11 @@ export default function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none w-[90vw] max-w-sm">
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className={`flex items-center gap-2 px-5 py-3 rounded-xl shadow-lg text-sm font-medium animate-slide-up pointer-events-auto
+          className={`w-full flex items-center gap-2 px-5 py-3 rounded-xl shadow-lg text-sm font-medium animate-slide-up pointer-events-auto break-words
             ${toast.type === "success"
               ? "bg-gray-900 text-white"
               : "bg-red-600 text-white"

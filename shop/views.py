@@ -2,7 +2,7 @@ from django.db import transaction
 from django.core.exceptions import ValidationError
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -24,6 +24,7 @@ from shop.models import (
     DeliveryInfo,
     Review,
 )
+from shop.nova_poshta import get_cities_list, get_warehouses_list
 from shop.serializers import (
     ProductSerializer,
     ProductListSerializer,
@@ -273,8 +274,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = self.get_object()
         serializer = OrderStatusSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        order.status = serializer.validated_data["status"]
-        order.save()
+        new_status = serializer.validated_data["status"]
+        order.status = new_status
+        order.save()  # сигнал post_save подбає про ТТН автоматично
+
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=["post"], url_path="cancel", permission_classes=[IsAuthenticated])
@@ -329,3 +332,31 @@ class ReviewViewSet(viewsets.ModelViewSet):
         if not review:
             return Response(None, status=status.HTTP_200_OK)
         return Response(ReviewSerializer(review, context={"request": request}).data)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def nova_poshta_cities(request: Request) -> Response:
+    query = request.query_params.get("q", "").strip()
+    if len(query) < 2:
+        return Response([], status=status.HTTP_200_OK)
+
+    return Response(get_cities_list(query), status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def nova_poshta_warehouses(request: Request) -> Response:
+    city_ref = request.query_params.get("city_ref", "").strip()
+    query = request.query_params.get("q", "").strip()
+    warehouse_type = request.query_params.get("type", "warehouse").strip()
+    if not city_ref:
+        return Response([], status=status.HTTP_200_OK)
+
+    return Response(
+        get_warehouses_list(
+            city_ref,
+            query,
+            warehouse_type
+        ), status=status.HTTP_200_OK
+    )

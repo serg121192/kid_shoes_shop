@@ -8,6 +8,8 @@ from shop.views import (
     CartViewSet,
     WishlistViewSet,
     ReviewViewSet,
+    nova_poshta_cities,
+    nova_poshta_warehouses,
 )
 
 
@@ -22,5 +24,7 @@ router.register("orders", OrderViewSet, basename="order")
 router.register("reviews", ReviewViewSet, basename="review")
 
 urlpatterns = [
-    path("", include(router.urls))
+    path("", include(router.urls)),
+    path("nova-poshta/cities/", nova_poshta_cities, name="np-cities"),
+    path("nova-poshta/warehouses/", nova_poshta_warehouses, name="np-warehouses"),
 ]

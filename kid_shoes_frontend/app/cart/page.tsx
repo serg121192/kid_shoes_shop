@@ -131,59 +131,80 @@ export default function CartPage() {
           return (
             <div
               key={product_size.id}
-              className="bg-white rounded-xl shadow-sm p-4 flex items-center gap-4"
+              className="bg-white rounded-xl shadow-sm p-4"
             >
-              <Link href={`/products/${product.id}`} className="shrink-0">
-                <div className="w-20 h-20 bg-gray-100 rounded-lg relative overflow-hidden">
-                  {imageUrl ? (
-                    <Image src={imageUrl} alt={product.model_name} fill unoptimized className="object-cover" />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-3xl">👟</div>
-                  )}
-                </div>
-              </Link>
-
-              <div className="flex-1 min-w-0">
-                <Link href={`/products/${product.id}`}>
-                  <h3 className="font-semibold text-gray-800 hover:text-[#72a1ff] transition-colors truncate">
-                    {product.vendor} {product.model_name}
-                  </h3>
+              <div className="flex items-start gap-4">
+                {/* Image */}
+                <Link href={`/products/${product.id}`} className="shrink-0">
+                  <div className="w-20 h-20 bg-gray-100 rounded-lg relative overflow-hidden">
+                    {imageUrl ? (
+                      <Image src={imageUrl} alt={product.model_name} fill unoptimized className="object-cover" />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-3xl">👟</div>
+                    )}
+                  </div>
                 </Link>
-                <p className="text-sm text-gray-500">Розмір {product_size.size}</p>
-                <p className="font-bold text-[#5291ff] mt-1">
-                  {Number(product.discounted_price).toFixed(2)} грн / шт
-                </p>
+
+                {/* Info block */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <Link href={`/products/${product.id}`}>
+                        <h3 className="font-semibold text-gray-800 hover:text-[#72a1ff] transition-colors truncate">
+                          {product.vendor} {product.model_name}
+                        </h3>
+                      </Link>
+                      <p className="text-sm text-gray-500">Розмір {product_size.size}</p>
+                      <p className="text-sm text-[#5291ff] mt-0.5">
+                        {Number(product.discounted_price).toFixed(2)} грн / шт
+                      </p>
+                    </div>
+                    {/* Delete button — top-right on mobile */}
+                    <button
+                      onClick={() => handleRemove(product_size.id, quantity)}
+                      className="sm:hidden text-gray-400 hover:text-red-500 transition-colors shrink-0 p-1"
+                      title="Видалити"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+
+                  {/* Bottom row: qty stepper + total + delete (desktop) */}
+                  <div className="flex items-center justify-between mt-3 gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => quantity > 1 && handleChangeQty(product_size.id, -1)}
+                        disabled={quantity <= 1}
+                        className="w-8 h-8 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        −
+                      </button>
+                      <span className="w-8 text-center font-medium">{quantity}</span>
+                      <button
+                        onClick={() => handleChangeQty(product_size.id, 1)}
+                        disabled={quantity >= stockQty}
+                        className="w-8 h-8 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <p className="font-bold text-gray-900">
+                        {(Number(product.discounted_price) * quantity).toFixed(2)} грн
+                      </p>
+                      {/* Delete button — inline on desktop */}
+                      <button
+                        onClick={() => handleRemove(product_size.id, quantity)}
+                        className="hidden sm:block text-gray-400 hover:text-red-500 transition-colors"
+                        title="Видалити"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => quantity > 1 && handleChangeQty(product_size.id, -1)}
-                  disabled={quantity <= 1}
-                  className="w-8 h-8 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  −
-                </button>
-                <span className="w-8 text-center font-medium">{quantity}</span>
-                <button
-                  onClick={() => handleChangeQty(product_size.id, 1)}
-                  disabled={quantity >= stockQty}
-                  className="w-8 h-8 border border-gray-300 rounded-lg flex items-center justify-center hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  +
-                </button>
-              </div>
-
-              <p className="font-bold text-gray-900 text-right w-24 shrink-0">
-                {(Number(product.discounted_price) * quantity).toFixed(2)} грн
-              </p>
-
-              <button
-                onClick={() => handleRemove(product_size.id, quantity)}
-                className="text-gray-400 hover:text-red-500 transition-colors shrink-0"
-                title="Видалити"
-              >
-                <Trash2 size={18} />
-              </button>
             </div>
           );
         })}
