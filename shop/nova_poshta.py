@@ -28,6 +28,21 @@ def _call(model: str, method: str, properties: dict) -> list:
     return []
 
 
+def get_tracking_status(ttn: str) -> dict | None:
+    """
+    Повертає словник з полями StatusCode, Status, PaymentStatus тощо
+    або None якщо запит не вдався.
+    Статус-коди НП: 9=Вручено, 10=Відмова від отримання,
+                    11/101/102/14=повернення відправнику.
+    """
+    data = _call("TrackingDocument", "getStatusDocuments", {
+        "Documents": [{"DocumentNumber": ttn}]
+    })
+    if data:
+        return data[0]
+    return None
+
+
 def get_cities_list(query: str) -> list[dict]:
     cities = _call("Address", "searchSettlements", {
         "CityName": query,

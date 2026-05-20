@@ -9,7 +9,7 @@ class ProductFilter(django_filters.FilterSet):
     has_discount = django_filters.BooleanFilter(
         field_name="discount", method="filter_has_discount"
     )
-    size = django_filters.NumberFilter(field_name="sizes__size", lookup_expr="exact")
+    size = django_filters.NumberFilter(field_name="sizes__size", lookup_expr="exact", distinct=True)
 
     def filter_has_discount(self, queryset, name, value):
         if value:

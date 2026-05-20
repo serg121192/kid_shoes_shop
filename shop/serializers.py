@@ -17,6 +17,7 @@ from shop.models import (
     WishlistItem,
     DeliveryInfo,
     Review,
+    PromoCode,
 )
 
 
@@ -374,6 +375,16 @@ class DeliveryInfoSerializer(serializers.ModelSerializer):
         return data
 
 
+class PromoCodeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PromoCode
+        fields = [
+            "id", "code", "discount_type", "discount_value",
+            "min_order_amount", "valid_until", "is_active",
+            "max_uses", "current_uses",
+        ]
+
+
 class OrderStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Order.StatusChoices.choices)
 
@@ -387,6 +398,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             "id", "created_at", "user", "status",
-            "total_price", "delivery", "items",
+            "total_price", "discount_amount", "promo_code",
+            "delivery", "items",
             "payment_method", "is_paid",
         ]

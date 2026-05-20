@@ -274,8 +274,11 @@ export default function CheckoutPage() {
     setIsLoading(true);
     setErrors({});
 
+    const savedPromo = sessionStorage.getItem("promo_code") ?? "";
+
     const payload = {
       payment_method: paymentMethod,
+      promo_code: savedPromo,
       recipient_full_name: form.recipient_full_name,
       recipient_phone: form.recipient_phone,
       delivery_type: deliveryType,
@@ -291,6 +294,7 @@ export default function CheckoutPage() {
     try {
       const response = await api.post("/shop/orders/me/create_order/", payload);
       const orderId: number = response.data.id;
+      sessionStorage.removeItem("promo_code");
 
       if (ONLINE_PAYMENT_METHODS.includes(paymentMethod)) {
         // Отримуємо параметри LiqPay і відправляємо форму на їх сторінку оплати

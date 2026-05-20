@@ -208,14 +208,16 @@ class CartItem(models.Model):
 
 class Order(models.Model):
     class StatusChoices(models.TextChoices):
-        PENDING = "pending", "Очікується"
+        PENDING    = "pending",    "Очікується"
         PROCESSING = "processing", "В обробці"
-        COMPLETED = "completed", "Виконано"
-        CANCELLED = "cancelled", "Скасовано"
+        COMPLETED  = "completed",  "Виконано"
+        RECEIVED   = "received",   "Замовлення отримано"
+        REFUSED    = "refused",    "Відмова"
+        CANCELLED  = "cancelled",  "Скасовано"
 
     class PaymentMethodChoices(models.TextChoices):
         CARD_ONLINE = "card_online", "Карткою онлайн"
-        COD = "cod", "Оплата у відділенніпри отриманні товару"
+        COD = "cod", "Оплата у відділенні при отриманні товару"
         BABY_PACKAGE = "baby_package", "Карткою 'Пакунок малюка'"
         SCHOOL_PACKAGE = "school_package", "Карткою 'Пакунок школяра'"
         BANK_TRANSFER = "bank_transfer", "Оплата за реквізитами"
@@ -244,6 +246,10 @@ class Order(models.Model):
         verbose_name="Спосіб оплати",
     )
     is_paid = models.BooleanField(default=False, verbose_name="Оплачено")
+    promo_code = models.CharField(max_length=50, null=True, blank=True, verbose_name="Промокод")
+    discount_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, verbose_name="Знижка (грн)"
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -411,6 +417,54 @@ class Review(models.Model):
 
     def __str__(self):
         return f"Відгук {self.user.email} на {self.product} — {self.rating}★"
+
+
+class PromoCode(models.Model):
+    class DiscountType(models.TextChoices):
+        FIXED = "fixed", "Фіксована сума"
+        PERCENT = "percent", "Відсоток"
+
+    code = models.CharField(max_length=50, unique=True, verbose_name="Код")
+    discount_type = models.CharField(
+        max_length=10, choices=DiscountType.choices, verbose_name="Тип знижки"
+    )
+    discount_value = models.DecimalField(
+        max_digits=10, decimal_places=2, verbose_name="Розмір знижки"
+    )
+    min_order_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0, verbose_name="Мін. сума замовлення"
+    )
+    valid_until = models.DateTimeField(null=True, blank=True, verbose_name="Діє до")
+    is_active = models.BooleanField(default=True, verbose_name="Активний")
+    max_uses = models.PositiveIntegerField(null=True, blank=True, verbose_name="Макс. використань")
+    current_uses = models.PositiveIntegerField(default=0, verbose_name="Використано")
+
+    class Meta:
+        verbose_name = "Промокод"
+        verbose_name_plural = "Промокоди"
+
+    def __str__(self):
+        return self.code
+
+    def get_discount(self, amount) -> "Decimal":
+        from decimal import Decimal
+        amt = Decimal(str(amount))
+        if self.discount_type == self.DiscountType.PERCENT:
+            return (amt * self.discount_value / 100).quantize(Decimal("0.01"))
+        return min(self.discount_value, amt)
+
+    def is_valid_for(self, amount) -> tuple[bool, str]:
+        from decimal import Decimal
+        from django.utils import timezone
+        if not self.is_active:
+            return False, "Промокод неактивний"
+        if self.valid_until and self.valid_until < timezone.now():
+            return False, "Строк дії промокоду вийшов"
+        if self.max_uses and self.current_uses >= self.max_uses:
+            return False, "Промокод вичерпано"
+        if Decimal(str(amount)) < self.min_order_amount:
+            return False, f"Мінімальна сума для цього промокоду: {self.min_order_amount} грн"
+        return True, ""
 
 
 class Wishlist(models.Model):

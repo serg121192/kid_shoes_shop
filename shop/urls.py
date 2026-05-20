@@ -11,6 +11,8 @@ from shop.views import (
     nova_poshta_cities,
     nova_poshta_warehouses,
     liqpay_callback,
+    validate_promo,
+    manager_stats,
 )
 
 
@@ -29,4 +31,6 @@ urlpatterns = [
     path("nova-poshta/cities/", nova_poshta_cities, name="np-cities"),
     path("nova-poshta/warehouses/", nova_poshta_warehouses, name="np-warehouses"),
     path("liqpay/callback/", liqpay_callback, name="liqpay-callback"),
+    path("promo/validate/", validate_promo, name="promo-validate"),
+    path("stats/", manager_stats, name="manager-stats"),
 ]

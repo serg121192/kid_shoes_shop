@@ -16,6 +16,7 @@ from shop.models import (
     WishlistItem,
     DeliveryInfo,
     Review,
+    PromoCode,
 )
 
 admin.site.site_header = "TAK i TAK — Адміністрування"
@@ -199,3 +200,11 @@ class WishlistAdmin(admin.ModelAdmin):
     list_display_links = ["id", "user"]
     search_fields = ["user__email"]
     inlines = [WishlistItemInline]
+
+
+@admin.register(PromoCode)
+class PromoCodeAdmin(admin.ModelAdmin):
+    list_display = ["code", "discount_type", "discount_value", "is_active", "current_uses", "max_uses", "valid_until"]
+    list_filter = ["discount_type", "is_active"]
+    search_fields = ["code"]
+    readonly_fields = ["current_uses"]

@@ -1,5 +1,10 @@
+from datetime import timedelta
+from decimal import Decimal
+
 from django.db import transaction
+from django.db.models import Count, Sum
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action, api_view, permission_classes
@@ -7,7 +12,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import viewsets, status
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 
 from shop.permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from shop.filters import ProductFilter
@@ -15,6 +20,8 @@ from shop.liqpay import build_payment_params, verify_callback
 from shop.models import (
     Product,
     ProductSize,
+    ProductImage,
+    ProductVideo,
     Vendor,
     Cart,
     CartItem,
@@ -24,12 +31,16 @@ from shop.models import (
     WishlistItem,
     DeliveryInfo,
     Review,
+    PromoCode,
 )
-from shop.nova_poshta import get_cities_list, get_warehouses_list
+from shop.nova_poshta import get_cities_list, get_warehouses_list, get_tracking_status
 from shop.serializers import (
     ProductSerializer,
     ProductListSerializer,
     ProductRetrieveSerializer,
+    ProductImageSerializer,
+    ProductVideoSerializer,
+    ProductSizeListSerializer,
     VendorSerializer,
     CartSerializer,
     AddToCartSerializer,
@@ -43,11 +54,12 @@ from shop.serializers import (
     OrderItemSerializer,
     DeliveryInfoSerializer,
     ReviewSerializer,
+    PromoCodeSerializer,
 )
 
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.select_related("vendor").prefetch_related("sizes", "images", "videos")
+    queryset = Product.objects.all()
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ProductFilter
@@ -55,12 +67,118 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering_fields = ["full_price", "discount"]
     ordering = ["full_price"]
 
+    def get_queryset(self):
+        qs = Product.objects.select_related("vendor").prefetch_related("sizes", "images", "videos")
+        if self.request.query_params.get("size"):
+            qs = qs.distinct()
+        return qs
+
     def get_serializer_class(self):
         if self.action == "list":
             return ProductListSerializer
         if self.action == "retrieve":
             return ProductRetrieveSerializer
         return ProductSerializer
+
+    @action(detail=True, methods=["post"], url_path="upload_image", permission_classes=[IsAdminUser])
+    def upload_image(self, request: Request, pk=None) -> Response:
+        product = self.get_object()
+        image = request.FILES.get("image")
+        if not image:
+            return Response({"error": "Файл не завантажено"}, status=status.HTTP_400_BAD_REQUEST)
+        is_main = request.data.get("is_main", "false").lower() == "true"
+        order_num = int(request.data.get("order", 0))
+        pi = ProductImage.objects.create(product=product, image=image, is_main=is_main, order=order_num)
+        return Response(
+            ProductImageSerializer(pi, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=True, methods=["delete"],
+        url_path=r"delete_image/(?P<image_id>[^/.]+)",
+        permission_classes=[IsAdminUser],
+    )
+    def delete_image(self, request: Request, pk=None, image_id=None) -> Response:
+        product = self.get_object()
+        try:
+            ProductImage.objects.get(pk=image_id, product=product).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ProductImage.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+    @action(
+        detail=True, methods=["patch"],
+        url_path=r"set_main_image/(?P<image_id>[^/.]+)",
+        permission_classes=[IsAdminUser],
+    )
+    def set_main_image(self, request: Request, pk=None, image_id=None) -> Response:
+        product = self.get_object()
+        try:
+            img = ProductImage.objects.get(pk=image_id, product=product)
+            img.is_main = True
+            img.save()  # model.save() автоматично скидає is_main у решті
+            return Response(ProductImageSerializer(img, context={"request": request}).data)
+        except ProductImage.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=["post"], url_path="upload_video", permission_classes=[IsAdminUser])
+    def upload_video(self, request: Request, pk=None) -> Response:
+        product = self.get_object()
+        video_file = request.FILES.get("video")
+        if not video_file:
+            return Response({"error": "Файл не завантажено"}, status=status.HTTP_400_BAD_REQUEST)
+        title = request.data.get("title", "")
+        order_num = int(request.data.get("order", 0))
+        pv = ProductVideo.objects.create(product=product, video=video_file, title=title, order=order_num)
+        return Response(
+            ProductVideoSerializer(pv, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=True, methods=["delete"],
+        url_path=r"delete_video/(?P<video_id>[^/.]+)",
+        permission_classes=[IsAdminUser],
+    )
+    def delete_video(self, request: Request, pk=None, video_id=None) -> Response:
+        product = self.get_object()
+        try:
+            ProductVideo.objects.get(pk=video_id, product=product).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ProductVideo.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=["post"], url_path="set_size", permission_classes=[IsAdminUser])
+    def set_size(self, request: Request, pk=None) -> Response:
+        product = self.get_object()
+        size = request.data.get("size")
+        quantity = request.data.get("quantity", 0)
+        if not size:
+            return Response({"error": "size обов'язковий"}, status=status.HTTP_400_BAD_REQUEST)
+        ps, created = ProductSize.objects.get_or_create(
+            product=product, size=int(size), defaults={"quantity": int(quantity)}
+        )
+        if not created:
+            ps.quantity = int(quantity)
+            ps.save()
+        return Response(
+            ProductSizeListSerializer(ps).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    @action(
+        detail=True, methods=["delete"],
+        url_path=r"delete_size/(?P<size_id>[^/.]+)",
+        permission_classes=[IsAdminUser],
+    )
+    def delete_size(self, request: Request, pk=None, size_id=None) -> Response:
+        product = self.get_object()
+        try:
+            ProductSize.objects.get(pk=size_id, product=product).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ProductSize.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 class VendorViewSet(viewsets.ModelViewSet):
@@ -270,7 +388,24 @@ class OrderViewSet(viewsets.ModelViewSet):
             total_price += cart_item.quantity * product_size.product.discounted_price
             product_size.reduce_stock(cart_item.quantity)
 
-        order.total_price = total_price
+        # Apply promo code if provided
+        promo_code_str = request.data.get("promo_code", "").upper().strip()
+        discount_amount = Decimal("0")
+        if promo_code_str:
+            try:
+                promo = PromoCode.objects.get(code=promo_code_str)
+                valid, _ = promo.is_valid_for(total_price)
+                if valid:
+                    discount_amount = promo.get_discount(total_price)
+                    PromoCode.objects.filter(pk=promo.pk).update(
+                        current_uses=promo.current_uses + 1
+                    )
+            except PromoCode.DoesNotExist:
+                pass
+
+        order.total_price = total_price - discount_amount
+        order.discount_amount = discount_amount
+        order.promo_code = promo_code_str if discount_amount > 0 else None
         order.save()
         cart.cart_items.all().delete()
 
@@ -300,6 +435,66 @@ class OrderViewSet(viewsets.ModelViewSet):
             description=f"Замовлення №{order.id} — Магазин дитячого взуття",
         )
         return Response(params)
+
+    @action(detail=True, methods=["post"], url_path="sync_np", permission_classes=[IsAdminUser])
+    def sync_np_status(self, request: Request, pk=None) -> Response:
+        """
+        Запитує НП по ТТН і автоматично оновлює статус замовлення:
+          • StatusCode 9  (Вручено)              → received  + is_paid для накладеного/карток
+          • StatusCode 10 (Відмова)              → refused
+          • StatusCode 11/101/102/14 (Повернення)→ refused
+        """
+        order = self.get_object()
+        delivery = getattr(order, "delivery", None)
+
+        if not delivery or not delivery.tracking_number:
+            return Response(
+                {"error": "Замовлення не має ТТН для відстеження"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        np_data = get_tracking_status(delivery.tracking_number)
+        if not np_data:
+            return Response(
+                {"error": "Не вдалося отримати статус від Нової Пошти"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        np_code   = str(np_data.get("StatusCode", ""))
+        np_status_label = np_data.get("Status", "")
+
+        RECEIVED_CODES = {"9"}
+        REFUSED_CODES  = {"10", "11", "14", "101", "102"}
+
+        COD_METHODS = {
+            Order.PaymentMethodChoices.COD,
+            Order.PaymentMethodChoices.BABY_PACKAGE,
+            Order.PaymentMethodChoices.SCHOOL_PACKAGE,
+        }
+
+        update_fields = []
+
+        if np_code in RECEIVED_CODES:
+            order.status = Order.StatusChoices.RECEIVED
+            update_fields.append("status")
+            if order.payment_method in COD_METHODS and not order.is_paid:
+                order.is_paid = True
+                update_fields.append("is_paid")
+
+        elif np_code in REFUSED_CODES:
+            order.status = Order.StatusChoices.REFUSED
+            update_fields.append("status")
+
+        if update_fields:
+            order.save(update_fields=update_fields)
+
+        return Response({
+            "np_code": np_code,
+            "np_status": np_status_label,
+            "order_status": order.status,
+            "is_paid": order.is_paid,
+            "updated": bool(update_fields),
+        })
 
     @action(detail=True, methods=["post"], url_path="cancel", permission_classes=[IsAuthenticated])
     def cancel_order(self, request: Request, pk=None) -> Response:
@@ -381,6 +576,81 @@ def nova_poshta_warehouses(request: Request) -> Response:
             warehouse_type
         ), status=status.HTTP_200_OK
     )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def validate_promo(request: Request) -> Response:
+    code = request.data.get("code", "").upper().strip()
+    try:
+        order_amount = Decimal(str(request.data.get("order_amount", 0)))
+    except Exception:
+        return Response({"valid": False, "error": "Невірна сума"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        promo = PromoCode.objects.get(code=code)
+    except PromoCode.DoesNotExist:
+        return Response({"valid": False, "error": "Промокод не знайдено"})
+
+    valid, error = promo.is_valid_for(order_amount)
+    if not valid:
+        return Response({"valid": False, "error": error})
+
+    discount = promo.get_discount(order_amount)
+    label = (
+        f"Знижка {promo.discount_value}%"
+        if promo.discount_type == PromoCode.DiscountType.PERCENT
+        else f"Знижка {promo.discount_value} грн"
+    )
+    return Response({
+        "valid": True,
+        "discount": str(discount),
+        "final_amount": str(order_amount - discount),
+        "description": label,
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def manager_stats(request: Request) -> Response:
+    today = timezone.now().date()
+
+    def revenue_since(since_date):
+        result = Order.objects.filter(created_at__date__gte=since_date).aggregate(
+            total=Sum("total_price")
+        )["total"]
+        return float(result or 0)
+
+    top_products = list(
+        OrderItem.objects.values(
+            "product_size__product__id",
+            "product_size__product__model_name",
+            "product_size__product__vendor__name",
+        ).annotate(
+            total_sold=Sum("quantity"),
+            total_revenue=Sum("price"),
+        ).order_by("-total_sold")[:5]
+    )
+
+    orders_by_status = dict(
+        Order.objects.values("status")
+        .annotate(count=Count("id"))
+        .values_list("status", "count")
+    )
+
+    return Response({
+        "revenue": {
+            "today": revenue_since(today),
+            "week": revenue_since(today - timedelta(days=7)),
+            "month": revenue_since(today - timedelta(days=30)),
+        },
+        "orders_by_status": orders_by_status,
+        "top_products": top_products,
+        "total_orders": Order.objects.count(),
+        "total_revenue": float(
+            Order.objects.aggregate(total=Sum("total_price"))["total"] or 0
+        ),
+    })
 
 
 @api_view(["POST"])

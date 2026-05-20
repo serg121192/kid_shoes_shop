@@ -55,6 +55,7 @@ export default function ProductsPage() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [hasDiscount, setHasDiscount] = useState(false);
+  const [size, setSize] = useState("");
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -74,6 +75,7 @@ export default function ProductsPage() {
       if (minPrice) params.min_price = minPrice;
       if (maxPrice) params.max_price = maxPrice;
       if (hasDiscount) params.has_discount = true;
+      if (size) params.size = size;
 
       const response = await api.get<PaginatedResponse<ProductList>>("/shop/products/", { params });
       setProducts(response.data.results);
@@ -84,7 +86,7 @@ export default function ProductsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [search, season, prodType, gender, minPrice, maxPrice, hasDiscount, page]);
+  }, [search, season, prodType, gender, minPrice, maxPrice, hasDiscount, size, page]);
 
   const fetchWishlist = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -140,7 +142,7 @@ export default function ProductsPage() {
     }
   };
 
-  const hasActiveFilters = search || season || prodType || gender || minPrice || maxPrice || hasDiscount;
+  const hasActiveFilters = search || season || prodType || gender || minPrice || maxPrice || hasDiscount || size;
 
   const handleReset = () => {
     setSearch("");
@@ -150,6 +152,7 @@ export default function ProductsPage() {
     setMinPrice("");
     setMaxPrice("");
     setHasDiscount(false);
+    setSize("");
     setPage(1);
   };
 
@@ -217,6 +220,17 @@ export default function ProductsPage() {
             className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
+
+        <select
+          value={size}
+          onChange={(e) => { setSize(e.target.value); resetPage(); }}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">Всі розміри</option>
+          {Array.from({ length: 27 }, (_, i) => i + 18).map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
 
         {/* Discount toggle */}
         <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">

@@ -114,8 +114,10 @@ export interface Order {
   id: number;
   created_at: string;
   user: string; // email (SlugField)
-  status: "pending" | "processing" | "completed" | "cancelled";
+  status: "pending" | "processing" | "completed" | "received" | "refused" | "cancelled";
   total_price: string;
+  discount_amount: string;
+  promo_code: string | null;
   items: OrderItem[];
   delivery: DeliveryInfo | null;
   payment_method: "card_online" | "cod" | "baby_package" | "school_package" | "bank_transfer";
