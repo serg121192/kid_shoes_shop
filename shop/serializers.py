@@ -388,4 +388,5 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = [
             "id", "created_at", "user", "status",
             "total_price", "delivery", "items",
+            "payment_method", "is_paid",
         ]

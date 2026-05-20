@@ -118,6 +118,8 @@ export interface Order {
   total_price: string;
   items: OrderItem[];
   delivery: DeliveryInfo | null;
+  payment_method: "card_online" | "cod" | "baby_package" | "school_package" | "bank_transfer";
+  is_paid: boolean;
 }
 
 export interface Review {

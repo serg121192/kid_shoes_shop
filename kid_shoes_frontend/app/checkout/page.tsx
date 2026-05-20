@@ -15,6 +15,14 @@ const DELIVERY_OPTIONS: { value: DeliveryType; label: string }[] = [
   { value: "np_address", label: "НоваПошта: Кур'єр на адресу" },
 ];
 
+const PAYMENT_METHODS = [
+  { value: "card_online", label: "💳 Карткою онлайн (Google Pay / Apple Pay / QR)" },
+  { value: "baby_package", label: "🎁 Карткою «Пакунок малюка»" },
+  { value: "school_package", label: "🎒 Карткою «Пакунок школяра»" },
+  { value: "cod", label: "📦 Накладений платіж" },
+  { value: "bank_transfer", label: "🏦 Оплата за реквізитами" },
+];
+
 // ── Simple text field ────────────────────────────────────────────────────────
 
 function Field({
@@ -33,9 +41,8 @@ function Field({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-          error ? "border-red-400" : "border-gray-300"
-        }`}
+        className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${error ? "border-red-400" : "border-gray-300"
+          }`}
       />
       {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
     </div>
@@ -91,9 +98,8 @@ function AutocompleteField({
           placeholder={placeholder}
           disabled={disabled}
           autoComplete="off"
-          className={`w-full border rounded-lg px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed ${
-            error ? "border-red-400" : confirmed ? "border-green-400" : "border-gray-300"
-          }`}
+          className={`w-full border rounded-lg px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed ${error ? "border-red-400" : confirmed ? "border-green-400" : "border-gray-300"
+            }`}
         />
         <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
           {isLoading
@@ -140,10 +146,14 @@ function AutocompleteField({
 
 // ── Checkout page ────────────────────────────────────────────────────────────
 
+type PaymentMethod = "card_online" | "baby_package" | "school_package" | "cod" | "bank_transfer";
+const ONLINE_PAYMENT_METHODS: PaymentMethod[] = ["card_online", "baby_package", "school_package"];
+
 export default function CheckoutPage() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("np_warehouse");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -265,6 +275,7 @@ export default function CheckoutPage() {
     setErrors({});
 
     const payload = {
+      payment_method: paymentMethod,
       recipient_full_name: form.recipient_full_name,
       recipient_phone: form.recipient_phone,
       delivery_type: deliveryType,
@@ -279,7 +290,32 @@ export default function CheckoutPage() {
 
     try {
       const response = await api.post("/shop/orders/me/create_order/", payload);
-      router.push(`/orders/${response.data.id}`);
+      const orderId: number = response.data.id;
+
+      if (ONLINE_PAYMENT_METHODS.includes(paymentMethod)) {
+        // Отримуємо параметри LiqPay і відправляємо форму на їх сторінку оплати
+        const payRes = await api.get<{ data: string; signature: string }>(
+          `/shop/orders/${orderId}/payment/`
+        );
+        const { data: liqData, signature } = payRes.data;
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = "https://www.liqpay.ua/api/3/checkout";
+        form.acceptCharset = "utf-8";
+        ([ ["data", liqData], ["signature", signature] ] as [string, string][]).forEach(
+          ([name, value]) => {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = name;
+            input.value = value;
+            form.appendChild(input);
+          }
+        );
+        document.body.appendChild(form);
+        form.submit();
+      } else {
+        router.push(`/orders/${orderId}`);
+      }
     } catch (err: unknown) {
       const data = (err as { response?: { data?: Record<string, string[]> } })?.response?.data;
       if (data) {
@@ -333,11 +369,10 @@ export default function CheckoutPage() {
             {DELIVERY_OPTIONS.map((opt) => (
               <label
                 key={opt.value}
-                className={`flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer transition-colors ${
-                  deliveryType === opt.value
+                className={`flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer transition-colors ${deliveryType === opt.value
                     ? "border-indigo-500 bg-indigo-50"
                     : "border-gray-200 hover:border-indigo-300"
-                }`}
+                  }`}
               >
                 <input
                   type="radio"
@@ -435,12 +470,56 @@ export default function CheckoutPage() {
           )}
         </div>
 
+        {/* Payment method */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
+          <h2 className="font-semibold text-gray-800">Оплата</h2>
+          {PAYMENT_METHODS.map((opt) => (
+            <label
+              key={opt.value}
+              className={`flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer transition-colors ${
+                paymentMethod === opt.value
+                  ? "border-indigo-500 bg-indigo-50"
+                  : "border-gray-200 hover:border-indigo-300"
+              }`}
+            >
+              <input
+                type="radio"
+                name="payment_method"
+                value={opt.value}
+                checked={paymentMethod === opt.value}
+                onChange={() => setPaymentMethod(opt.value as PaymentMethod)}
+                className="accent-indigo-600"
+              />
+              <span className="text-sm font-medium text-gray-700">{opt.label}</span>
+            </label>
+          ))}
+
+          {paymentMethod === "bank_transfer" && (
+            <div className="mt-2 bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-600 space-y-1">
+              <p className="font-medium text-gray-700">Реквізити для оплати:</p>
+              <p>ФОП Кучук Сергій Сергійович</p>
+              <p>IBAN: UA00 0000 0000 0000 0000 0000 000</p>
+              <p className="text-xs text-gray-400">Вкажіть номер замовлення у призначенні платежу</p>
+            </div>
+          )}
+
+          {ONLINE_PAYMENT_METHODS.includes(paymentMethod) && (
+            <p className="text-xs text-gray-400 pt-1">
+              Після підтвердження замовлення вас буде перенаправлено на сторінку оплати LiqPay
+            </p>
+          )}
+        </div>
+
         <button
           type="submit"
           disabled={isLoading}
           className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-3 rounded-xl transition-colors"
         >
-          {isLoading ? "Оформлюємо..." : "Підтвердити замовлення"}
+          {isLoading
+            ? "Оформлюємо..."
+            : ONLINE_PAYMENT_METHODS.includes(paymentMethod)
+              ? "Підтвердити та перейти до оплати"
+              : "Підтвердити замовлення"}
         </button>
       </form>
     </div>

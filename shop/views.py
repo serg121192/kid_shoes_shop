@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from shop.permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from shop.filters import ProductFilter
+from shop.liqpay import build_payment_params, verify_callback
 from shop.models import (
     Product,
     ProductSize,
@@ -224,6 +225,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not delivery_serializer.is_valid():
             return Response(delivery_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        payment_method = request.data.get("payment_method", Order.PaymentMethodChoices.COD)
+        if payment_method not in Order.PaymentMethodChoices.values:
+            payment_method = Order.PaymentMethodChoices.COD
+
         try:
             cart = Cart.objects.get(user=request.user)
         except Cart.DoesNotExist:
@@ -232,7 +237,11 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not cart.cart_items.exists():
             return Response({"error": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST)
 
-        order = Order.objects.create(user=request.user, status=Order.StatusChoices.PENDING)
+        order = Order.objects.create(
+            user=request.user,
+            status=Order.StatusChoices.PENDING,
+            payment_method=payment_method,
+        )
         DeliveryInfo.objects.create(order=order, **delivery_serializer.validated_data)
 
         total_price = 0
@@ -279,6 +288,18 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()  # сигнал post_save подбає про ТТН автоматично
 
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["get"], url_path="payment", permission_classes=[IsAuthenticated])
+    def get_payment_data(self, request: Request, pk=None) -> Response:
+        order = self.get_object()
+        if order.is_paid:
+            return Response({"error": "Замовлення вже оплачено."}, status=status.HTTP_400_BAD_REQUEST)
+        params = build_payment_params(
+            order_id=order.id,
+            amount=float(order.total_price),
+            description=f"Замовлення №{order.id} — Магазин дитячого взуття",
+        )
+        return Response(params)
 
     @action(detail=True, methods=["post"], url_path="cancel", permission_classes=[IsAuthenticated])
     def cancel_order(self, request: Request, pk=None) -> Response:
@@ -360,3 +381,18 @@ def nova_poshta_warehouses(request: Request) -> Response:
             warehouse_type
         ), status=status.HTTP_200_OK
     )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def liqpay_callback(request: Request) -> Response:
+    data = request.data.get("data", "")
+    signature = request.data.get("signature", "")
+    payload = verify_callback(data, signature)
+    if not payload:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+    if payload.get("status") in ("success", "sandbox"):
+        order_id = str(payload.get("order_id", "")).replace("order_", "")
+        Order.objects.filter(pk=order_id).update(is_paid=True)
+    
+    return Response(status=status.HTTP_200_OK)

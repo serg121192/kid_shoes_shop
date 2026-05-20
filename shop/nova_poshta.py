@@ -21,7 +21,6 @@ def _call(model: str, method: str, properties: dict) -> list:
         data = response.json()
         if data.get("success"):
             return data.get("data", [])
-        # NP повернула success=false — логуємо помилки
         errors = data.get("errors", [])
         logger.error("NP API %s.%s помилка: %s", model, method, errors)
     except Exception:
@@ -81,6 +80,55 @@ def get_warehouses_list(
     ]
 
 
+_SENDER_REFS_CACHE_KEY = "np_sender_refs"
+_SENDER_REFS_CACHE_TTL = 60 * 60 * 24  # 24 години
+
+
+def _get_sender_refs() -> tuple[str, str]:
+    """
+    Повертає (sender_ref, contact_ref) для відправника.
+    Refs кешуються на 24 години — вони статичні для одного API-ключа.
+    """
+    from django.core.cache import cache
+
+    cached = cache.get(_SENDER_REFS_CACHE_KEY)
+    if cached:
+        logger.debug("NP sender refs: cache hit")
+        return cached
+
+    logger.info("NP sender refs: cache miss, fetching from API")
+
+    senders = _call("Counterparty", "getCounterparties", {
+        "CounterpartyProperty": "Sender",
+        "Page": "1",
+    })
+    if not senders:
+        logger.error("_get_sender_refs: getCounterparties повернув пустий список")
+        return "", ""
+
+    sender_ref = senders[0].get("Ref", "")
+
+    contacts = _call("Counterparty", "getCounterpartyContactPersons", {
+        "Ref": sender_ref,
+    })
+    if not contacts:
+        logger.error("_get_sender_refs: getCounterpartyContactPersons повернув пустий список")
+        return sender_ref, ""
+
+    contact_ref = contacts[0].get("Ref", "")
+    result = (sender_ref, contact_ref)
+    cache.set(_SENDER_REFS_CACHE_KEY, result, _SENDER_REFS_CACHE_TTL)
+    logger.info("NP sender refs збережено в кеш: sender=%s contact=%s", sender_ref, contact_ref)
+    return result
+
+
+def clear_sender_refs_cache() -> None:
+    """Скидає кеш refs відправника. Викликати після зміни API-ключа."""
+    from django.core.cache import cache
+    cache.delete(_SENDER_REFS_CACHE_KEY)
+    logger.info("NP sender refs cache cleared")
+
+
 def create_ttn(delivery_info) -> str | None:
     """
     Створює інтернет-документ (ТТН) для замовлення.
@@ -93,31 +141,7 @@ def create_ttn(delivery_info) -> str | None:
     }
     service_type = SERVICE_TYPE_MAP.get(delivery_info.delivery_type, "WarehouseWarehouse")
 
-    # Крок 1: реєструємо ВІДПРАВНИКА через API
-    # (для приватних осіб NP вимагає реєстрації через Counterparty.save;
-    #  якщо контрагент з таким телефоном вже існує — NP поверне існуючий)
-    senders = _call("Counterparty", "save", {
-        "FirstName":            settings.NP_SENDER_FIRST_NAME,
-        "MiddleName":           settings.NP_SENDER_MIDDLE_NAME,
-        "LastName":             settings.NP_SENDER_LAST_NAME,
-        "Phone":                settings.NP_SENDER_PHONES,
-        "Email":                "",
-        "CounterpartyType":     "PrivatePerson",
-        "CounterpartyProperty": "Sender",
-    })
-    if not senders:
-        logger.error("create_ttn: не вдалося зареєструвати відправника в NP")
-        return None
-
-    sender_ref = senders[0].get("Ref", "")
-    sender_contact_ref = (
-        senders[0]
-        .get("ContactPerson", {})
-        .get("data", [{}])[0]
-        .get("Ref", "")
-    )
-
-    # Крок 2: реєструємо ОТРИМУВАЧА через API
+    # Крок 1: реєструємо ОТРИМУВАЧА через API
     parts = delivery_info.recipient_full_name.split()
     recipients = _call("Counterparty", "save", {
         "FirstName":            parts[1] if len(parts) > 1 else "",
@@ -139,6 +163,12 @@ def create_ttn(delivery_info) -> str | None:
         .get("data", [{}])[0]
         .get("Ref", "")
     )
+
+    # Крок 2: отримуємо refs відправника динамічно
+    sender_ref, sender_contact_ref = _get_sender_refs()
+    if not sender_ref or not sender_contact_ref:
+        logger.error("create_ttn: не вдалося отримати refs відправника")
+        return None
 
     # Крок 3: формуємо ТТН
     total_price = str(int(delivery_info.order.total_price))
@@ -162,11 +192,12 @@ def create_ttn(delivery_info) -> str | None:
         "PayerType":     "Recipient",
         "Cost":          total_price,
         "CargoType":     "Cargo",
-        "Weight":        "1",
+        "Weight":        "1.0",
         "SeatsAmount":   "1",
         "OptionsSeat": [
             {
-                "volumetricWeight": "1",
+                "weight":          "1.0",
+                "volumetricWeight": "1.0",
                 "volumetricLength": "30",
                 "volumetricWidth":  "20",
                 "volumetricHeight": "15",

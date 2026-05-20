@@ -213,6 +213,13 @@ class Order(models.Model):
         COMPLETED = "completed", "Виконано"
         CANCELLED = "cancelled", "Скасовано"
 
+    class PaymentMethodChoices(models.TextChoices):
+        CARD_ONLINE = "card_online", "Карткою онлайн"
+        COD = "cod", "Оплата у відділенніпри отриманні товару"
+        BABY_PACKAGE = "baby_package", "Карткою 'Пакунок малюка'"
+        SCHOOL_PACKAGE = "school_package", "Карткою 'Пакунок школяра'"
+        BANK_TRANSFER = "bank_transfer", "Оплата за реквізитами"
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Створено")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Оновлено")
     user = models.ForeignKey(
@@ -230,6 +237,13 @@ class Order(models.Model):
         default=0.00,
         verbose_name="Загальна сума (грн)",
     )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethodChoices.choices,
+        default=PaymentMethodChoices.COD,
+        verbose_name="Спосіб оплати",
+    )
+    is_paid = models.BooleanField(default=False, verbose_name="Оплачено")
 
     class Meta:
         ordering = ["-created_at"]

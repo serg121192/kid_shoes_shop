@@ -81,9 +81,28 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ["id", "user", "colored_status", "total_price", "created_at"]
+    list_display = [
+        "id", 
+        "user", 
+        "status", 
+        "payment_method", 
+        "is_paid_badge", 
+        "colored_status", 
+        "total_price", 
+        "created_at"
+    ]
     list_display_links = ["id", "user"]
-    list_filter = ["status", "created_at"]
+    list_filter = ["status", "payment_method", "is_paid", "created_at"]
+    actions = ["mark_as_paid"]
+    
+    @admin.display(description="Оплачено", boolean=True)
+    def is_paid_badge(self, obj):
+        return obj.is_paid
+    
+    @admin.action(description="Позначити як оплачені")
+    def mark_as_paid(self, request, queryset):
+        queryset.update(is_paid=True)
+    
     search_fields = ["user__email"]
     readonly_fields = ["created_at", "updated_at", "total_price", "user"]
     inlines = [DeliveryInfoInline, OrderItemInline]
