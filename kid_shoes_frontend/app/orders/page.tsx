@@ -9,10 +9,12 @@ import { useAuth } from "@/app/context/AuthContext";
 import { Package } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: "Очікує",
+  pending: "Очікує підтвердження",
   processing: "В обробці",
   completed: "Виконано",
   cancelled: "Скасовано",
+  received: "Отримано",
+  refused: "Відмова",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -20,6 +22,8 @@ const STATUS_COLORS: Record<string, string> = {
   processing: "bg-blue-100 text-blue-700",
   completed: "bg-green-100 text-green-700",
   cancelled: "bg-red-100 text-red-700",
+  received: "bg-emerald-100 text-emerald-700",
+  refused: "bg-gray-100 text-gray-600",
 };
 
 export default function OrdersPage() {
@@ -62,8 +66,8 @@ export default function OrdersPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
         <Package size={64} className="mx-auto text-gray-300 mb-4" />
-        <h2 className="text-2xl font-bold text-gray-700 mb-2">Замовлень немає</h2>
-        <p className="text-gray-500 mb-6">Зробіть своє перше замовлення!</p>
+        <h2 className="text-2xl font-bold text-gray-700 mb-2">Бронювань немає</h2>
+        <p className="text-gray-500 mb-6">Забронюйте свої перші товари!</p>
         <Link
           href="/products"
           className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
@@ -76,7 +80,7 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Мої замовлення</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Мої бронювання</h1>
 
       <div className="space-y-4">
         {orders.map((order) => (
@@ -85,7 +89,7 @@ export default function OrdersPage() {
               <div>
                 <div className="flex items-center gap-3">
                   <Link href={`/orders/${order.id}`} className="font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
-                    Замовлення #{order.id}
+                    Бронювання #{order.id}
                   </Link>
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[order.status]}`}>
                     {STATUS_LABELS[order.status]}
@@ -119,12 +123,18 @@ export default function OrdersPage() {
 
             {order.delivery && (
               <div className="border-t border-gray-100 px-5 py-3 text-sm text-gray-500">
-                📦 {order.delivery.city_name}
-                {order.delivery.warehouse_address && `, ${order.delivery.warehouse_address}`}
-                {order.delivery.tracking_number && (
-                  <span className="ml-2 font-mono text-indigo-600">
-                    ТТН: {order.delivery.tracking_number}
-                  </span>
+                {order.delivery.delivery_type === "pickup" ? (
+                  <span>🏪 Самовивіз з магазину — м. Чернігів, просп. Лук&apos;яненка 78</span>
+                ) : (
+                  <>
+                    📦 {order.delivery.city_name}
+                    {order.delivery.warehouse_address && `, ${order.delivery.warehouse_address}`}
+                    {order.delivery.tracking_number && (
+                      <span className="ml-2 font-mono text-indigo-600">
+                        ТТН: {order.delivery.tracking_number}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             )}

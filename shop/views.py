@@ -1,9 +1,10 @@
+import io
 from datetime import timedelta
-from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, F, ExpressionWrapper, DecimalField as DjDecimalField
 from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 from django.utils import timezone
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -16,7 +17,6 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 
 from shop.permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from shop.filters import ProductFilter
-from shop.liqpay import build_payment_params, verify_callback
 from shop.models import (
     Product,
     ProductSize,
@@ -31,7 +31,6 @@ from shop.models import (
     WishlistItem,
     DeliveryInfo,
     Review,
-    PromoCode,
 )
 from shop.nova_poshta import get_cities_list, get_warehouses_list, get_tracking_status
 from shop.serializers import (
@@ -54,7 +53,6 @@ from shop.serializers import (
     OrderItemSerializer,
     DeliveryInfoSerializer,
     ReviewSerializer,
-    PromoCodeSerializer,
 )
 
 
@@ -343,10 +341,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         if not delivery_serializer.is_valid():
             return Response(delivery_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        payment_method = request.data.get("payment_method", Order.PaymentMethodChoices.COD)
-        if payment_method not in Order.PaymentMethodChoices.values:
-            payment_method = Order.PaymentMethodChoices.COD
-
         try:
             cart = Cart.objects.get(user=request.user)
         except Cart.DoesNotExist:
@@ -358,7 +352,6 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = Order.objects.create(
             user=request.user,
             status=Order.StatusChoices.PENDING,
-            payment_method=payment_method,
         )
         DeliveryInfo.objects.create(order=order, **delivery_serializer.validated_data)
 
@@ -388,24 +381,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             total_price += cart_item.quantity * product_size.product.discounted_price
             product_size.reduce_stock(cart_item.quantity)
 
-        # Apply promo code if provided
-        promo_code_str = request.data.get("promo_code", "").upper().strip()
-        discount_amount = Decimal("0")
-        if promo_code_str:
-            try:
-                promo = PromoCode.objects.get(code=promo_code_str)
-                valid, _ = promo.is_valid_for(total_price)
-                if valid:
-                    discount_amount = promo.get_discount(total_price)
-                    PromoCode.objects.filter(pk=promo.pk).update(
-                        current_uses=promo.current_uses + 1
-                    )
-            except PromoCode.DoesNotExist:
-                pass
-
-        order.total_price = total_price - discount_amount
-        order.discount_amount = discount_amount
-        order.promo_code = promo_code_str if discount_amount > 0 else None
+        order.total_price = total_price
         order.save()
         cart.cart_items.all().delete()
 
@@ -424,23 +400,16 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=["get"], url_path="payment", permission_classes=[IsAuthenticated])
-    def get_payment_data(self, request: Request, pk=None) -> Response:
-        order = self.get_object()
-        if order.is_paid:
-            return Response({"error": "Замовлення вже оплачено."}, status=status.HTTP_400_BAD_REQUEST)
-        params = build_payment_params(
-            order_id=order.id,
-            amount=float(order.total_price),
-            description=f"Замовлення №{order.id} — Магазин дитячого взуття",
-        )
-        return Response(params)
+    @action(detail=False, methods=["get"], url_path="pending_count", permission_classes=[IsAdminUser])
+    def pending_count(self, request: Request) -> Response:
+        count = Order.objects.filter(status=Order.StatusChoices.PENDING).count()
+        return Response({"count": count})
 
     @action(detail=True, methods=["post"], url_path="sync_np", permission_classes=[IsAdminUser])
     def sync_np_status(self, request: Request, pk=None) -> Response:
         """
         Запитує НП по ТТН і автоматично оновлює статус замовлення:
-          • StatusCode 9  (Вручено)              → received  + is_paid для накладеного/карток
+          • StatusCode 9  (Вручено)              → received
           • StatusCode 10 (Відмова)              → refused
           • StatusCode 11/101/102/14 (Повернення)→ refused
         """
@@ -460,27 +429,17 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        np_code   = str(np_data.get("StatusCode", ""))
+        np_code = str(np_data.get("StatusCode", ""))
         np_status_label = np_data.get("Status", "")
 
         RECEIVED_CODES = {"9"}
-        REFUSED_CODES  = {"10", "11", "14", "101", "102"}
-
-        COD_METHODS = {
-            Order.PaymentMethodChoices.COD,
-            Order.PaymentMethodChoices.BABY_PACKAGE,
-            Order.PaymentMethodChoices.SCHOOL_PACKAGE,
-        }
+        REFUSED_CODES = {"10", "11", "14", "101", "102"}
 
         update_fields = []
 
         if np_code in RECEIVED_CODES:
             order.status = Order.StatusChoices.RECEIVED
             update_fields.append("status")
-            if order.payment_method in COD_METHODS and not order.is_paid:
-                order.is_paid = True
-                update_fields.append("is_paid")
-
         elif np_code in REFUSED_CODES:
             order.status = Order.StatusChoices.REFUSED
             update_fields.append("status")
@@ -492,7 +451,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             "np_code": np_code,
             "np_status": np_status_label,
             "order_status": order.status,
-            "is_paid": order.is_paid,
             "updated": bool(update_fields),
         })
 
@@ -578,38 +536,6 @@ def nova_poshta_warehouses(request: Request) -> Response:
     )
 
 
-@api_view(["POST"])
-@permission_classes([AllowAny])
-def validate_promo(request: Request) -> Response:
-    code = request.data.get("code", "").upper().strip()
-    try:
-        order_amount = Decimal(str(request.data.get("order_amount", 0)))
-    except Exception:
-        return Response({"valid": False, "error": "Невірна сума"}, status=status.HTTP_400_BAD_REQUEST)
-
-    try:
-        promo = PromoCode.objects.get(code=code)
-    except PromoCode.DoesNotExist:
-        return Response({"valid": False, "error": "Промокод не знайдено"})
-
-    valid, error = promo.is_valid_for(order_amount)
-    if not valid:
-        return Response({"valid": False, "error": error})
-
-    discount = promo.get_discount(order_amount)
-    label = (
-        f"Знижка {promo.discount_value}%"
-        if promo.discount_type == PromoCode.DiscountType.PERCENT
-        else f"Знижка {promo.discount_value} грн"
-    )
-    return Response({
-        "valid": True,
-        "discount": str(discount),
-        "final_amount": str(order_amount - discount),
-        "description": label,
-    })
-
-
 @api_view(["GET"])
 @permission_classes([IsAdminUser])
 def manager_stats(request: Request) -> Response:
@@ -653,16 +579,122 @@ def manager_stats(request: Request) -> Response:
     })
 
 
-@api_view(["POST"])
-@permission_classes([AllowAny])
-def liqpay_callback(request: Request) -> Response:
-    data = request.data.get("data", "")
-    signature = request.data.get("signature", "")
-    payload = verify_callback(data, signature)
-    if not payload:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-    if payload.get("status") in ("success", "sandbox"):
-        order_id = str(payload.get("order_id", "")).replace("order_", "")
-        Order.objects.filter(pk=order_id).update(is_paid=True)
-    
-    return Response(status=status.HTTP_200_OK)
+ACTIVE_STATUSES = [
+    Order.StatusChoices.PENDING,
+    Order.StatusChoices.PROCESSING,
+    Order.StatusChoices.COMPLETED,
+    Order.StatusChoices.RECEIVED,
+]
+
+
+def _get_report_queryset(period: str):
+    today = timezone.now().date()
+    if period == "week":
+        from_date = today - timedelta(days=7)
+    elif period == "month":
+        from_date = today - timedelta(days=30)
+    else:
+        from_date = today
+
+    return (
+        OrderItem.objects
+        .filter(
+            order__created_at__date__gte=from_date,
+            order__status__in=ACTIVE_STATUSES,
+        )
+        .values(
+            vendor=F("product_size__product__vendor__name"),
+            model_name=F("product_size__product__model_name"),
+            size=F("product_size__size"),
+            remaining=F("product_size__quantity"),
+        )
+        .annotate(
+            sold_qty=Sum("quantity"),
+            total_amount=Sum(
+                ExpressionWrapper(
+                    F("price") * F("quantity"),
+                    output_field=DjDecimalField(max_digits=12, decimal_places=2),
+                )
+            ),
+        )
+        .order_by("vendor", "model_name", "size")
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def sales_report(request: Request) -> Response:
+    period = request.GET.get("period", "today")
+    rows = list(_get_report_queryset(period))
+    return Response([
+        {
+            "vendor": r["vendor"],
+            "model_name": r["model_name"],
+            "size": r["size"],
+            "sold_qty": r["sold_qty"],
+            "remaining": r["remaining"],
+            "total_amount": float(r["total_amount"] or 0),
+        }
+        for r in rows
+    ])
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def sales_report_xlsx(request: Request) -> HttpResponse:
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    period = request.GET.get("period", "today")
+    rows = list(_get_report_queryset(period))
+
+    period_labels = {"today": "сьогодні", "week": "за тиждень", "month": "за місяць"}
+    period_label = period_labels.get(period, period)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Звіт"
+
+    headers = ["Бренд", "Модель", "Розмір", "Продано, шт.", "Залишок, шт.", "Сума, грн."]
+    header_fill = PatternFill(fill_type="solid", fgColor="4F46E5")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    for row_idx, r in enumerate(rows, 2):
+        ws.cell(row=row_idx, column=1, value=r["vendor"])
+        ws.cell(row=row_idx, column=2, value=r["model_name"])
+        ws.cell(row=row_idx, column=3, value=r["size"])
+        ws.cell(row=row_idx, column=4, value=r["sold_qty"])
+        ws.cell(row=row_idx, column=5, value=r["remaining"])
+        ws.cell(row=row_idx, column=6, value=float(r["total_amount"] or 0))
+        if row_idx % 2 == 0:
+            row_fill = PatternFill(fill_type="solid", fgColor="EEF2FF")
+            for col in range(1, 7):
+                ws.cell(row=row_idx, column=col).fill = row_fill
+
+    # Total row
+    total_row = len(rows) + 2
+    ws.cell(row=total_row, column=1, value="РАЗОМ").font = Font(bold=True)
+    ws.cell(row=total_row, column=4, value=sum(r["sold_qty"] or 0 for r in rows)).font = Font(bold=True)
+    ws.cell(row=total_row, column=6, value=sum(float(r["total_amount"] or 0) for r in rows)).font = Font(bold=True)
+
+    # Column widths
+    for col, width in zip(range(1, 7), [20, 25, 10, 14, 14, 14]):
+        ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = width
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    filename = f"report_{period}.xlsx"
+    response = HttpResponse(
+        buffer.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response

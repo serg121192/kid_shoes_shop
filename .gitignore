@@ -1,8 +1,13 @@
-venv
-.venv
+venv/
+.venv/
 db.sqlite3
-*__pycache__*
-**migrations
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+# Ігнорувати лише __pycache__ у папках міграцій, але не самі міграції
+**/migrations/__pycache__/
 *.env
-media
+media/
+staticfiles/
 Так і Так

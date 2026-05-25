@@ -16,7 +16,6 @@ from shop.models import (
     WishlistItem,
     DeliveryInfo,
     Review,
-    PromoCode,
 )
 
 admin.site.site_header = "TAK i TAK — Адміністрування"
@@ -83,27 +82,15 @@ class OrderItemInline(admin.TabularInline):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = [
-        "id", 
-        "user", 
-        "status", 
-        "payment_method", 
-        "is_paid_badge", 
-        "colored_status", 
-        "total_price", 
-        "created_at"
+        "id",
+        "user",
+        "status",
+        "colored_status",
+        "total_price",
+        "created_at",
     ]
     list_display_links = ["id", "user"]
-    list_filter = ["status", "payment_method", "is_paid", "created_at"]
-    actions = ["mark_as_paid"]
-    
-    @admin.display(description="Оплачено", boolean=True)
-    def is_paid_badge(self, obj):
-        return obj.is_paid
-    
-    @admin.action(description="Позначити як оплачені")
-    def mark_as_paid(self, request, queryset):
-        queryset.update(is_paid=True)
-    
+    list_filter = ["status", "created_at"]
     search_fields = ["user__email"]
     readonly_fields = ["created_at", "updated_at", "total_price", "user"]
     inlines = [DeliveryInfoInline, OrderItemInline]
@@ -117,6 +104,8 @@ class OrderAdmin(admin.ModelAdmin):
         Order.StatusChoices.PENDING:    ("#dc2626", "#fff1f2"),
         Order.StatusChoices.PROCESSING: ("#b45309", "#fffbeb"),
         Order.StatusChoices.COMPLETED:  ("#1d4ed8", "#eff6ff"),
+        Order.StatusChoices.RECEIVED:   ("#059669", "#ecfdf5"),
+        Order.StatusChoices.REFUSED:    ("#6b7280", "#f9fafb"),
         Order.StatusChoices.CANCELLED:  ("#9ca3af", "#f3f4f6"),
     }
 
@@ -202,9 +191,3 @@ class WishlistAdmin(admin.ModelAdmin):
     inlines = [WishlistItemInline]
 
 
-@admin.register(PromoCode)
-class PromoCodeAdmin(admin.ModelAdmin):
-    list_display = ["code", "discount_type", "discount_value", "is_active", "current_uses", "max_uses", "valid_until"]
-    list_filter = ["discount_type", "is_active"]
-    search_fields = ["code"]
-    readonly_fields = ["current_uses"]

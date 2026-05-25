@@ -7,8 +7,32 @@ import api, { getMediaUrl } from "@/app/lib/api";
 import { Product, ProductSizeWithCart, ProductImage, ProductVideo } from "@/app/types";
 import { useAuth } from "@/app/context/AuthContext";
 import { useShop } from "@/app/context/ShopContext";
-import { ShoppingCart, Heart, ArrowLeft, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { ShoppingCart, Heart, ArrowLeft, Play, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import ReviewSection from "@/app/components/ReviewSection";
+
+function Accordion({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border border-gray-100 rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-teal-50 transition-colors text-left"
+      >
+        <span className="font-semibold text-gray-800">{title}</span>
+        <ChevronDown
+          size={20}
+          className={`text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="px-6 py-5 bg-white text-gray-700 text-sm leading-relaxed">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const SEASON_LABELS: Record<string, string> = {
   Winter: "Зима",
@@ -341,8 +365,11 @@ export default function ProductDetailPage({
               ))}
             </div>
 
+            {/* Short description */}
             {product.description && (
-              <p className="mt-6 text-gray-600 text-sm leading-relaxed whitespace-pre-line">{product.description}</p>
+              <p className="mt-6 text-gray-600 text-sm leading-relaxed whitespace-pre-line">
+                {product.description}
+              </p>
             )}
 
             {/* Size selection */}
@@ -450,6 +477,73 @@ export default function ProductDetailPage({
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Accordion sections */}
+        <div className="px-8 pb-4 space-y-3">
+
+          {/* 1. Детальний опис (SEO) */}
+          <Accordion title="Детальний опис">
+            {product.seo_description ? (
+              <p className="whitespace-pre-line">{product.seo_description}</p>
+            ) : (
+              <p className="text-gray-400 italic">Детальний опис незабаром буде додано.</p>
+            )}
+          </Accordion>
+
+          {/* 2. Інструкція з вимірювання стопи */}
+          <Accordion title="Інструкція з правильних замірів стопи дитини">
+            <div className="space-y-4">
+              <p>
+                Правильно підібраний розмір взуття — запорука здоров'я та комфорту стопи дитини.
+                Скористайтесь нашою інструкцією, щоб визначити розмір точно.
+              </p>
+
+              <ol className="list-decimal list-inside space-y-2 text-gray-700">
+                <li>Покладіть аркуш паперу на рівну тверду підлогу.</li>
+                <li>Поставте дитину босою ногою на аркуш так, щоб п'ятка торкалась стіни або рівного краю.</li>
+                <li>Олівцем обведіть стопу по контуру, тримаючи олівець строго вертикально.</li>
+                <li>Виміряйте відстань від п'ятки до найдовшого пальця (зазвичай великого) — це <strong>довжина стопи</strong> у міліметрах.</li>
+                <li>Додайте до отриманого значення <strong>5–7 мм</strong> запасу для комфортного руху пальців.</li>
+                <li>Звірте результат з таблицею розмірів нижче або зверніться до нашого менеджера — ми допоможемо підібрати розмір!</li>
+              </ol>
+
+              <div className="bg-teal-50 rounded-xl p-4 text-sm">
+                <p className="font-semibold text-teal-800 mb-2">Таблиця відповідності розмірів:</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-center text-xs text-gray-700 border-collapse">
+                    <thead>
+                      <tr className="bg-teal-100">
+                        <th className="px-2 py-1.5 rounded-tl-lg">Розмір EU</th>
+                        {[18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40].map(s => (
+                          <th key={s} className="px-2 py-1.5">{s}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="px-2 py-1.5 font-medium bg-teal-50">Стопа (мм)</td>
+                        {[110,116,122,128,134,140,146,152,158,164,170,176,182,188,194,206,212,218,224,230,236,242,248].map((mm, i) => (
+                          <td key={i} className="px-2 py-1.5 border-t border-teal-100">{mm}</td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <p className="text-gray-500 text-xs">
+                💡 Рекомендуємо вимірювати стопу ввечері — після активного дня вона може бути трохи більшою.
+                Якщо стопа дитини між двома розмірами — обирайте більший.
+              </p>
+
+              {/* Placeholder для фото/відео — менеджер може додати через панель */}
+              <p className="text-gray-400 text-xs italic mt-2">
+                Відео-інструкція буде додана найближчим часом.
+              </p>
+            </div>
+          </Accordion>
+
         </div>
 
         {/* Reviews */}

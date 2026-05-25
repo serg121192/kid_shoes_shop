@@ -24,11 +24,6 @@ export default function CartPage() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [promoInput, setPromoInput] = useState("");
-  const [promoApplied, setPromoApplied] = useState<{ code: string; discount: string; description: string } | null>(null);
-  const [promoError, setPromoError] = useState("");
-  const [promoLoading, setPromoLoading] = useState(false);
-
   const fetchCart = useCallback(async () => {
     try {
       const response = await api.get<{ results: Cart[] } | Cart[]>("/shop/cart/");
@@ -102,38 +97,7 @@ export default function CartPage() {
     }
   };
 
-  const rawTotal = cart ? calcTotal(cart) : 0;
-  const discount = promoApplied ? Number(promoApplied.discount) : 0;
-  const finalTotal = rawTotal - discount;
-
-  const handleApplyPromo = async () => {
-    if (!promoInput.trim()) return;
-    setPromoLoading(true);
-    setPromoError("");
-    try {
-      const res = await api.post<{ valid: boolean; discount: string; description: string; error?: string }>(
-        "/shop/promo/validate/",
-        { code: promoInput.trim().toUpperCase(), order_amount: rawTotal }
-      );
-      if (res.data.valid) {
-        setPromoApplied({ code: promoInput.trim().toUpperCase(), discount: res.data.discount, description: res.data.description });
-        sessionStorage.setItem("promo_code", promoInput.trim().toUpperCase());
-      } else {
-        setPromoError(res.data.error || "Невірний промокод");
-      }
-    } catch {
-      setPromoError("Помилка перевірки промокоду");
-    } finally {
-      setPromoLoading(false);
-    }
-  };
-
-  const handleRemovePromo = () => {
-    setPromoApplied(null);
-    setPromoInput("");
-    setPromoError("");
-    sessionStorage.removeItem("promo_code");
-  };
+  const total = cart ? calcTotal(cart) : 0;
 
   if (authLoading || isLoading) {
     return (
@@ -249,63 +213,16 @@ export default function CartPage() {
       </div>
 
       <div className="mt-6 bg-white rounded-xl shadow-sm p-6 space-y-4">
-        {/* Promo code */}
-        {promoApplied ? (
-          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-            <div>
-              <p className="text-sm font-medium text-green-700">{promoApplied.description}</p>
-              <p className="text-xs text-green-600">Код: {promoApplied.code} — −{Number(promoApplied.discount).toFixed(2)} грн</p>
-            </div>
-            <button onClick={handleRemovePromo} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
-              Скасувати
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={promoInput}
-                onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
-                onKeyDown={(e) => e.key === "Enter" && handleApplyPromo()}
-                placeholder="Промокод"
-                className="flex-1 border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              />
-              <button
-                onClick={handleApplyPromo}
-                disabled={promoLoading || !promoInput.trim()}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-sm font-medium rounded-xl transition-colors"
-              >
-                {promoLoading ? "..." : "Застосувати"}
-              </button>
-            </div>
-            {promoError && <p className="text-xs text-red-500">{promoError}</p>}
-          </div>
-        )}
-
-        {/* Totals */}
-        {promoApplied && (
-          <div className="flex justify-between text-sm text-gray-500">
-            <span>Без знижки:</span>
-            <span>{rawTotal.toFixed(2)} грн</span>
-          </div>
-        )}
-        {promoApplied && (
-          <div className="flex justify-between text-sm text-green-600 font-medium">
-            <span>Знижка:</span>
-            <span>−{discount.toFixed(2)} грн</span>
-          </div>
-        )}
         <div className="flex justify-between items-center text-xl font-bold text-gray-900">
           <span>Разом:</span>
-          <span>{finalTotal.toFixed(2)} грн</span>
+          <span>{total.toFixed(2)} грн</span>
         </div>
 
         <Link
           href="/checkout"
           className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white text-center font-semibold py-3 rounded-xl transition-colors"
         >
-          Оформити замовлення
+          Забронювати розміри
         </Link>
       </div>
     </div>

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import api from "@/app/lib/api";
-import { TrendingUp, ShoppingBag, DollarSign, Package } from "lucide-react";
+import { TrendingUp, ShoppingBag, DollarSign, Package, FileText } from "lucide-react";
 
 interface Stats {
   revenue: { today: number; week: number; month: number };
@@ -32,20 +33,24 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-red-400",
 };
 
-function StatCard({ label, value, sub, icon: Icon, color }: {
+function StatCard({ label, value, sub, icon: Icon, color, href }: {
   label: string; value: string; sub?: string;
-  icon: React.ElementType; color: string;
+  icon: React.ElementType; color: string; href?: string;
 }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm p-5 flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
+    <div className={`relative bg-white rounded-xl shadow-sm p-5 flex items-center gap-4 ${href ? "hover:shadow-md hover:ring-2 hover:ring-indigo-200 transition-all" : ""}`}>
+      {href && (
+        <Link href={href} className="absolute inset-0 rounded-xl" aria-label={label} />
+      )}
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color} shrink-0`}>
         <Icon size={22} className="text-white" />
       </div>
-      <div>
+      <div className="min-w-0">
         <p className="text-2xl font-bold text-gray-900">{value}</p>
         <p className="text-sm text-gray-500">{label}</p>
         {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
       </div>
+      {href && <FileText size={16} className="text-indigo-400 shrink-0 ml-auto" />}
     </div>
   );
 }
@@ -86,18 +91,21 @@ export default function ManagerDashboardPage() {
           value={`${stats.revenue.today.toFixed(0)} грн`}
           icon={DollarSign}
           color="bg-indigo-500"
+          href="/manager/reports?period=today"
         />
         <StatCard
           label="Виторг за тиждень"
           value={`${stats.revenue.week.toFixed(0)} грн`}
           icon={TrendingUp}
           color="bg-blue-500"
+          href="/manager/reports?period=week"
         />
         <StatCard
           label="Виторг за місяць"
           value={`${stats.revenue.month.toFixed(0)} грн`}
           icon={TrendingUp}
           color="bg-violet-500"
+          href="/manager/reports?period=month"
         />
         <StatCard
           label="Всього замовлень"

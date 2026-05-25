@@ -10,10 +10,12 @@ import { useAuth } from "@/app/context/AuthContext";
 import { ArrowLeft, Package } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
-    pending: "Очікує обробки",
+    pending: "Очікує підтвердження",
     processing: "В обробці",
     completed: "Виконано",
     cancelled: "Скасовано",
+    received: "Отримано",
+    refused: "Відмова",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -21,13 +23,19 @@ const STATUS_COLORS: Record<string, string> = {
     processing: "bg-blue-100 text-blue-700",
     completed: "bg-green-100 text-green-700",
     cancelled: "bg-red-100 text-red-700",
+    received: "bg-emerald-100 text-emerald-700",
+    refused: "bg-gray-100 text-gray-600",
 };
 
 const DELIVERY_LABELS: Record<string, string> = {
     np_warehouse: "НоваПошта: Відділення",
     np_postamat: "НоваПошта: Поштомат",
     np_address: "НоваПошта: Адресна доставка",
+    pickup: "Самовивіз з магазину",
 };
+
+const STORE_MAP_SRC =
+    "https://www.openstreetmap.org/export/embed.html?bbox=31.294%2C51.508%2C31.320%2C51.521&layer=mapnik&marker=51.514622%2C31.304327";
 
 export default function OrderDetailPage({
     params,
@@ -84,14 +92,14 @@ export default function OrderDetailPage({
                 className="flex items-center gap-2 text-gray-500 hover:text-indigo-600 mb-6 transition-colors"
             >
                 <ArrowLeft size={18} />
-                До замовлень
+                До бронювань
             </button>
 
             {/* Header */}
             <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Замовлення #{order.id}</h1>
+                        <h1 className="text-2xl font-bold text-gray-900">Бронювання #{order.id}</h1>
                         <p className="text-sm text-gray-500 mt-1">
                             {new Date(order.created_at).toLocaleDateString("uk-UA", {
                                 day: "numeric", month: "long", year: "numeric",
@@ -109,7 +117,7 @@ export default function OrderDetailPage({
                                 disabled={cancelling}
                                 className="text-sm font-medium px-3 py-1.5 rounded-full border border-red-300 text-red-500 hover:bg-red-50 disabled:opacity-50 transition-colors"
                             >
-                                {cancelling ? "Скасовуємо..." : "Скасувати"}
+                                {cancelling ? "Скасовуємо..." : "Скасувати бронювання"}
                             </button>
                         )}
                     </div>
@@ -166,30 +174,67 @@ export default function OrderDetailPage({
             {order.delivery && (
                 <div className="bg-white rounded-2xl shadow-sm p-6">
                     <h2 className="font-semibold text-gray-900 mb-4">Доставка</h2>
-                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                        {[
-                            { label: "Одержувач", value: order.delivery.recipient_full_name },
-                            { label: "Телефон", value: order.delivery.recipient_phone },
-                            { label: "Тип доставки", value: DELIVERY_LABELS[order.delivery.delivery_type] },
-                            { label: "Місто", value: order.delivery.city_name },
-                            order.delivery.warehouse_address
-                                ? { label: "Відділення", value: order.delivery.warehouse_address }
-                                : null,
-                            order.delivery.street
-                                ? { label: "Адреса", value: `${order.delivery.street}, ${order.delivery.building_number}${order.delivery.apartment ? `, кв. ${order.delivery.apartment}` : ""}` }
-                                : null,
-                            order.delivery.tracking_number
-                                ? { label: "ТТН", value: order.delivery.tracking_number }
-                                : null,
-                        ]
-                            .filter((item): item is { label: string; value: string } => item !== null)
-                            .map(({ label, value }) => (
-                                <div key={label} className="bg-gray-50 rounded-lg px-4 py-3">
-                                    <dt className="text-xs text-gray-500 uppercase tracking-wide">{label}</dt>
-                                    <dd className="font-medium text-gray-800 mt-0.5">{value}</dd>
-                                </div>
-                            ))}
-                    </dl>
+
+                    {order.delivery.delivery_type === "pickup" ? (
+                        <div className="space-y-4">
+                            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                {[
+                                    { label: "Одержувач", value: order.delivery.recipient_full_name },
+                                    { label: "Телефон", value: order.delivery.recipient_phone },
+                                    { label: "Тип доставки", value: DELIVERY_LABELS[order.delivery.delivery_type] },
+                                ].map(({ label, value }) => (
+                                    <div key={label} className="bg-gray-50 rounded-lg px-4 py-3">
+                                        <dt className="text-xs text-gray-500 uppercase tracking-wide">{label}</dt>
+                                        <dd className="font-medium text-gray-800 mt-0.5">{value}</dd>
+                                    </div>
+                                ))}
+                            </dl>
+
+                            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-800 leading-relaxed">
+                                Дякуємо за покупку! Для підтвердження правильності вибору розміру взуття та отримання Вашого замовлення, чекаємо Вас у нашому магазині за адресою:{" "}
+                                <span className="font-semibold">
+                                    м. Чернігів, проспект Левка Лук&apos;яненка 78, 2-й поверх.
+                                </span>{" "}
+                                (поряд з ТРЦ &ldquo;Hollywood&rdquo;)
+                            </div>
+
+                            <div className="rounded-xl overflow-hidden border border-gray-100">
+                                <iframe
+                                    src={STORE_MAP_SRC}
+                                    width="100%"
+                                    height="260"
+                                    style={{ border: 0 }}
+                                    loading="lazy"
+                                    title="Адреса магазину"
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                            {[
+                                { label: "Одержувач", value: order.delivery.recipient_full_name },
+                                { label: "Телефон", value: order.delivery.recipient_phone },
+                                { label: "Тип доставки", value: DELIVERY_LABELS[order.delivery.delivery_type] },
+                                { label: "Місто", value: order.delivery.city_name },
+                                order.delivery.warehouse_address
+                                    ? { label: "Відділення", value: order.delivery.warehouse_address }
+                                    : null,
+                                order.delivery.street
+                                    ? { label: "Адреса", value: `${order.delivery.street}, ${order.delivery.building_number}${order.delivery.apartment ? `, кв. ${order.delivery.apartment}` : ""}` }
+                                    : null,
+                                order.delivery.tracking_number
+                                    ? { label: "ТТН", value: order.delivery.tracking_number }
+                                    : null,
+                            ]
+                                .filter((item): item is { label: string; value: string } => item !== null)
+                                .map(({ label, value }) => (
+                                    <div key={label} className="bg-gray-50 rounded-lg px-4 py-3">
+                                        <dt className="text-xs text-gray-500 uppercase tracking-wide">{label}</dt>
+                                        <dd className="font-medium text-gray-800 mt-0.5">{value}</dd>
+                                    </div>
+                                ))}
+                        </dl>
+                    )}
                 </div>
             )}
         </div>

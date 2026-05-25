@@ -41,6 +41,7 @@ interface ProductDetail {
   full_price: string;
   discount: number;
   description: string | null;
+  seo_description: string | null;
   sizes: ProductSize[];
   images: ProductImage[];
   videos: ProductVideo[];
@@ -89,6 +90,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
     full_price: "",
     discount: "0",
     description: "",
+    seo_description: "",
   });
 
   // ── Saved state (edit mode) ──────────────────────────────────────────────────
@@ -137,6 +139,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
           full_price: p.full_price,
           discount: String(p.discount),
           description: p.description ?? "",
+          seo_description: p.seo_description ?? "",
         });
         setSavedImages(p.images);
         setSavedSizes(p.sizes);
@@ -366,6 +369,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
       full_price: Number(form.full_price),
       discount: Number(form.discount),
       description: form.description || null,
+      seo_description: form.seo_description || null,
     };
 
     try {
@@ -496,10 +500,19 @@ export default function ProductForm({ productId }: { productId?: number }) {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">Опис</label>
-          <textarea name="description" value={form.description} onChange={handleChange} rows={3}
+          <label className="block text-sm font-medium text-gray-600 mb-1">Короткий опис</label>
+          <textarea name="description" value={form.description ?? ""} onChange={handleChange} rows={3}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
-            placeholder="Опис товару..." />
+            placeholder="Короткий опис товару..." />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-600 mb-1">
+            Детальний опис{" "}
+            <span className="text-xs text-gray-400 font-normal">(SEO-текст — розгортається на картці товару)</span>
+          </label>
+          <textarea name="seo_description" value={form.seo_description ?? ""} onChange={handleChange} rows={6}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+            placeholder="Детальний SEO-опис товару з ключовими словами..." />
         </div>
       </div>
 

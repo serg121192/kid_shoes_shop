@@ -48,6 +48,7 @@ export interface Product extends Omit<ProductList, "sizes"> {
   full_price: string;
   season: "Winter" | "Summer" | "Demiseason" | "Fleece Demiseason";
   description: string | null;
+  seo_description: string | null;
   in_wishlist: boolean;
   images: ProductImage[];
   videos: ProductVideo[];
@@ -85,7 +86,7 @@ export interface Cart {
 export interface DeliveryInfo {
   recipient_full_name: string;
   recipient_phone: string;
-  delivery_type: "np_warehouse" | "np_postamat" | "np_address";
+  delivery_type: "np_warehouse" | "np_postamat" | "np_address" | "pickup";
   city_name: string;
   city_ref: string;
   warehouse_address: string;
@@ -116,12 +117,8 @@ export interface Order {
   user: string; // email (SlugField)
   status: "pending" | "processing" | "completed" | "received" | "refused" | "cancelled";
   total_price: string;
-  discount_amount: string;
-  promo_code: string | null;
   items: OrderItem[];
   delivery: DeliveryInfo | null;
-  payment_method: "card_online" | "cod" | "baby_package" | "school_package" | "bank_transfer";
-  is_paid: boolean;
 }
 
 export interface Review {

@@ -9,7 +9,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  if (config.url && !config.url.endsWith("/")) {
+  if (config.url && !config.url.includes("?") && !config.url.endsWith("/")) {
     config.url = config.url + "/";
   }
   return config;

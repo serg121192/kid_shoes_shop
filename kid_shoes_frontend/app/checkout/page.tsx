@@ -6,22 +6,17 @@ import api from "@/app/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import { Loader2, CheckCircle, ChevronDown } from "lucide-react";
 
-type DeliveryType = "np_warehouse" | "np_postamat" | "np_address";
+type DeliveryType = "np_warehouse" | "np_postamat" | "np_address" | "pickup";
 type NpOption = { ref: string; name: string };
 
 const DELIVERY_OPTIONS: { value: DeliveryType; label: string }[] = [
   { value: "np_warehouse", label: "НоваПошта: Відділення" },
   { value: "np_postamat", label: "НоваПошта: Поштомат" },
   { value: "np_address", label: "НоваПошта: Кур'єр на адресу" },
+  { value: "pickup", label: "Самовивіз з магазину" },
 ];
 
-const PAYMENT_METHODS = [
-  { value: "card_online", label: "💳 Карткою онлайн (Google Pay / Apple Pay / QR)" },
-  { value: "baby_package", label: "🎁 Карткою «Пакунок малюка»" },
-  { value: "school_package", label: "🎒 Карткою «Пакунок школяра»" },
-  { value: "cod", label: "📦 Накладений платіж" },
-  { value: "bank_transfer", label: "🏦 Оплата за реквізитами" },
-];
+const STORE_ADDRESS = "м. Чернігів, проспект Левка Лук'яненка 78, 2-й поверх (поряд з ТРЦ \"Hollywood\")";
 
 // ── Simple text field ────────────────────────────────────────────────────────
 
@@ -146,14 +141,10 @@ function AutocompleteField({
 
 // ── Checkout page ────────────────────────────────────────────────────────────
 
-type PaymentMethod = "card_online" | "baby_package" | "school_package" | "cod" | "bank_transfer";
-const ONLINE_PAYMENT_METHODS: PaymentMethod[] = ["card_online", "baby_package", "school_package"];
-
 export default function CheckoutPage() {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("np_warehouse");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -274,18 +265,15 @@ export default function CheckoutPage() {
     setIsLoading(true);
     setErrors({});
 
-    const savedPromo = sessionStorage.getItem("promo_code") ?? "";
-
+    const isPickup = deliveryType === "pickup";
     const payload = {
-      payment_method: paymentMethod,
-      promo_code: savedPromo,
       recipient_full_name: form.recipient_full_name,
       recipient_phone: form.recipient_phone,
       delivery_type: deliveryType,
-      city_name: form.city_name,
-      city_ref: form.city_ref,
-      warehouse_address: deliveryType !== "np_address" ? form.warehouse_address : "",
-      warehouse_ref: deliveryType !== "np_address" ? form.warehouse_ref : "",
+      city_name: isPickup ? "" : form.city_name,
+      city_ref: isPickup ? "" : form.city_ref,
+      warehouse_address: (!isPickup && deliveryType !== "np_address") ? form.warehouse_address : "",
+      warehouse_ref: (!isPickup && deliveryType !== "np_address") ? form.warehouse_ref : "",
       street: deliveryType === "np_address" ? form.street : "",
       building_number: deliveryType === "np_address" ? form.building_number : "",
       apartment: deliveryType === "np_address" ? form.apartment : "",
@@ -294,32 +282,7 @@ export default function CheckoutPage() {
     try {
       const response = await api.post("/shop/orders/me/create_order/", payload);
       const orderId: number = response.data.id;
-      sessionStorage.removeItem("promo_code");
-
-      if (ONLINE_PAYMENT_METHODS.includes(paymentMethod)) {
-        // Отримуємо параметри LiqPay і відправляємо форму на їх сторінку оплати
-        const payRes = await api.get<{ data: string; signature: string }>(
-          `/shop/orders/${orderId}/payment/`
-        );
-        const { data: liqData, signature } = payRes.data;
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = "https://www.liqpay.ua/api/3/checkout";
-        form.acceptCharset = "utf-8";
-        ([ ["data", liqData], ["signature", signature] ] as [string, string][]).forEach(
-          ([name, value]) => {
-            const input = document.createElement("input");
-            input.type = "hidden";
-            input.name = name;
-            input.value = value;
-            form.appendChild(input);
-          }
-        );
-        document.body.appendChild(form);
-        form.submit();
-      } else {
-        router.push(`/orders/${orderId}`);
-      }
+      router.push(`/orders/${orderId}`);
     } catch (err: unknown) {
       const data = (err as { response?: { data?: Record<string, string[]> } })?.response?.data;
       if (data) {
@@ -339,7 +302,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Оформлення замовлення</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Бронювання розміру</h1>
 
       <form onSubmit={handleSubmit} className="space-y-5">
 
@@ -391,21 +354,32 @@ export default function CheckoutPage() {
             ))}
           </div>
 
+          {/* Pickup info card */}
+          {deliveryType === "pickup" && (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-4 text-sm text-indigo-800 space-y-1">
+              <p className="font-semibold text-indigo-900">Адреса магазину:</p>
+              <p>{STORE_ADDRESS}</p>
+              <p className="text-xs text-indigo-500 pt-1">Після підтвердження бронювання менеджер зв'яжеться з вами для уточнення часу візиту.</p>
+            </div>
+          )}
+
           {/* City autocomplete */}
-          <AutocompleteField
-            label="Місто"
-            placeholder="Почніть вводити назву міста..."
-            inputValue={cityQuery}
-            onInputChange={handleCityInput}
-            onSelect={handleCitySelect}
-            options={cityOptions}
-            isLoading={cityLoading}
-            confirmed={cityConfirmed}
-            error={errors.city_name}
-          />
+          {deliveryType !== "pickup" && (
+            <AutocompleteField
+              label="Місто"
+              placeholder="Почніть вводити назву міста..."
+              inputValue={cityQuery}
+              onInputChange={handleCityInput}
+              onSelect={handleCitySelect}
+              options={cityOptions}
+              isLoading={cityLoading}
+              confirmed={cityConfirmed}
+              error={errors.city_name}
+            />
+          )}
 
           {/* Warehouse / postamat autocomplete */}
-          {deliveryType !== "np_address" && (
+          {deliveryType !== "np_address" && deliveryType !== "pickup" && (
             <div>
               <AutocompleteField
                 label={deliveryType === "np_warehouse" ? "Відділення" : "Поштомат"}
@@ -474,44 +448,9 @@ export default function CheckoutPage() {
           )}
         </div>
 
-        {/* Payment method */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 space-y-3">
-          <h2 className="font-semibold text-gray-800">Оплата</h2>
-          {PAYMENT_METHODS.map((opt) => (
-            <label
-              key={opt.value}
-              className={`flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer transition-colors ${
-                paymentMethod === opt.value
-                  ? "border-indigo-500 bg-indigo-50"
-                  : "border-gray-200 hover:border-indigo-300"
-              }`}
-            >
-              <input
-                type="radio"
-                name="payment_method"
-                value={opt.value}
-                checked={paymentMethod === opt.value}
-                onChange={() => setPaymentMethod(opt.value as PaymentMethod)}
-                className="accent-indigo-600"
-              />
-              <span className="text-sm font-medium text-gray-700">{opt.label}</span>
-            </label>
-          ))}
-
-          {paymentMethod === "bank_transfer" && (
-            <div className="mt-2 bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-600 space-y-1">
-              <p className="font-medium text-gray-700">Реквізити для оплати:</p>
-              <p>ФОП Кучук Сергій Сергійович</p>
-              <p>IBAN: UA00 0000 0000 0000 0000 0000 000</p>
-              <p className="text-xs text-gray-400">Вкажіть номер замовлення у призначенні платежу</p>
-            </div>
-          )}
-
-          {ONLINE_PAYMENT_METHODS.includes(paymentMethod) && (
-            <p className="text-xs text-gray-400 pt-1">
-              Після підтвердження замовлення вас буде перенаправлено на сторінку оплати LiqPay
-            </p>
-          )}
+        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 text-sm text-indigo-700">
+          <p className="font-semibold mb-1">Як це працює?</p>
+          <p>Після підтвердження бронювання наш менеджер зв'яжеться з вами для уточнення розміру та деталей замовлення.</p>
         </div>
 
         <button
@@ -519,11 +458,7 @@ export default function CheckoutPage() {
           disabled={isLoading}
           className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-3 rounded-xl transition-colors"
         >
-          {isLoading
-            ? "Оформлюємо..."
-            : ONLINE_PAYMENT_METHODS.includes(paymentMethod)
-              ? "Підтвердити та перейти до оплати"
-              : "Підтвердити замовлення"}
+          {isLoading ? "Обробка..." : "Підтвердити бронювання"}
         </button>
       </form>
     </div>

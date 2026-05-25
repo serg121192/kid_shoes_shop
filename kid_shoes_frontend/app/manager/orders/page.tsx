@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import api from "@/app/lib/api";
 import { Order, PaginatedResponse } from "@/app/types";
 import { Search, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
@@ -31,14 +31,6 @@ const STATUS_COLORS: Record<string, string> = {
   received:   "bg-emerald-100 text-emerald-800",
   refused:    "bg-orange-100 text-orange-800",
   cancelled:  "bg-red-100 text-red-800",
-};
-
-const PAYMENT_LABELS: Record<string, string> = {
-  card_online: "Картка онлайн",
-  cod: "Накладений платіж",
-  baby_package: "Пакунок малюка",
-  school_package: "Пакунок школяра",
-  bank_transfer: "Реквізити",
 };
 
 export default function ManagerOrdersPage() {
@@ -92,13 +84,13 @@ export default function ManagerOrdersPage() {
     try {
       const res = await api.post<{
         np_code: string; np_status: string;
-        order_status: string; is_paid: boolean; updated: boolean;
+        order_status: string; updated: boolean;
       }>(`/shop/orders/${orderId}/sync_np/`);
       const d = res.data;
       setOrders((prev) =>
         prev.map((o) =>
           o.id === orderId
-            ? { ...o, status: d.order_status as Order["status"], is_paid: d.is_paid }
+            ? { ...o, status: d.order_status as Order["status"] }
             : o
         )
       );
@@ -175,44 +167,22 @@ export default function ManagerOrdersPage() {
                 <th className="text-left px-4 py-3 font-medium text-gray-500">Дата</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-500">Покупець</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-500">Сума</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Спосіб оплати</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500">Статус оплати</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-500">Статус</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-500">Дії</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {orders.map((order) => (
-                <>
+                <React.Fragment key={order.id}>
                   <tr
-                    key={order.id}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    className={`cursor-pointer transition-colors ${order.status === "pending" ? "bg-rose-200 hover:bg-rose-300" : "hover:bg-gray-50"}`}
                     onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}
                   >
-                    <td className="px-4 py-3 font-medium text-indigo-600">#{order.id}</td>
+                    <td className="px-4 py-3 font-medium text-teal-600">#{order.id}</td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(order.created_at)}</td>
                     <td className="px-4 py-3 text-gray-700">{order.user}</td>
                     <td className="px-4 py-3 font-semibold text-gray-900">
                       {Number(order.total_price).toFixed(2)} грн
-                      {order.discount_amount && Number(order.discount_amount) > 0 && (
-                        <span className="ml-1 text-xs text-green-600">
-                          (−{Number(order.discount_amount).toFixed(0)} грн)
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">
-                      {PAYMENT_LABELS[order.payment_method] ?? order.payment_method}
-                    </td>
-                    <td className="px-4 py-3">
-                      {order.is_paid ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                          ✓ Оплачено
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                          Не оплачено
-                        </span>
-                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-600"}`}>
@@ -264,12 +234,20 @@ export default function ManagerOrdersPage() {
                               <p className="font-semibold text-gray-700 mb-1">Доставка</p>
                               <p><span className="text-gray-500">Отримувач:</span> {order.delivery.recipient_full_name}</p>
                               <p><span className="text-gray-500">Телефон:</span> {order.delivery.recipient_phone}</p>
-                              <p><span className="text-gray-500">Місто:</span> {order.delivery.city_name}</p>
-                              <p><span className="text-gray-500">Відділення:</span> {order.delivery.warehouse_address}</p>
-                              {order.delivery.tracking_number && (
-                                <p className="font-medium text-indigo-700">
-                                  ТТН: {order.delivery.tracking_number}
+                              {order.delivery.delivery_type === "pickup" ? (
+                                <p className="font-medium text-teal-700">
+                                  🏪 Самовивіз з магазину — м. Чернігів, пр. Левка Лук&apos;яненка 78, 2-й поверх
                                 </p>
+                              ) : (
+                                <>
+                                  <p><span className="text-gray-500">Місто:</span> {order.delivery.city_name}</p>
+                                  <p><span className="text-gray-500">Відділення:</span> {order.delivery.warehouse_address}</p>
+                                  {order.delivery.tracking_number && (
+                                    <p className="font-medium text-indigo-700">
+                                      ТТН: {order.delivery.tracking_number}
+                                    </p>
+                                  )}
+                                </>
                               )}
                             </div>
                           )}
@@ -286,15 +264,12 @@ export default function ManagerOrdersPage() {
                                 </li>
                               ))}
                             </ul>
-                            {order.promo_code && (
-                              <p className="mt-2 text-green-600 text-xs">Промокод: {order.promo_code}</p>
-                            )}
                           </div>
                         </div>
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
             </tbody>
           </table>

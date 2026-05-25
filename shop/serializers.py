@@ -17,7 +17,6 @@ from shop.models import (
     WishlistItem,
     DeliveryInfo,
     Review,
-    PromoCode,
 )
 
 
@@ -69,7 +68,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = [
             "id", "vendor", "model_name", "prod_type", "gender",
             "season", "full_price", "discount", "discounted_price",
-            "description",
+            "description", "seo_description",
         ]
 
 
@@ -148,7 +147,7 @@ class ProductRetrieveSerializer(serializers.ModelSerializer):
             "id", "vendor", "model_name", "exists",
             "prod_type", "gender", "season",
             "full_price", "discount", "discounted_price",
-            "description",
+            "description", "seo_description",
             "sizes", "in_wishlist",
             "images", "videos",
             "avg_rating", "review_count",
@@ -354,6 +353,10 @@ class DeliveryInfoSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         delivery_type = data.get("delivery_type", DeliveryInfo.DeliveryTypeChoices.NP_WAREHOUSE)
+
+        if delivery_type == DeliveryInfo.DeliveryTypeChoices.PICKUP:
+            return data
+
         warehouse_types = (
             DeliveryInfo.DeliveryTypeChoices.NP_WAREHOUSE,
             DeliveryInfo.DeliveryTypeChoices.NP_POSTAMAT,
@@ -375,16 +378,6 @@ class DeliveryInfoSerializer(serializers.ModelSerializer):
         return data
 
 
-class PromoCodeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PromoCode
-        fields = [
-            "id", "code", "discount_type", "discount_value",
-            "min_order_amount", "valid_until", "is_active",
-            "max_uses", "current_uses",
-        ]
-
-
 class OrderStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Order.StatusChoices.choices)
 
@@ -398,7 +391,5 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             "id", "created_at", "user", "status",
-            "total_price", "discount_amount", "promo_code",
-            "delivery", "items",
-            "payment_method", "is_paid",
+            "total_price", "delivery", "items",
         ]
