@@ -289,10 +289,14 @@ NOVA_POSHTA_API_KEY = os.getenv("NOVA_POSHTA_API_KEY", default="")
 
 # ── Production security (вмикаються автоматично при DEBUG=False) ──────────────
 if not DEBUG:
-    SECURE_HSTS_SECONDS = 31536000          # 1 рік
+    # Railway terminates SSL at the load balancer and forwards requests as HTTP.
+    # Trusting X-Forwarded-Proto tells Django the original request was HTTPS.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # Do NOT redirect — Railway already enforces HTTPS externally.
+    SECURE_SSL_REDIRECT = False
+    SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
