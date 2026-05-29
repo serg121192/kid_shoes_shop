@@ -101,16 +101,32 @@ WSGI_APPLICATION = "kid_shoes_shop.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("PG_DB"),
-        "USER": os.getenv("PG_USER"),
-        "PASSWORD": os.getenv("PG_PASSWORD"),
-        "HOST": os.getenv("PG_HOST"),
-        "PORT": os.getenv("PG_PORT"),
+# RAILWAY_DB_URL takes priority to avoid Railway auto-injecting internal DATABASE_URL
+_DATABASE_URL = os.getenv("RAILWAY_DB_URL") or os.getenv("DATABASE_URL")
+if _DATABASE_URL:
+    from urllib.parse import urlparse as _urlparse
+    _db = _urlparse(_DATABASE_URL)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": _db.path[1:],
+            "USER": _db.username,
+            "PASSWORD": _db.password,
+            "HOST": _db.hostname,
+            "PORT": _db.port or 5432,
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("PG_DB"),
+            "USER": os.getenv("PG_USER"),
+            "PASSWORD": os.getenv("PG_PASSWORD"),
+            "HOST": os.getenv("PG_HOST"),
+            "PORT": os.getenv("PG_PORT"),
+        }
+    }
 
 
 # Password validation
