@@ -43,7 +43,7 @@ export default function OrderDetailPage({
     params: Promise<{ id: string }>;
 }) {
     const { id } = use(params);
-    const { isAuthenticated, isLoading: authLoading } = useAuth();
+    const { isAuthenticated, isLoading: authLoading, user } = useAuth();
     const router = useRouter();
     const [order, setOrder] = useState<Order | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -51,6 +51,7 @@ export default function OrderDetailPage({
 
     useEffect(() => {
         if (!authLoading && !isAuthenticated) { router.push("/login"); return; }
+        if (!authLoading && user?.is_staff) { router.push("/manager/orders"); return; }
         if (!authLoading && isAuthenticated) {
             api.get<Order>(`/shop/orders/${id}/`)
                 .then((r) => setOrder(r.data))
