@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import api from "@/app/lib/api";
 import { AxiosError } from "axios";
 import Logo from "@/app/components/Logo";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") ?? "";
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -29,8 +31,9 @@ export default function RegisterPage() {
     setErrors({});
     setIsLoading(true);
     try {
-      await api.post("/user/register/", formData);
-      router.push("/login?registered=1");
+      await api.post("/user/create/", formData);
+      const nextParam = next ? `&next=${encodeURIComponent(next)}` : "";
+      router.push(`/login?registered=1${nextParam}`);
     } catch (err) {
       const axiosErr = err as AxiosError<Record<string, string[]>>;
       if (axiosErr.response?.data) {
@@ -56,6 +59,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="bg-emerald-50 rounded-2xl shadow-sm p-8 w-full max-w-md">
+
         <div className="flex flex-col items-center mb-8">
           <Logo className="h-[120px] w-[120px] shrink-0" />
           <h1 className="text-2xl font-bold text-gray-900 mt-3">Реєстрація</h1>
@@ -100,11 +104,23 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Вже є акаунт?{" "}
-          <Link href="/login" className="text-emerald-600 hover:underline font-medium">
+          <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="text-emerald-600 hover:underline font-medium">
             Увійти
           </Link>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }

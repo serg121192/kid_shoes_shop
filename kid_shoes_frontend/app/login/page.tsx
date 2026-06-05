@@ -12,6 +12,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const justRegistered = searchParams.get("registered") === "1";
   const justReset = searchParams.get("reset") === "1";
+  const next = searchParams.get("next") ?? "";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -106,7 +107,7 @@ function LoginForm() {
 
       <p className="text-center text-sm text-gray-500 mt-6">
         Немає акаунту?{" "}
-        <Link href="/register" className="text-emerald-500 hover:underline font-medium">
+        <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} className="text-emerald-500 hover:underline font-medium">
           Зареєструватися
         </Link>
       </p>
