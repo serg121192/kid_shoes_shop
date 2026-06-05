@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, FormEvent, Suspense } from "react";
 import Link from "next/link";
@@ -65,7 +65,7 @@ function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
             placeholder="you@example.com"
           />
         </div>
@@ -79,7 +79,7 @@ function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
             placeholder="••••••••"
           />
         </div>
@@ -93,13 +93,13 @@ function LoginForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-emerald-600 hover:bg-emerald-800 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
+          className="w-full bg-emerald-600 hover:bg-emerald-800 disabled:bg-teal-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
         >
           {isLoading ? "Входимо..." : "Увійти"}
         </button>
 
         <p className="text-center text-sm">
-          <Link href="/forgot-password" className="text-gray-500 hover:text-indigo-600 hover:underline">
+          <Link href="/forgot-password" className="text-gray-500 hover:text-teal-600 hover:underline">
             Забули пароль?
           </Link>
         </p>

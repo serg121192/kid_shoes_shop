@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -53,7 +53,7 @@ export default function OrdersPage() {
   if (authLoading || isLoading) {
     return (
       <div className="flex justify-center items-center h-96">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600" />
       </div>
     );
   }
@@ -66,7 +66,7 @@ export default function OrdersPage() {
         <p className="text-gray-500 mb-6">Забронюйте свої перші товари!</p>
         <Link
           href="/products"
-          className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+          className="inline-block bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
         >
           До каталогу
         </Link>
@@ -84,7 +84,7 @@ export default function OrdersPage() {
             <div className="p-5 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-3">
-                  <Link href={`/orders/${order.id}`} className="font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
+                  <Link href={`/orders/${order.id}`} className="font-bold text-teal-600 hover:text-teal-700 transition-colors">
                     Бронювання #{order.id}
                   </Link>
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[order.status]}`}>
@@ -101,7 +101,7 @@ export default function OrdersPage() {
               </div>
 
               <div className="text-right">
-                <p className="text-xl font-bold text-indigo-600">
+                <p className="text-xl font-bold text-teal-600">
                   {Number(order.total_price).toFixed(2)} грн
                 </p>
                 <p className="text-sm text-gray-500">{order.items.length} поз.</p>
@@ -126,7 +126,7 @@ export default function OrdersPage() {
                     📦 {order.delivery.city_name}
                     {order.delivery.warehouse_address && `, ${order.delivery.warehouse_address}`}
                     {order.delivery.tracking_number && (
-                      <span className="ml-2 font-mono text-indigo-600">
+                      <span className="ml-2 font-mono text-teal-600">
                         ТТН: {order.delivery.tracking_number}
                       </span>
                     )}

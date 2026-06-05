@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
@@ -53,7 +53,7 @@ export default function ManagerProductsPage() {
         <h1 className="text-2xl font-bold text-gray-900">Товари</h1>
         <Link
           href="/manager/products/new"
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+          className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
         >
           <Plus size={16} />
           Додати товар
@@ -69,7 +69,7 @@ export default function ManagerProductsPage() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder="Пошук товарів..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
           />
         </div>
       </div>
@@ -78,7 +78,7 @@ export default function ManagerProductsPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex justify-center py-16">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-16 text-gray-400">Товарів не знайдено</div>
@@ -142,7 +142,7 @@ export default function ManagerProductsPage() {
                       <div className="flex items-center gap-2 justify-end">
                         <Link
                           href={`/manager/products/${p.id}`}
-                          className="p-1.5 text-gray-400 hover:text-indigo-600 transition-colors"
+                          className="p-1.5 text-gray-400 hover:text-teal-600 transition-colors"
                           title="Редагувати"
                         >
                           <Pencil size={15} />
@@ -172,7 +172,7 @@ export default function ManagerProductsPage() {
               key={p}
               onClick={() => setPage(p)}
               className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                p === page ? "bg-indigo-600 text-white" : "text-gray-600 hover:bg-white"
+                p === page ? "bg-teal-600 text-white" : "text-gray-600 hover:bg-white"
               }`}
             >
               {p}

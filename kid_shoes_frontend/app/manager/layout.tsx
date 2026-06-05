@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/app/context/AuthContext";
-import { LayoutDashboard, ShoppingBag, Package } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Package, ExternalLink } from "lucide-react";
 import api from "@/app/lib/api";
 
 export default function ManagerLayout({ children }: { children: React.ReactNode }) {
@@ -39,7 +39,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
   if (isLoading || !user?.is_staff) {
     return (
       <div className="flex justify-center items-center h-96">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600" />
       </div>
     );
   }
@@ -49,6 +49,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
     { href: "/manager/orders", icon: ShoppingBag, label: "Замовлення", badge: pendingCount },
     { href: "/manager/products", icon: Package, label: "Товари", badge: 0 },
   ];
+
 
   return (
     <div className="flex min-h-[calc(100vh-96px)] sm:min-h-[calc(100vh-112px)]">
@@ -77,6 +78,16 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
                 )}
               </Link>
             ))}
+
+            <div className="pt-3 mt-3 border-t border-gray-700">
+              <Link
+                href="/products"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+              >
+                <ExternalLink size={16} />
+                <span>На сайт</span>
+              </Link>
+            </div>
           </nav>
         </div>
       </aside>

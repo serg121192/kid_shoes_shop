@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { Star } from "lucide-react";
@@ -188,7 +188,7 @@ export default function ReviewSection({
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setEditMode(true); setFormRating(myReview.rating); setFormText(myReview.text); }}
-                    className="text-xs text-indigo-500 hover:text-indigo-700 font-medium"
+                    className="text-xs text-teal-500 hover:text-teal-700 font-medium"
                   >
                     Редагувати
                   </button>

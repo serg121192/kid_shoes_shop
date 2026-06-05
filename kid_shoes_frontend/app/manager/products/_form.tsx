@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useState, useEffect, useRef, useCallback,
@@ -424,7 +424,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
   if (isLoading) {
     return (
       <div className="flex justify-center py-16">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
       </div>
     );
   }
@@ -452,7 +452,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Виробник *</label>
             <select name="vendor" value={form.vendor} onChange={handleChange}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
               <option value="">Оберіть...</option>
               {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
             </select>
@@ -460,27 +460,27 @@ export default function ProductForm({ productId }: { productId?: number }) {
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Назва моделі *</label>
             <input name="model_name" value={form.model_name} onChange={handleChange}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
               placeholder="Наприклад: Air Max 90" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Тип</label>
             <select name="prod_type" value={form.prod_type} onChange={handleChange}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
               {PROD_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Стать</label>
             <select name="gender" value={form.gender} onChange={handleChange}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
               {GENDERS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Сезон</label>
             <select name="season" value={form.season} onChange={handleChange}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
               {SEASONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </div>
@@ -488,13 +488,13 @@ export default function ProductForm({ productId }: { productId?: number }) {
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-600 mb-1">Ціна (грн) *</label>
               <input name="full_price" type="number" value={form.full_price} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                 placeholder="0" min="0" />
             </div>
             <div className="w-24">
               <label className="block text-sm font-medium text-gray-600 mb-1">Знижка %</label>
               <input name="discount" type="number" value={form.discount} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                 placeholder="0" min="0" max="100" />
             </div>
           </div>
@@ -502,7 +502,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1">Короткий опис</label>
           <textarea name="description" value={form.description ?? ""} onChange={handleChange} rows={3}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none"
             placeholder="Короткий опис товару..." />
         </div>
         <div>
@@ -511,7 +511,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
             <span className="text-xs text-gray-400 font-normal">(SEO-текст — розгортається на картці товару)</span>
           </label>
           <textarea name="seo_description" value={form.seo_description ?? ""} onChange={handleChange} rows={6}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none"
             placeholder="Детальний SEO-опис товару з ключовими словами..." />
         </div>
       </div>
@@ -525,7 +525,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
           onDrop={onImgDrop}
           onClick={() => imgInputRef.current?.click()}
           className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${
-            isDraggingImg ? "border-indigo-400 bg-indigo-50" : "border-gray-200 hover:border-indigo-300"
+            isDraggingImg ? "border-teal-400 bg-teal-50" : "border-gray-200 hover:border-teal-300"
           }`}
         >
           <Upload size={22} className="mx-auto text-gray-400 mb-1.5" />
@@ -543,7 +543,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
                 <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
                   {url && <Image src={url} alt="" fill unoptimized className="object-cover" />}
                   {img.is_main && (
-                    <span className="absolute top-1 left-1 bg-indigo-600 text-white text-[10px] px-1 rounded">
+                    <span className="absolute top-1 left-1 bg-teal-600 text-white text-[10px] px-1 rounded">
                       Головне
                     </span>
                   )}
@@ -577,7 +577,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
               <div key={img.localId} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
                 <Image src={img.preview} alt="" fill unoptimized className="object-cover" />
                 {img.is_main && (
-                  <span className="absolute top-1 left-1 bg-indigo-600 text-white text-[10px] px-1 rounded">
+                  <span className="absolute top-1 left-1 bg-teal-600 text-white text-[10px] px-1 rounded">
                     Головне
                   </span>
                 )}
@@ -612,7 +612,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
           onDrop={onVidDrop}
           onClick={() => vidInputRef.current?.click()}
           className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${
-            isDraggingVid ? "border-indigo-400 bg-indigo-50" : "border-gray-200 hover:border-indigo-300"
+            isDraggingVid ? "border-teal-400 bg-teal-50" : "border-gray-200 hover:border-teal-300"
           }`}
         >
           <Upload size={22} className="mx-auto text-gray-400 mb-1.5" />
@@ -655,7 +655,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
                     prev.map((pv) => pv.localId === v.localId ? { ...pv, title: e.target.value } : pv)
                   )}
                   placeholder="Назва відео"
-                  className="w-36 text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                  className="w-36 text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400"
                 />
                 <button onClick={() => setPendingVideos((prev) => prev.filter((pv) => pv.localId !== v.localId))}
                   className="text-gray-300 hover:text-red-500 transition-colors">
@@ -679,7 +679,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
           <div>
             <label className="block text-xs text-gray-500 mb-1">Розмір</label>
             <select value={newSize.size} onChange={(e) => setNewSize((p) => ({ ...p, size: e.target.value }))}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
               {SIZES.map((s) => <option key={s}>{s}</option>)}
             </select>
           </div>
@@ -688,10 +688,10 @@ export default function ProductForm({ productId }: { productId?: number }) {
             <input type="number" value={newSize.quantity}
               onChange={(e) => setNewSize((p) => ({ ...p, quantity: e.target.value }))}
               min="0"
-              className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+              className="w-20 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400" />
           </div>
           <button onClick={handleAddOrUpdateSize}
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
             <Plus size={14} />
             {(isEdit ? savedSizes : pendingSizes).find((s) => s.size === Number(newSize.size))
               ? "Оновити" : "Додати"}
@@ -730,7 +730,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
       <button
         onClick={handleSave}
         disabled={isSaving}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white py-3 rounded-xl text-sm font-semibold transition-colors"
+        className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 text-white py-3 rounded-xl text-sm font-semibold transition-colors"
       >
         {isSaving
           ? "Зберігаємо..."

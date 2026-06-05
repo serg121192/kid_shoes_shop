@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, FormEvent } from "react";
 import Link from "next/link";
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
             </div>
             <Link
               href="/login"
-              className="inline-block text-indigo-600 hover:underline text-sm font-medium"
+              className="inline-block text-teal-600 hover:underline text-sm font-medium"
             >
               ← Повернутися до входу
             </Link>
@@ -65,7 +65,7 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                 placeholder="you@example.com"
               />
             </div>
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-emerald-600 hover:bg-emerald-800 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
+              className="w-full bg-emerald-600 hover:bg-emerald-800 disabled:bg-teal-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
             >
               {isLoading ? "Надсилаємо..." : "Надіслати посилання"}
             </button>

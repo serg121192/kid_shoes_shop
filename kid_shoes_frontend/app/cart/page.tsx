@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
@@ -113,7 +113,7 @@ export default function CartPage() {
   if (authLoading || isLoading) {
     return (
       <div className="flex justify-center items-center h-96">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600" />
       </div>
     );
   }
@@ -124,7 +124,7 @@ export default function CartPage() {
         <ShoppingBag size={64} className="mx-auto text-gray-300 mb-4" />
         <h2 className="text-2xl font-bold text-gray-700 mb-2">Кошик порожній</h2>
         <p className="text-gray-500 mb-6">Додайте товари з каталогу</p>
-        <Link href="/products" className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors">
+        <Link href="/products" className="inline-block bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors">
           До каталогу
         </Link>
       </div>
@@ -231,7 +231,7 @@ export default function CartPage() {
 
         <Link
           href="/checkout"
-          className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white text-center font-semibold py-3 rounded-xl transition-colors"
+          className="block w-full bg-teal-600 hover:bg-teal-700 text-white text-center font-semibold py-3 rounded-xl transition-colors"
         >
           Забронювати розміри
         </Link>

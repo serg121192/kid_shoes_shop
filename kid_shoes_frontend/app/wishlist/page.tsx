@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
@@ -49,7 +49,7 @@ export default function WishlistPage() {
     if (authLoading || isLoading) {
         return (
             <div className="flex justify-center items-center h-96">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600" />
             </div>
         );
     }
@@ -60,7 +60,7 @@ export default function WishlistPage() {
                 <Heart size={64} className="mx-auto text-gray-300 mb-4" />
                 <h2 className="text-2xl font-bold text-gray-700 mb-2">Список вибраного порожній</h2>
                 <p className="text-gray-500 mb-6">Додайте товари які вам сподобались</p>
-                <Link href="/products" className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors">
+                <Link href="/products" className="inline-block bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors">
                     До каталогу
                 </Link>
             </div>
@@ -95,11 +95,11 @@ export default function WishlistPage() {
                             </Link>
                             <div className="p-3 flex flex-col flex-1">
                                 <Link href={`/products/${product.id}`}>
-                                    <h3 className="font-semibold text-gray-800 hover:text-indigo-600 text-sm line-clamp-2">
+                                    <h3 className="font-semibold text-gray-800 hover:text-teal-600 text-sm line-clamp-2">
                                         {product.vendor} {product.model_name}
                                     </h3>
                                 </Link>
-                                <p className="text-indigo-600 font-bold mt-1 text-sm">
+                                <p className="text-teal-600 font-bold mt-1 text-sm">
                                     {Number(product.discounted_price).toFixed(2)} грн
                                 </p>
 

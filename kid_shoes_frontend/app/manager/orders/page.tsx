@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import api from "@/app/lib/api";
@@ -120,7 +120,7 @@ export default function ManagerOrdersPage() {
         <h1 className="text-2xl font-bold text-gray-900">Замовлення</h1>
         <button
           onClick={() => fetchOrders()}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-teal-600 transition-colors"
         >
           <RefreshCw size={14} />
           Оновити
@@ -136,13 +136,13 @@ export default function ManagerOrdersPage() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder="Пошук за email або ID..."
-            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
         >
           {STATUS_OPTIONS.map((s) => (
             <option key={s.value} value={s.value}>{s.label}</option>
@@ -155,7 +155,7 @@ export default function ManagerOrdersPage() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex justify-center py-16">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
           </div>
         ) : orders.length === 0 ? (
           <div className="text-center py-16 text-gray-400">Замовлень не знайдено</div>
@@ -195,7 +195,7 @@ export default function ManagerOrdersPage() {
                           value={order.status}
                           disabled={updatingId === order.id}
                           onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                          className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-50"
+                          className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-teal-400 disabled:opacity-50"
                         >
                           {STATUS_OPTIONS.filter((s) => s.value).map((s) => (
                             <option key={s.value} value={s.value}>{s.label}</option>
@@ -225,7 +225,7 @@ export default function ManagerOrdersPage() {
 
                   {/* Expanded row */}
                   {expandedId === order.id && (
-                    <tr key={`${order.id}-detail`} className="bg-indigo-50">
+                    <tr key={`${order.id}-detail`} className="bg-teal-50">
                       <td colSpan={8} className="px-4 py-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                           {/* Delivery */}
@@ -243,7 +243,7 @@ export default function ManagerOrdersPage() {
                                   <p><span className="text-gray-500">Місто:</span> {order.delivery.city_name}</p>
                                   <p><span className="text-gray-500">Відділення:</span> {order.delivery.warehouse_address}</p>
                                   {order.delivery.tracking_number && (
-                                    <p className="font-medium text-indigo-700">
+                                    <p className="font-medium text-teal-700">
                                       ТТН: {order.delivery.tracking_number}
                                     </p>
                                   )}
@@ -291,7 +291,7 @@ export default function ManagerOrdersPage() {
               key={p}
               onClick={() => setPage(p)}
               className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                p === page ? "bg-indigo-600 text-white" : "text-gray-600 hover:bg-white"
+                p === page ? "bg-teal-600 text-white" : "text-gray-600 hover:bg-white"
               }`}
             >
               {p}

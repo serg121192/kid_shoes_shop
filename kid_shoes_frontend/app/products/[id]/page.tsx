@@ -188,7 +188,7 @@ export default function ProductDetailPage({
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-96">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600" />
       </div>
     );
   }
@@ -280,8 +280,8 @@ export default function ProductDetailPage({
                       key={idx}
                       onClick={() => setActiveIndex(idx)}
                       className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${isActive
-                        ? "border-indigo-600 shadow-md"
-                        : "border-transparent hover:border-indigo-300"
+                        ? "border-teal-600 shadow-md"
+                        : "border-transparent hover:border-teal-300"
                         }`}
                     >
                       {item.kind === "video" ? (
@@ -301,7 +301,7 @@ export default function ProductDetailPage({
                         />
                       )}
                       {item.kind === "image" && (item.data as ProductImage).is_main && (
-                        <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-indigo-600 text-white px-1 rounded leading-tight">
+                        <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-teal-600 text-white px-1 rounded leading-tight">
                           ★
                         </span>
                       )}

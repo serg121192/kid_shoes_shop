@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -45,7 +45,7 @@ function StatCard({ label, value, sub, icon: Icon, color, href }: {
   icon: React.ElementType; color: string; href?: string;
 }) {
   return (
-    <div className={`relative bg-white rounded-xl shadow-sm p-5 flex items-center gap-4 ${href ? "hover:shadow-md hover:ring-2 hover:ring-indigo-200 transition-all" : ""}`}>
+    <div className={`relative bg-white rounded-xl shadow-sm p-5 flex items-center gap-4 ${href ? "hover:shadow-md hover:ring-2 hover:ring-teal-200 transition-all" : ""}`}>
       {href && (
         <Link href={href} className="absolute inset-0 rounded-xl" aria-label={label} />
       )}
@@ -57,7 +57,7 @@ function StatCard({ label, value, sub, icon: Icon, color, href }: {
         <p className="text-sm text-gray-500">{label}</p>
         {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
       </div>
-      {href && <FileText size={16} className="text-indigo-400 shrink-0 ml-auto" />}
+      {href && <FileText size={16} className="text-teal-400 shrink-0 ml-auto" />}
     </div>
   );
 }
@@ -77,7 +77,7 @@ export default function ManagerDashboardPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-16">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function ManagerDashboardPage() {
           label="Виторг сьогодні"
           value={`${stats.revenue.today.toFixed(0)} грн`}
           icon={DollarSign}
-          color="bg-indigo-500"
+          color="bg-teal-500"
           href="/manager/reports?period=today"
         />
         <StatCard
@@ -177,7 +177,7 @@ export default function ManagerDashboardPage() {
         {/* Top products */}
         <div className="bg-white rounded-xl shadow-sm p-5">
           <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Package size={16} className="text-indigo-500" />
+            <Package size={16} className="text-teal-500" />
             Топ-5 товарів
           </h2>
           {stats.top_products.length === 0 ? (
@@ -186,7 +186,7 @@ export default function ManagerDashboardPage() {
             <div className="space-y-3">
               {stats.top_products.map((p, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">
+                  <span className="w-6 h-6 rounded-full bg-teal-100 text-teal-700 text-xs font-bold flex items-center justify-center">
                     {i + 1}
                   </span>
                   <div className="flex-1 min-w-0">

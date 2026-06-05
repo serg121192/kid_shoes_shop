@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -76,7 +76,7 @@ function ReportsContent() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-600 transition-colors"
           >
             <ArrowLeft size={16} />
             Назад
@@ -92,7 +92,7 @@ function ReportsContent() {
         </div>
         <button
           onClick={fetchReport}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-600 transition-colors"
         >
           <RefreshCw size={14} />
           Оновити
@@ -107,8 +107,8 @@ function ReportsContent() {
             onClick={() => router.push(`/manager/reports?period=${p}`)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               period === p
-                ? "bg-indigo-600 text-white"
-                : "bg-white text-gray-600 hover:bg-indigo-50 shadow-sm"
+                ? "bg-teal-600 text-white"
+                : "bg-white text-gray-600 hover:bg-teal-50 shadow-sm"
             }`}
           >
             {label.charAt(0).toUpperCase() + label.slice(1)}
@@ -120,7 +120,7 @@ function ReportsContent() {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex justify-center py-16">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
           </div>
         ) : rows.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
@@ -128,7 +128,7 @@ function ReportsContent() {
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-indigo-600 text-white">
+            <thead className="bg-teal-600 text-white">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold">Бренд</th>
                 <th className="text-left px-4 py-3 font-semibold">Модель</th>
@@ -139,11 +139,11 @@ function ReportsContent() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {rows.map((row, i) => (
-                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-indigo-50/40"}>
+                <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-teal-50/40"}>
                   <td className="px-4 py-3 font-medium text-gray-800">{row.vendor}</td>
                   <td className="px-4 py-3 text-gray-700">{row.model_name}</td>
                   <td className="px-4 py-3 text-center text-gray-700">{row.size}</td>
-                  <td className="px-4 py-3 text-center font-semibold text-indigo-600">
+                  <td className="px-4 py-3 text-center font-semibold text-teal-600">
                     {row.sold_qty}
                   </td>
                   <td className="px-4 py-3 text-center">
@@ -157,7 +157,7 @@ function ReportsContent() {
             <tfoot className="bg-gray-50 border-t-2 border-gray-200">
               <tr>
                 <td colSpan={3} className="px-4 py-3 font-bold text-gray-700">РАЗОМ</td>
-                <td className="px-4 py-3 text-center font-bold text-indigo-700">{totalSold} шт.</td>
+                <td className="px-4 py-3 text-center font-bold text-teal-700">{totalSold} шт.</td>
                 <td />
               </tr>
             </tfoot>
@@ -186,7 +186,7 @@ export default function ReportsPage() {
   return (
     <Suspense fallback={
       <div className="flex justify-center py-16">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600" />
       </div>
     }>
       <ReportsContent />

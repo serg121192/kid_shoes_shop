@@ -36,7 +36,7 @@ function Field({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${error ? "border-red-400" : "border-gray-300"
+          className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${error ? "border-red-400" : "border-gray-300"
           }`}
       />
       {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
@@ -93,7 +93,7 @@ function AutocompleteField({
           placeholder={placeholder}
           disabled={disabled}
           autoComplete="off"
-          className={`w-full border rounded-lg px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed ${error ? "border-red-400" : confirmed ? "border-green-400" : "border-gray-300"
+          className={`w-full border rounded-lg px-4 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed ${error ? "border-red-400" : confirmed ? "border-green-400" : "border-gray-300"
             }`}
         />
         <span className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
@@ -124,7 +124,7 @@ function AutocompleteField({
                     onSelect(opt);
                     setOpen(false);
                   }}
-                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
+                  className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors"
                 >
                   {opt.name}
                 </button>
@@ -205,14 +205,14 @@ function AuthBlock({ onSuccess }: { onSuccess: () => void }) {
         <button
           type="button"
           onClick={() => setTab("login")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${tab === "login" ? "bg-indigo-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${tab === "login" ? "bg-teal-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
         >
           <LogIn size={15} /> Увійти
         </button>
         <button
           type="button"
           onClick={() => setTab("register")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${tab === "register" ? "bg-indigo-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${tab === "register" ? "bg-teal-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
         >
           <UserPlus size={15} /> Реєстрація
         </button>
@@ -225,36 +225,36 @@ function AuthBlock({ onSuccess }: { onSuccess: () => void }) {
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Ім&apos;я</label>
                 <input name="first_name" value={form.first_name} onChange={handleChange} required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Прізвище</label>
                 <input name="last_name" value={form.last_name} onChange={handleChange} required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
               </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Телефон</label>
               <input name="phone" value={form.phone} onChange={handleChange} placeholder="+380XXXXXXXXX"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
             </div>
           </>
         )}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
           <input name="email" type="email" value={form.email} onChange={handleChange} required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Пароль</label>
           <input name="password" type="password" value={form.password} onChange={handleChange} required minLength={8}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" />
         </div>
 
         {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
         <button type="submit" disabled={loading}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">
+          className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">
           {loading ? "Зачекайте..." : tab === "login" ? "Увійти та продовжити" : "Зареєструватись та продовжити"}
         </button>
       </form>
@@ -476,8 +476,8 @@ export default function CheckoutPage() {
               <label
                 key={opt.value}
                 className={`flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer transition-colors ${deliveryType === opt.value
-                    ? "border-indigo-500 bg-indigo-50"
-                    : "border-gray-200 hover:border-indigo-300"
+                    ? "border-teal-500 bg-teal-50"
+                    : "border-gray-200 hover:border-teal-300"
                   }`}
               >
                 <input
@@ -486,7 +486,7 @@ export default function CheckoutPage() {
                   value={opt.value}
                   checked={deliveryType === opt.value}
                   onChange={() => handleDeliveryTypeChange(opt.value)}
-                  className="accent-indigo-600"
+                  className="accent-teal-600"
                 />
                 <span className="text-sm font-medium text-gray-700">{opt.label}</span>
               </label>
@@ -495,10 +495,10 @@ export default function CheckoutPage() {
 
           {/* Pickup info card */}
           {deliveryType === "pickup" && (
-            <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-4 text-sm text-indigo-800 space-y-1">
-              <p className="font-semibold text-indigo-900">Адреса магазину:</p>
+            <div className="bg-teal-50 border border-teal-100 rounded-xl px-4 py-4 text-sm text-teal-800 space-y-1">
+              <p className="font-semibold text-teal-900">Адреса магазину:</p>
               <p>{STORE_ADDRESS}</p>
-              <p className="text-xs text-indigo-500 pt-1">Після підтвердження бронювання менеджер зв'яжеться з вами для уточнення часу візиту.</p>
+              <p className="text-xs text-teal-500 pt-1">Після підтвердження бронювання менеджер зв'яжеться з вами для уточнення часу візиту.</p>
             </div>
           )}
 
@@ -587,7 +587,7 @@ export default function CheckoutPage() {
           )}
         </div>
 
-        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 text-sm text-indigo-700">
+        <div className="bg-teal-50 border border-teal-100 rounded-2xl p-5 text-sm text-teal-700">
           <p className="font-semibold mb-1">Як це працює?</p>
           <p>Після підтвердження бронювання наш менеджер зв'яжеться з вами для уточнення розміру та деталей замовлення.</p>
         </div>
@@ -595,7 +595,7 @@ export default function CheckoutPage() {
         <button
           type="submit"
           disabled={isLoading || !isAuthenticated}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-3 rounded-xl transition-colors"
+          className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-semibold py-3 rounded-xl transition-colors"
           title={!isAuthenticated ? "Спочатку увійдіть або зареєструйтесь" : undefined}
         >
           {isLoading ? "Обробка..." : "Підтвердити бронювання"}

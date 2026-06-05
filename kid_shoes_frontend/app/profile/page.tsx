@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -84,7 +84,7 @@ export default function ProfilePage() {
   if (authLoading) {
     return (
       <div className="flex justify-center items-center h-96">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600" />
       </div>
     );
   }
@@ -112,7 +112,7 @@ export default function ProfilePage() {
                 name={name}
                 value={formData[name]}
                 onChange={handleChange}
-                className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${errors[name] ? "border-red-400" : "border-gray-300"
+                className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent ${errors[name] ? "border-red-400" : "border-gray-300"
                   }`}
               />
               {errors[name] && <p className="text-xs text-red-600 mt-1">{errors[name]}</p>}
@@ -140,7 +140,7 @@ export default function ProfilePage() {
                 value={passwordData[name as keyof typeof passwordData]}
                 onChange={handleChange}
                 minLength={8}
-                className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${errors[name] ? "border-red-400" : "border-gray-300"
+                className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent ${errors[name] ? "border-red-400" : "border-gray-300"
                   }`}
                 placeholder="мін. 8 символів"
               />
@@ -159,7 +159,7 @@ export default function ProfilePage() {
         <button
           type="submit"
           disabled={isSaving}
-          className="w-full bg-emerald-600 hover:bg-emerald-800 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
+          className="w-full bg-emerald-600 hover:bg-emerald-800 disabled:bg-teal-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
         >
           {isSaving ? "Зберігаємо..." : "Зберегти зміни"}
         </button>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import api from "@/app/lib/api";
@@ -173,14 +173,14 @@ export default function ProductsPage() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); resetPage(); }}
             placeholder="Пошук..."
-            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
 
         <select
           value={season}
           onChange={(e) => { setSeason(e.target.value); resetPage(); }}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
         >
           <option value="">Всі сезони</option>
           {SEASONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -189,7 +189,7 @@ export default function ProductsPage() {
         <select
           value={prodType}
           onChange={(e) => { setProdType(e.target.value); resetPage(); }}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
         >
           <option value="">Всі типи</option>
           {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -198,7 +198,7 @@ export default function ProductsPage() {
         <select
           value={gender}
           onChange={(e) => { setGender(e.target.value); resetPage(); }}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
         >
           <option value="">Всі</option>
           {GENDERS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
@@ -212,7 +212,7 @@ export default function ProductsPage() {
             onChange={(e) => { setMinPrice(e.target.value); resetPage(); }}
             placeholder="Від ₴"
             min={0}
-            className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
           <span className="text-gray-400 text-sm">—</span>
           <input
@@ -221,14 +221,14 @@ export default function ProductsPage() {
             onChange={(e) => { setMaxPrice(e.target.value); resetPage(); }}
             placeholder="До ₴"
             min={0}
-            className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-20 border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
 
         <select
           value={size}
           onChange={(e) => { setSize(e.target.value); resetPage(); }}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
         >
           <option value="">Всі розміри</option>
           {Array.from({ length: 27 }, (_, i) => i + 18).map((s) => (
@@ -242,7 +242,7 @@ export default function ProductsPage() {
             type="checkbox"
             checked={hasDiscount}
             onChange={(e) => { setHasDiscount(e.target.checked); resetPage(); }}
-            className="accent-indigo-600 w-4 h-4"
+            className="accent-teal-600 w-4 h-4"
           />
           Тільки зі знижкою
         </label>
@@ -267,7 +267,7 @@ export default function ProductsPage() {
       {/* Products Grid */}
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600" />
         </div>
       ) : products.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
@@ -308,7 +308,7 @@ export default function ProductsPage() {
                 onClick={() => setPage(p as number)}
                 className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
                   p === page
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-teal-600 text-white"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >

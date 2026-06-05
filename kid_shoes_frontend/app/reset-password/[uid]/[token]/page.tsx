@@ -67,7 +67,7 @@ export default function ResetPasswordPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               placeholder="мін. 8 символів"
             />
           </div>
@@ -82,7 +82,7 @@ export default function ResetPasswordPage() {
               onChange={(e) => setPassword2(e.target.value)}
               required
               minLength={8}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               placeholder="••••••••"
             />
           </div>
@@ -96,13 +96,13 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-emerald-600 hover:bg-emerald-800 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
+            className="w-full bg-emerald-600 hover:bg-emerald-800 disabled:bg-teal-400 text-white font-semibold py-2.5 rounded-lg transition-colors"
           >
             {isLoading ? "Зберігаємо..." : "Зберегти пароль"}
           </button>
 
           <p className="text-center text-sm text-gray-500">
-            <Link href="/login" className="text-indigo-600 hover:underline font-medium">
+            <Link href="/login" className="text-teal-600 hover:underline font-medium">
               ← Повернутися до входу
             </Link>
           </p>

@@ -51,14 +51,13 @@ export default function OrderDetailPage({
 
     useEffect(() => {
         if (!authLoading && !isAuthenticated) { router.push("/login"); return; }
-        if (!authLoading && user?.is_staff) { router.push("/manager/orders"); return; }
         if (!authLoading && isAuthenticated) {
             api.get<Order>(`/shop/orders/${id}/`)
                 .then((r) => setOrder(r.data))
-                .catch(() => router.push("/orders"))
+                .catch(() => router.push(user?.is_staff ? "/manager/orders" : "/orders"))
                 .finally(() => setIsLoading(false));
         }
-    }, [authLoading, isAuthenticated, id, router]);
+    }, [authLoading, isAuthenticated, id, router, user]);
 
     const handleCancel = async () => {
         if (!order || !confirm("Скасувати замовлення?")) return;
@@ -79,7 +78,7 @@ export default function OrderDetailPage({
     if (authLoading || isLoading) {
         return (
             <div className="flex justify-center items-center h-96">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600" />
             </div>
         );
     }
@@ -90,7 +89,7 @@ export default function OrderDetailPage({
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <button
                 onClick={() => router.back()}
-                className="flex items-center gap-2 text-gray-500 hover:text-indigo-600 mb-6 transition-colors"
+                className="flex items-center gap-2 text-gray-500 hover:text-teal-600 mb-6 transition-colors"
             >
                 <ArrowLeft size={18} />
                 До бронювань
@@ -149,7 +148,7 @@ export default function OrderDetailPage({
                                 </Link>
                                 <div className="flex-1 min-w-0">
                                     <Link href={`/products/${product.id}`}>
-                                        <p className="font-medium text-gray-800 hover:text-indigo-600 transition-colors">
+                                        <p className="font-medium text-gray-800 hover:text-teal-600 transition-colors">
                                             {product.vendor} {product.model_name}
                                         </p>
                                     </Link>
@@ -167,7 +166,7 @@ export default function OrderDetailPage({
 
                 <div className="border-t border-gray-100 mt-4 pt-4 flex justify-between items-center">
                     <span className="font-semibold text-gray-900">Разом:</span>
-                    <span className="text-xl font-bold text-indigo-600">{Number(order.total_price).toFixed(2)} грн</span>
+                    <span className="text-xl font-bold text-teal-600">{Number(order.total_price).toFixed(2)} грн</span>
                 </div>
             </div>
 
@@ -191,7 +190,7 @@ export default function OrderDetailPage({
                                 ))}
                             </dl>
 
-                            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-800 leading-relaxed">
+                            <div className="bg-teal-50 border border-teal-100 rounded-xl p-4 text-sm text-teal-800 leading-relaxed">
                                 Дякуємо за покупку! Для підтвердження правильності вибору розміру взуття та отримання Вашого замовлення, чекаємо Вас у нашому магазині за адресою:{" "}
                                 <span className="font-semibold">
                                     м. Чернігів, проспект Левка Лук&apos;яненка 78, 2-й поверх.
