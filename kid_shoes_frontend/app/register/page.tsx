@@ -31,7 +31,7 @@ function RegisterForm() {
     setErrors({});
     setIsLoading(true);
     try {
-      await api.post("/user/create/", formData);
+      await api.post("/user/register/", formData);
       const nextParam = next ? `&next=${encodeURIComponent(next)}` : "";
       router.push(`/login?registered=1${nextParam}`);
     } catch (err) {

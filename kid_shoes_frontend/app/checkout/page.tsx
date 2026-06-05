@@ -175,7 +175,7 @@ function AuthBlock({ onSuccess }: { onSuccess: () => void }) {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post("/user/create/", {
+      await api.post("/user/register/", {
         email: form.email,
         password: form.password,
         first_name: form.first_name,
