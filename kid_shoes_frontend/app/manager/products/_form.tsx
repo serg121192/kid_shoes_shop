@@ -232,6 +232,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
           setEditUploadProgress((prev) => ({ ...prev, [localId]: 0 }));
           const fd = new FormData();
           fd.append("video", file);
+          fd.append("title", file.name.replace(/\.[^/.]+$/, ""));
           fd.append("order", String(savedVideos.length));
           try {
             const res = await api.post<ProductVideo>(
@@ -265,7 +266,11 @@ export default function ProductForm({ productId }: { productId?: number }) {
       } else {
         setPendingVideos((prev) => [
           ...prev,
-          ...vids.map((file) => ({ localId: uid(), file, title: "" })),
+          ...vids.map((file) => ({
+            localId: uid(),
+            file,
+            title: file.name.replace(/\.[^/.]+$/, ""),
+          })),
         ]);
       }
     },
@@ -665,7 +670,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
                 <input
                   value={v.title}
                   onChange={(e) => handleUpdateVideoTitle(v.id, e.target.value)}
-                  placeholder="Назва відео (необов'язково)"
+                  placeholder="Назва відео"
                   className="flex-1 text-sm border-none outline-none bg-transparent text-gray-700"
                 />
                 <button onClick={() => handleDeleteSavedVideo(v.id)}
