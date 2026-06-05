@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import api, { getMediaUrl } from "@/app/lib/api";
 import { useShop } from "@/app/context/ShopContext";
-import { ArrowLeft, Upload, X, Plus, Trash2, Star } from "lucide-react";
+import { ArrowLeft, Upload, X, Plus, Trash2, Star, Check } from "lucide-react";
 import { Vendor, ProductImage, ProductSize, ProductVideo } from "@/app/types";
 
 // ─── Local types ──────────────────────────────────────────────────────────────
@@ -83,6 +83,9 @@ export default function ProductForm({ productId }: { productId?: number }) {
 
   // ── Basic form ──────────────────────────────────────────────────────────────
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [showNewVendor, setShowNewVendor] = useState(false);
+  const [newVendorName, setNewVendorName] = useState("");
+  const [newVendorLoading, setNewVendorLoading] = useState(false);
   const [form, setForm] = useState({
     vendor: "",
     model_name: "",
@@ -161,6 +164,26 @@ export default function ProductForm({ productId }: { productId?: number }) {
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+
+  // ── Create new vendor inline ──────────────────────────────────────────────────
+  const handleCreateVendor = async () => {
+    const name = newVendorName.trim();
+    if (!name) return;
+    setNewVendorLoading(true);
+    try {
+      const res = await api.post<Vendor>("/shop/vendors/", { name });
+      const created = res.data;
+      setVendors((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setForm((p) => ({ ...p, vendor: String(created.id) }));
+      setShowNewVendor(false);
+      setNewVendorName("");
+      showToast(`Бренд "${created.name}" створено`);
+    } catch {
+      showToast("Не вдалося створити бренд", "error");
+    } finally {
+      setNewVendorLoading(false);
+    }
+  };
 
   // ── Image drag-and-drop ──────────────────────────────────────────────────────
   const handleImageFiles = useCallback(
@@ -490,12 +513,56 @@ export default function ProductForm({ productId }: { productId?: number }) {
         <h2 className="font-semibold text-gray-700">Основна інформація</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Виробник *</label>
-            <select name="vendor" value={form.vendor} onChange={handleChange}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
-              <option value="">Оберіть...</option>
-              {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-            </select>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-600">Виробник *</label>
+              {!showNewVendor && (
+                <button
+                  type="button"
+                  onClick={() => { setShowNewVendor(true); setNewVendorName(""); }}
+                  className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 transition-colors"
+                >
+                  <Plus size={12} /> Новий бренд
+                </button>
+              )}
+            </div>
+
+            {!showNewVendor ? (
+              <select name="vendor" value={form.vendor} onChange={handleChange}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
+                <option value="">Оберіть...</option>
+                {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  type="text"
+                  value={newVendorName}
+                  onChange={(e) => setNewVendorName(e.target.value)}
+                  onKeyDown={async (e) => {
+                    if (e.key === "Enter") { e.preventDefault(); await handleCreateVendor(); }
+                    if (e.key === "Escape") { setShowNewVendor(false); }
+                  }}
+                  placeholder="Назва бренду"
+                  className="flex-1 border border-teal-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                />
+                <button
+                  type="button"
+                  onClick={handleCreateVendor}
+                  disabled={newVendorLoading || !newVendorName.trim()}
+                  className="flex items-center gap-1 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 text-white px-3 py-2 rounded-lg text-sm transition-colors"
+                >
+                  {newVendorLoading ? "..." : <Check size={14} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewVendor(false)}
+                  className="flex items-center text-gray-400 hover:text-gray-600 px-2 py-2 rounded-lg transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Назва моделі *</label>
