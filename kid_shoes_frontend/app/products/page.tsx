@@ -113,7 +113,11 @@ export default function ProductsPage() {
   const resetPage = () => setPage(1);
 
   const handleAddToCart = async (productSizeId: number) => {
-    if (!isAuthenticated) { window.location.href = "/login?next=/cart"; return; }
+    if (!isAuthenticated) {
+      sessionStorage.setItem("pending_cart_item", String(productSizeId));
+      window.location.href = "/login?next=/cart";
+      return;
+    }
     try {
       await api.post("/shop/cart/me/cart_add/", { product_size: productSizeId, quantity: 1 });
       setCartCount((c) => c + 1);

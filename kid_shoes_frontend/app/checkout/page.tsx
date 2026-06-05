@@ -265,7 +265,7 @@ function AuthBlock({ onSuccess }: { onSuccess: () => void }) {
 // ── Checkout page ────────────────────────────────────────────────────────────
 
 export default function CheckoutPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("np_warehouse");
   const [isLoading, setIsLoading] = useState(false);
@@ -282,6 +282,17 @@ export default function CheckoutPage() {
     building_number: "",
     apartment: "",
   });
+
+  // Pre-fill form with user profile data when authenticated
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        recipient_full_name: prev.recipient_full_name || `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim(),
+        recipient_phone: prev.recipient_phone || (user.phone ?? ""),
+      }));
+    }
+  }, [user]);
 
   // ── City autocomplete state ──
   const [cityQuery, setCityQuery] = useState("");

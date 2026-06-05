@@ -44,8 +44,19 @@ export default function CartPage() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) { router.push("/login?next=/cart"); return; }
-    if (!authLoading && isAuthenticated) { fetchCart(); }
-  }, [authLoading, isAuthenticated, router, fetchCart]);
+    if (!authLoading && isAuthenticated) {
+      const pendingItem = sessionStorage.getItem("pending_cart_item");
+      if (pendingItem) {
+        sessionStorage.removeItem("pending_cart_item");
+        api.post("/shop/cart/me/cart_add/", { product_size: Number(pendingItem), quantity: 1 })
+          .then(() => { setCartCount((c) => c + 1); })
+          .catch(() => {})
+          .finally(() => fetchCart());
+      } else {
+        fetchCart();
+      }
+    }
+  }, [authLoading, isAuthenticated, router, fetchCart, setCartCount]);
 
   const handleRemove = async (productSizeId: number, itemQty: number) => {
     // Optimistic update: remove item immediately
