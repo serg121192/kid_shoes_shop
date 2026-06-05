@@ -43,7 +43,7 @@ export default function CartPage() {
   }, [setCartCount]);
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) { router.push("/login"); return; }
+    if (!authLoading && !isAuthenticated) { router.push("/login?next=/cart"); return; }
     if (!authLoading && isAuthenticated) { fetchCart(); }
   }, [authLoading, isAuthenticated, router, fetchCart]);
 

@@ -142,7 +142,7 @@ function AutocompleteField({
 // ── Inline auth block (login / register) ─────────────────────────────────────
 
 function AuthBlock({ onSuccess }: { onSuccess: () => void }) {
-  const { login } = useAuth();
+  const { refreshUser } = useAuth();
   const [tab, setTab] = useState<"login" | "register">("login");
   const [form, setForm] = useState({ email: "", password: "", first_name: "", last_name: "", phone: "" });
   const [error, setError] = useState("");
@@ -153,12 +153,17 @@ function AuthBlock({ onSuccess }: { onSuccess: () => void }) {
     setError("");
   };
 
+  const doLogin = async (email: string, password: string) => {
+    await api.post("/user/token/", { email, password });
+    await refreshUser();
+    onSuccess();
+  };
+
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(form.email, form.password);
-      onSuccess();
+      await doLogin(form.email, form.password);
     } catch {
       setError("Невірний email або пароль");
     } finally {
@@ -177,8 +182,7 @@ function AuthBlock({ onSuccess }: { onSuccess: () => void }) {
         last_name: form.last_name,
         phone: form.phone,
       });
-      await login(form.email, form.password);
-      onSuccess();
+      await doLogin(form.email, form.password);
     } catch (err: unknown) {
       const data = (err as { response?: { data?: Record<string, string[]> } })?.response?.data;
       if (data) {

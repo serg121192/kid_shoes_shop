@@ -113,7 +113,7 @@ export default function ProductsPage() {
   const resetPage = () => setPage(1);
 
   const handleAddToCart = async (productSizeId: number) => {
-    if (!isAuthenticated) { window.location.href = "/login"; return; }
+    if (!isAuthenticated) { window.location.href = "/login?next=/cart"; return; }
     try {
       await api.post("/shop/cart/me/cart_add/", { product_size: productSizeId, quantity: 1 });
       setCartCount((c) => c + 1);
@@ -124,7 +124,7 @@ export default function ProductsPage() {
   };
 
   const handleToggleWishlist = async (productId: number) => {
-    if (!isAuthenticated) { window.location.href = "/login"; return; }
+    if (!isAuthenticated) { window.location.href = "/login?next=/products"; return; }
     try {
       if (wishlistProductIds.has(productId)) {
         await api.post("/shop/wishlist/me/remove_wish/", { product: productId });

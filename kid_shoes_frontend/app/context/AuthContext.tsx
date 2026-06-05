@@ -53,7 +53,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     await api.post("/user/token/", { email, password });
     await refreshUser();
-    router.push("/products");
+    const params = new URLSearchParams(window.location.search);
+    router.push(params.get("next") ?? "/products");
   };
 
   const logout = async () => {
