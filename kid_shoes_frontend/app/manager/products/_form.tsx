@@ -29,6 +29,8 @@ interface PendingVideo {
   localId: string;
   file: File;
   title: string;
+  progress?: number;   // 0–100, undefined = not uploading yet
+  uploading?: boolean;
 }
 
 interface ProductDetail {
@@ -109,6 +111,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
   // ── UI state ────────────────────────────────────────────────────────────────
   const [isDraggingImg, setIsDraggingImg] = useState(false);
   const [isDraggingVid, setIsDraggingVid] = useState(false);
+  // localId → upload progress 0–100 (edit mode live uploads)
+  const [editUploadProgress, setEditUploadProgress] = useState<Record<string, number>>({});
   const [isSaving, setIsSaving]           = useState(false);
   const [isLoading, setIsLoading]         = useState(isEdit);
 
@@ -224,17 +228,37 @@ export default function ProductForm({ productId }: { productId?: number }) {
 
       if (isEdit && productId) {
         for (const file of vids) {
+          const localId = uid();
+          setEditUploadProgress((prev) => ({ ...prev, [localId]: 0 }));
           const fd = new FormData();
           fd.append("video", file);
           fd.append("order", String(savedVideos.length));
           try {
             const res = await api.post<ProductVideo>(
               `/shop/products/${productId}/upload_video/`, fd,
-              { headers: { "Content-Type": "multipart/form-data" } }
+              {
+                headers: { "Content-Type": "multipart/form-data" },
+                onUploadProgress: (event) => {
+                  const pct = event.total
+                    ? Math.round((event.loaded / event.total) * 100)
+                    : 0;
+                  setEditUploadProgress((prev) => ({ ...prev, [localId]: pct }));
+                },
+              }
             );
+            setEditUploadProgress((prev) => {
+              const next = { ...prev };
+              delete next[localId];
+              return next;
+            });
             setSavedVideos((prev) => [...prev, res.data]);
             showToast("Відео завантажено");
           } catch {
+            setEditUploadProgress((prev) => {
+              const next = { ...prev };
+              delete next[localId];
+              return next;
+            });
             showToast(`Не вдалося завантажити ${file.name}`, "error");
           }
         }
@@ -398,13 +422,24 @@ export default function ProductForm({ productId }: { productId?: number }) {
             .catch(() => {/* non-blocking */});
         }
 
-        // 4. Upload pending videos
+        // 4. Upload pending videos (with progress tracking)
         for (const v of pendingVideos) {
+          setPendingVideos((prev) =>
+            prev.map((pv) => pv.localId === v.localId ? { ...pv, uploading: true, progress: 0 } : pv)
+          );
           const fd = new FormData();
           fd.append("video", v.file);
           fd.append("title", v.title);
           await api.post(`/shop/products/${newId}/upload_video/`, fd, {
             headers: { "Content-Type": "multipart/form-data" },
+            onUploadProgress: (event) => {
+              const pct = event.total
+                ? Math.round((event.loaded / event.total) * 100)
+                : 0;
+              setPendingVideos((prev) =>
+                prev.map((pv) => pv.localId === v.localId ? { ...pv, progress: pct } : pv)
+              );
+            },
           }).catch(() => {/* non-blocking */});
         }
 
@@ -646,21 +681,58 @@ export default function ProductForm({ productId }: { productId?: number }) {
         {!isEdit && pendingVideos.length > 0 && (
           <ul className="space-y-2">
             {pendingVideos.map((v) => (
-              <li key={v.localId} className="flex items-center gap-3 border border-gray-100 rounded-lg px-3 py-2">
-                <span className="text-gray-400 text-sm">🎬</span>
-                <span className="flex-1 text-sm text-gray-600 truncate">{v.file.name}</span>
-                <input
-                  value={v.title}
-                  onChange={(e) => setPendingVideos((prev) =>
-                    prev.map((pv) => pv.localId === v.localId ? { ...pv, title: e.target.value } : pv)
+              <li key={v.localId} className="border border-gray-100 rounded-lg px-3 py-2 space-y-1.5">
+                <div className="flex items-center gap-3">
+                  <span className="text-gray-400 text-sm">🎬</span>
+                  <span className="flex-1 text-sm text-gray-600 truncate">{v.file.name}</span>
+                  {!v.uploading && (
+                    <>
+                      <input
+                        value={v.title}
+                        onChange={(e) => setPendingVideos((prev) =>
+                          prev.map((pv) => pv.localId === v.localId ? { ...pv, title: e.target.value } : pv)
+                        )}
+                        placeholder="Назва відео"
+                        className="w-36 text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400"
+                      />
+                      <button onClick={() => setPendingVideos((prev) => prev.filter((pv) => pv.localId !== v.localId))}
+                        className="text-gray-300 hover:text-red-500 transition-colors">
+                        <X size={14} />
+                      </button>
+                    </>
                   )}
-                  placeholder="Назва відео"
-                  className="w-36 text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-teal-400"
-                />
-                <button onClick={() => setPendingVideos((prev) => prev.filter((pv) => pv.localId !== v.localId))}
-                  className="text-gray-300 hover:text-red-500 transition-colors">
-                  <X size={14} />
-                </button>
+                  {v.uploading && (
+                    <span className="text-xs text-teal-600 font-medium">{v.progress ?? 0}%</span>
+                  )}
+                </div>
+                {v.uploading && (
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-teal-500 h-1.5 rounded-full transition-all duration-200"
+                      style={{ width: `${v.progress ?? 0}%` }}
+                    />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Edit mode: live upload progress */}
+        {isEdit && Object.keys(editUploadProgress).length > 0 && (
+          <ul className="space-y-2">
+            {Object.entries(editUploadProgress).map(([id, pct]) => (
+              <li key={id} className="border border-teal-100 bg-teal-50 rounded-lg px-3 py-2 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-teal-700">Завантаження відео...</span>
+                  <span className="text-xs text-teal-600 font-medium">{pct}%</span>
+                </div>
+                <div className="w-full bg-teal-100 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="bg-teal-500 h-1.5 rounded-full transition-all duration-200"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
               </li>
             ))}
           </ul>
