@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Про нас — TAK i TAK",
-  description: "Магазин дитячого взуття TAK i TAK у Чернігові. Якісне взуття для дітей від перевірених виробників.",
+  title: "Про нас",
+  description:
+    "Магазин дитячого взуття ТАК і ТАК — якісне взуття для дітей від перевірених виробників. Широкий асортимент, доступні ціни, доставка Новою Поштою по всій Україні.",
+  openGraph: {
+    title: "Про нас — ТАК і ТАК",
+    url: "/about",
+  },
 };
 
 export default function AboutPage() {

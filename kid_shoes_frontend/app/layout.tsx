@@ -13,8 +13,19 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "TAK i TAK",
-  description: "Так і Так Магазин дитячого взуття",
+  metadataBase: new URL("https://tak-i-tak.vercel.app"),
+  title: {
+    default: "ТАК і ТАК — Магазин дитячого взуття",
+    template: "%s | ТАК і ТАК",
+  },
+  description:
+    "Інтернет-магазин дитячого взуття ТАК і ТАК. Широкий вибір черевиків, кросівок, сандалів для дітей. Доставка Новою Поштою по всій Україні.",
+  keywords: ["дитяче взуття", "взуття для дітей", "купити дитяче взуття", "черевики для дітей", "кросівки дитячі"],
+  openGraph: {
+    siteName: "ТАК і ТАК",
+    locale: "uk_UA",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

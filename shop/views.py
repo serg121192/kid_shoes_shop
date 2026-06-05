@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 
+from shop.emails import send_order_confirmation, send_order_status_update, send_new_order_alert
 from shop.permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from shop.filters import ProductFilter
 from shop.models import (
@@ -386,6 +387,11 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()
         cart.cart_items.all().delete()
 
+        # Refresh so that related delivery/items are accessible for emails
+        order.refresh_from_db()
+        send_order_confirmation(order)
+        send_new_order_alert(order)
+
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["patch"], url_path="update_status")
@@ -398,6 +404,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         new_status = serializer.validated_data["status"]
         order.status = new_status
         order.save()  # сигнал post_save подбає про ТТН автоматично
+
+        send_order_status_update(order)
 
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
 

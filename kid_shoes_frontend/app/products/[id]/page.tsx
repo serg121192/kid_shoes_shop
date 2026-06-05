@@ -127,7 +127,13 @@ export default function ProductDetailPage({
   };
 
   const handleAddToCart = async () => {
-    if (!isAuthenticated) { router.push("/login"); return; }
+    if (!isAuthenticated) {
+      if (selectedSize) {
+        sessionStorage.setItem("pending_cart_item", String(selectedSize.id));
+      }
+      router.push("/login?next=/cart");
+      return;
+    }
     if (!selectedSize) return;
 
     setCartLoading(true);
