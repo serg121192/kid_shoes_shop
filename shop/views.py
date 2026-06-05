@@ -403,7 +403,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         new_status = serializer.validated_data["status"]
         order.status = new_status
-        order.save()  # сигнал post_save подбає про ТТН автоматично
+        order.save()  # сигнал post_save: при processing→створює ТТН, при cancelled→видаляє
 
         send_order_status_update(order)
 
@@ -472,7 +472,9 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         order.status = Order.StatusChoices.CANCELLED
-        order.save()
+        order.save()  # сигнал _delete_ttn_on_cancel подбає про видалення ТТН
+
+        send_order_status_update(order)
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
 
 

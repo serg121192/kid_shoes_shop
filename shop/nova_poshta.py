@@ -226,3 +226,21 @@ def create_ttn(delivery_info) -> str | None:
         return None
 
     return documents[0].get("IntDocNumber", None)
+
+
+def delete_ttn(ttn: str) -> bool:
+    """
+    Видаляє/відмовляється від інтернет-документа (ТТН) у НП.
+    Повертає True якщо успішно, False — якщо помилка.
+
+    НП дозволяє видалити документ тільки поки він ще не передано
+    в доставку (статус «Нова пошта прийняла» або раніше).
+    """
+    result = _call("InternetDocument", "delete", {
+        "DocumentRefs": [ttn],
+    })
+    if result:
+        logger.info("delete_ttn: ТТН %s успішно видалено з НП", ttn)
+        return True
+    logger.warning("delete_ttn: не вдалося видалити ТТН %s з НП (можливо вже передано в доставку)", ttn)
+    return False

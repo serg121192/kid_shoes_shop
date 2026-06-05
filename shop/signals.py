@@ -54,3 +54,33 @@ def _create_ttn_on_processing(sender, instance, created, **kwargs):
             logger.error("Order #%s: Nova Poshta не повернула ТТН", instance.pk)
     except Exception:
         logger.exception("Order #%s: помилка при створенні ТТН", instance.pk)
+
+
+@receiver(post_save, sender=Order)
+def _delete_ttn_on_cancel(sender, instance, created, **kwargs):
+    """
+    Автоматично скасовує ТТН у НП при переведенні замовлення у статус 'Скасовано'.
+    Спрацьовує незалежно від того, звідки змінено статус.
+    """
+    old_status = getattr(instance, "_old_status", None)
+    just_cancelled = (
+        not created
+        and old_status != Order.StatusChoices.CANCELLED
+        and instance.status == Order.StatusChoices.CANCELLED
+    )
+    if not just_cancelled:
+        return
+
+    delivery = getattr(instance, "delivery", None)
+    if not delivery or not delivery.tracking_number:
+        return
+
+    try:
+        from shop.nova_poshta import delete_ttn
+        deleted = delete_ttn(delivery.tracking_number)
+        if deleted:
+            delivery.tracking_number = ""
+            delivery.save(update_fields=["tracking_number"])
+            logger.info("Order #%s: ТТН видалено з НП після скасування", instance.pk)
+    except Exception:
+        logger.exception("Order #%s: помилка при видаленні ТТН з НП", instance.pk)
