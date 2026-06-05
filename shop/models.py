@@ -402,6 +402,20 @@ class Review(models.Model):
         return f"Відгук {self.user.email} на {self.product} — {self.rating}★"
 
 
+class SiteVisit(models.Model):
+    """One record per unique IP per day — tracks daily unique visitors."""
+    ip = models.GenericIPAddressField(verbose_name="IP-адреса")
+    date = models.DateField(verbose_name="Дата")
+
+    class Meta:
+        unique_together = ("ip", "date")
+        verbose_name = "Відвідування"
+        verbose_name_plural = "Відвідування"
+
+    def __str__(self):
+        return f"{self.ip} — {self.date}"
+
+
 class Wishlist(models.Model):
     products = models.ManyToManyField(Product, through="WishlistItem", verbose_name="Товари")
     user = models.OneToOneField(

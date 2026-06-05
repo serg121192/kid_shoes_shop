@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import api from "@/app/lib/api";
-import { TrendingUp, ShoppingBag, DollarSign, Package, FileText } from "lucide-react";
+import { TrendingUp, ShoppingBag, DollarSign, Package, FileText, Users, Eye } from "lucide-react";
 
 interface Stats {
   revenue: { today: number; week: number; month: number };
@@ -17,6 +17,13 @@ interface Stats {
   }[];
   total_orders: number;
   total_revenue: number;
+}
+
+interface VisitStats {
+  visits_today: number;
+  visits_week: number;
+  visits_month: number;
+  total_users: number;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -57,13 +64,14 @@ function StatCard({ label, value, sub, icon: Icon, color, href }: {
 
 export default function ManagerDashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [visitStats, setVisitStats] = useState<VisitStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    api.get<Stats>("/shop/stats/")
-      .then((r) => setStats(r.data))
-      .catch(() => setStats(null))
-      .finally(() => setIsLoading(false));
+    Promise.all([
+      api.get<Stats>("/shop/stats/").then((r) => setStats(r.data)).catch(() => setStats(null)),
+      api.get<VisitStats>("/shop/stats/visits/").then((r) => setVisitStats(r.data)).catch(() => setVisitStats(null)),
+    ]).finally(() => setIsLoading(false));
   }, []);
 
   if (isLoading) {
@@ -113,6 +121,34 @@ export default function ManagerDashboardPage() {
           sub={`${stats.total_revenue.toFixed(0)} грн загалом`}
           icon={ShoppingBag}
           color="bg-emerald-500"
+        />
+      </div>
+
+      {/* Visitors & Users */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard
+          label="Відвідувачів сьогодні"
+          value={visitStats ? String(visitStats.visits_today) : "—"}
+          icon={Eye}
+          color="bg-cyan-500"
+        />
+        <StatCard
+          label="Відвідувачів за тиждень"
+          value={visitStats ? String(visitStats.visits_week) : "—"}
+          icon={Eye}
+          color="bg-sky-500"
+        />
+        <StatCard
+          label="Відвідувачів за місяць"
+          value={visitStats ? String(visitStats.visits_month) : "—"}
+          icon={Eye}
+          color="bg-blue-400"
+        />
+        <StatCard
+          label="Зареєстровано користувачів"
+          value={visitStats ? String(visitStats.total_users) : "—"}
+          icon={Users}
+          color="bg-teal-500"
         />
       </div>
 

@@ -13,6 +13,8 @@ from shop.views import (
     manager_stats,
     sales_report,
     sales_report_xlsx,
+    track_visit,
+    visit_stats,
 )
 
 
@@ -33,4 +35,6 @@ urlpatterns = [
     path("stats/", manager_stats, name="manager-stats"),
     path("stats/report/", sales_report, name="sales-report"),
     path("stats/report/xlsx/", sales_report_xlsx, name="sales-report-xlsx"),
+    path("track-visit/", track_visit, name="track-visit"),
+    path("stats/visits/", visit_stats, name="visit-stats"),
 ]

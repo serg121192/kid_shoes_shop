@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, FormEvent, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/app/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
-import { Loader2, CheckCircle, ChevronDown } from "lucide-react";
+import { Loader2, CheckCircle, ChevronDown, LogIn, UserPlus } from "lucide-react";
 
 type DeliveryType = "np_warehouse" | "np_postamat" | "np_address" | "pickup";
 type NpOption = { ref: string; name: string };
@@ -139,6 +139,125 @@ function AutocompleteField({
   );
 }
 
+// ── Inline auth block (login / register) ─────────────────────────────────────
+
+function AuthBlock({ onSuccess }: { onSuccess: () => void }) {
+  const { login } = useAuth();
+  const [tab, setTab] = useState<"login" | "register">("login");
+  const [form, setForm] = useState({ email: "", password: "", first_name: "", last_name: "", phone: "" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+    setError("");
+  };
+
+  const handleLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await login(form.email, form.password);
+      onSuccess();
+    } catch {
+      setError("Невірний email або пароль");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.post("/user/create/", {
+        email: form.email,
+        password: form.password,
+        first_name: form.first_name,
+        last_name: form.last_name,
+        phone: form.phone,
+      });
+      await login(form.email, form.password);
+      onSuccess();
+    } catch (err: unknown) {
+      const data = (err as { response?: { data?: Record<string, string[]> } })?.response?.data;
+      if (data) {
+        const msgs = Object.values(data).flat();
+        setError(msgs[0] ?? "Помилка реєстрації");
+      } else {
+        setError("Помилка реєстрації");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+      <h2 className="font-semibold text-gray-800">Ваш обліковий запис</h2>
+
+      {/* Tabs */}
+      <div className="flex rounded-xl overflow-hidden border border-gray-200">
+        <button
+          type="button"
+          onClick={() => setTab("login")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${tab === "login" ? "bg-indigo-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+        >
+          <LogIn size={15} /> Увійти
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("register")}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${tab === "register" ? "bg-indigo-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+        >
+          <UserPlus size={15} /> Реєстрація
+        </button>
+      </div>
+
+      <form onSubmit={tab === "login" ? handleLogin : handleRegister} className="space-y-3">
+        {tab === "register" && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Ім&apos;я</label>
+                <input name="first_name" value={form.first_name} onChange={handleChange} required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Прізвище</label>
+                <input name="last_name" value={form.last_name} onChange={handleChange} required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Телефон</label>
+              <input name="phone" value={form.phone} onChange={handleChange} placeholder="+380XXXXXXXXX"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+          </>
+        )}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+          <input name="email" type="email" value={form.email} onChange={handleChange} required
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Пароль</label>
+          <input name="password" type="password" value={form.password} onChange={handleChange} required minLength={8}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+
+        {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+
+        <button type="submit" disabled={loading}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">
+          {loading ? "Зачекайте..." : tab === "login" ? "Увійти та продовжити" : "Зареєструватись та продовжити"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 // ── Checkout page ────────────────────────────────────────────────────────────
 
 export default function CheckoutPage() {
@@ -261,7 +380,6 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!isAuthenticated) { router.push("/login"); return; }
     setIsLoading(true);
     setErrors({});
 
@@ -303,6 +421,12 @@ export default function CheckoutPage() {
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Бронювання розміру</h1>
+
+      {!isAuthenticated && (
+        <div className="mb-5">
+          <AuthBlock onSuccess={() => {}} />
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
 
@@ -455,8 +579,9 @@ export default function CheckoutPage() {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || !isAuthenticated}
           className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-3 rounded-xl transition-colors"
+          title={!isAuthenticated ? "Спочатку увійдіть або зареєструйтесь" : undefined}
         >
           {isLoading ? "Обробка..." : "Підтвердити бронювання"}
         </button>

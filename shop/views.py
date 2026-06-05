@@ -31,6 +31,7 @@ from shop.models import (
     WishlistItem,
     DeliveryInfo,
     Review,
+    SiteVisit,
 )
 from shop.nova_poshta import get_cities_list, get_warehouses_list, get_tracking_status
 from shop.serializers import (
@@ -698,3 +699,41 @@ def sales_report_xlsx(request: Request) -> HttpResponse:
     )
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
+
+# ── Site visit tracking ────────────────────────────────────────────────────────
+
+def _get_client_ip(request: Request) -> str:
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if x_forwarded_for:
+        return x_forwarded_for.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR", "0.0.0.0")
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def track_visit(request: Request) -> Response:
+    """Record a unique visit (one per IP per day)."""
+    ip = _get_client_ip(request)
+    today = timezone.now().date()
+    SiteVisit.objects.get_or_create(ip=ip, date=today)
+    return Response({"ok": True})
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def visit_stats(request: Request) -> Response:
+    """Return visit and user counts for the manager dashboard."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    today = timezone.now().date()
+    week_ago = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
+
+    return Response({
+        "visits_today": SiteVisit.objects.filter(date=today).count(),
+        "visits_week": SiteVisit.objects.filter(date__gte=week_ago).count(),
+        "visits_month": SiteVisit.objects.filter(date__gte=month_ago).count(),
+        "total_users": User.objects.filter(is_staff=False).count(),
+    })
