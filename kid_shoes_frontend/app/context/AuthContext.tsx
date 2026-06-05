@@ -9,6 +9,7 @@ import {
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 import api from "@/app/lib/api";
 import { User } from "@/app/types";
 
@@ -30,7 +31,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const response = await api.get<User>("/user/me/");
+      // Use plain axios (no interceptor) so a 401 here doesn't trigger
+      // the token-refresh loop and "auth:expired" redirect for guest users.
+      const response = await axios.get<User>("/api/user/me/", { withCredentials: true });
       setUser(response.data);
     } catch {
       setUser(null);
