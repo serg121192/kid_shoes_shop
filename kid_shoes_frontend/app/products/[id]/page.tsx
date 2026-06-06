@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import api, { getMediaUrl } from "@/app/lib/api";
@@ -81,6 +81,7 @@ export default function ProductDetailPage({
     | { kind: "video"; data: ProductVideo };
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -203,6 +204,13 @@ export default function ProductDetailPage({
   const hasPrev = activeIndex > 0;
   const hasNext = activeIndex < mediaItems.length - 1;
 
+  // Autoplay video when user switches to a video item
+  useEffect(() => {
+    if (activeItem?.kind === "video" && videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  }, [activeIndex, activeItem?.kind]);
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <button
@@ -221,9 +229,11 @@ export default function ProductDetailPage({
             <div className="aspect-square relative group">
               {activeItem?.kind === "video" ? (
                 <video
+                  ref={videoRef}
                   key={(activeItem.data as ProductVideo).id}
                   src={getMediaUrl((activeItem.data as ProductVideo).video) ?? ""}
                   controls
+                  autoPlay
                   className="w-full h-full object-contain bg-black"
                 />
               ) : (

@@ -4,6 +4,10 @@ import {
   useState, useEffect, useRef, useCallback,
   DragEvent, ChangeEvent,
 } from "react";
+
+// Module-level queue: survives client-side navigation within the same tab.
+// Used when videos are dropped in create mode before the product exists.
+const _pendingVideoQueue: File[] = [];
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import api, { getMediaUrl } from "@/app/lib/api";
@@ -160,6 +164,15 @@ export default function ProductForm({ productId }: { productId?: number }) {
     load();
   }, [isEdit, productId]);
 
+  // ── Auto-upload videos queued from create-mode auto-save ─────────────────────
+  useEffect(() => {
+    if (isEdit && productId && !isLoading && _pendingVideoQueue.length > 0) {
+      const files = _pendingVideoQueue.splice(0);
+      handleVideoFiles(files);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading]);
+
   // ── Form field handler ───────────────────────────────────────────────────────
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -287,17 +300,51 @@ export default function ProductForm({ productId }: { productId?: number }) {
           }
         }
       } else {
-        setPendingVideos((prev) => [
-          ...prev,
-          ...vids.map((file) => ({
-            localId: uid(),
-            file,
-            title: file.name.replace(/\.[^/.]+$/, ""),
-          })),
-        ]);
+        // Create mode: if required fields are ready — auto-create product then upload immediately
+        if (form.vendor && form.model_name && form.full_price) {
+          vids.forEach((f) => _pendingVideoQueue.push(f));
+          setIsSaving(true);
+          try {
+            const body = {
+              vendor: Number(form.vendor),
+              model_name: form.model_name,
+              prod_type: form.prod_type,
+              gender: form.gender,
+              season: form.season,
+              full_price: Number(form.full_price),
+              discount: Number(form.discount) || 0,
+              description: form.description || null,
+              seo_description: form.seo_description || null,
+            };
+            const res = await api.post<{ id: number }>("/shop/products/", body);
+            // Navigate to edit — the useEffect below will pick up _pendingVideoQueue
+            router.replace(`/manager/products/${res.data.id}`);
+          } catch {
+            // Fallback: revert queue, add as pending
+            _pendingVideoQueue.length = 0;
+            setPendingVideos((prev) => [
+              ...prev,
+              ...vids.map((file) => ({
+                localId: uid(), file, title: file.name.replace(/\.[^/.]+$/, ""),
+              })),
+            ]);
+            showToast("Помилка авто-збереження. Відео завантажиться при збереженні.", "error");
+          } finally {
+            setIsSaving(false);
+          }
+        } else {
+          // Required fields not yet filled — add to pending queue, upload on save
+          setPendingVideos((prev) => [
+            ...prev,
+            ...vids.map((file) => ({
+              localId: uid(), file, title: file.name.replace(/\.[^/.]+$/, ""),
+            })),
+          ]);
+          showToast("Відео буде завантажено при збереженні товару");
+        }
       }
     },
-    [isEdit, productId, savedVideos, showToast]
+    [isEdit, productId, savedVideos, showToast, form, router]
   );
 
   const onVidDrop = (e: DragEvent) => {
