@@ -234,6 +234,9 @@ export default function ProductDetailPage({
                   src={getMediaUrl((activeItem.data as ProductVideo).video) ?? ""}
                   controls
                   autoPlay
+                  loop
+                  controlsList="nodownload"
+                  onContextMenu={(e) => e.preventDefault()}
                   className="w-full h-full object-contain bg-black"
                 />
               ) : (
