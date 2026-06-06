@@ -83,6 +83,13 @@ export default function ProductDetailPage({
   const [activeIndex, setActiveIndex] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Autoplay video when user switches to a video item
+  useEffect(() => {
+    if (activeIndex >= 0 && mediaItems[activeIndex]?.kind === "video" && videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  }, [activeIndex, mediaItems]);
+
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -203,13 +210,6 @@ export default function ProductDetailPage({
   const activeItem = mediaItems[activeIndex] ?? null;
   const hasPrev = activeIndex > 0;
   const hasNext = activeIndex < mediaItems.length - 1;
-
-  // Autoplay video when user switches to a video item
-  useEffect(() => {
-    if (activeItem?.kind === "video" && videoRef.current) {
-      videoRef.current.play().catch(() => {});
-    }
-  }, [activeIndex, activeItem?.kind]);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
