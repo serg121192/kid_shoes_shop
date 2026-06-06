@@ -169,6 +169,7 @@ class Vendor(models.Model):
     class Meta:
         verbose_name = "Виробник"
         verbose_name_plural = "Виробники"
+        ordering = ["name"]
 
 
 class Cart(models.Model):
