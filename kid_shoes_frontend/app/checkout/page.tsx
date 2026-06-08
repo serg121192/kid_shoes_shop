@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, FormEvent, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/app/lib/api";
+import { normalizeUaPhone } from "@/app/lib/phone";
 import { useAuth } from "@/app/context/AuthContext";
 import { Loader2, CheckCircle, ChevronDown, LogIn, UserPlus } from "lucide-react";
 
@@ -21,10 +22,13 @@ const STORE_ADDRESS = "м. Чернігів, проспект Левка Лук'
 // ── Simple text field ────────────────────────────────────────────────────────
 
 function Field({
-  name, label, placeholder, required = true, value, onChange, error,
+  name, label, placeholder, required = true, value, onChange, onBlur, error,
 }: {
   name: string; label: string; placeholder?: string; required?: boolean;
-  value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; error?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  error?: string;
 }) {
   return (
     <div>
@@ -34,6 +38,7 @@ function Field({
         name={name}
         value={value}
         onChange={onChange}
+        onBlur={onBlur}
         placeholder={placeholder}
         required={required}
           className={`w-full border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 ${error ? "border-red-400" : "border-gray-300"
@@ -148,17 +153,9 @@ function AuthBlock({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const normalizePhone = (raw: string): string => {
-    const digits = raw.replace(/\D/g, "");
-    if (digits.startsWith("380")) return "+" + digits;
-    if (digits.startsWith("0") && digits.length >= 10) return "+38" + digits;
-    if (digits.length > 0) return "+" + digits;
-    return raw;
-  };
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const normalized = name === "phone" ? normalizePhone(value) : value;
+    const normalized = name === "phone" ? normalizeUaPhone(value) : value;
     setForm((p) => ({ ...p, [name]: normalized }));
     setError("");
   };
@@ -299,7 +296,7 @@ export default function CheckoutPage() {
       setForm((prev) => ({
         ...prev,
         recipient_full_name: prev.recipient_full_name || `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim(),
-        recipient_phone: prev.recipient_phone || (user.phone ?? ""),
+        recipient_phone: prev.recipient_phone || normalizeUaPhone(user.phone ?? ""),
       }));
     }
   }, [user]);
@@ -354,19 +351,20 @@ export default function CheckoutPage() {
 
   // ── Handlers ──
 
-  const normalizePhone = (raw: string): string => {
-    const digits = raw.replace(/\D/g, "");
-    if (digits.startsWith("380")) return "+" + digits;
-    if (digits.startsWith("0") && digits.length >= 10) return "+38" + digits;
-    if (digits.length > 0) return "+" + digits;
-    return raw;
-  };
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const normalized = name === "recipient_phone" ? normalizePhone(value) : value;
+    const normalized = name === "recipient_phone" ? normalizeUaPhone(value) : value;
     setForm((prev) => ({ ...prev, [name]: normalized }));
     setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const handlePhoneBlur = () => {
+    setForm((prev) => {
+      const normalized = normalizeUaPhone(prev.recipient_phone);
+      if (normalized === prev.recipient_phone) return prev;
+      return { ...prev, recipient_phone: normalized };
+    });
+    setErrors((prev) => ({ ...prev, recipient_phone: "" }));
   };
 
   const handleCityInput = useCallback((val: string) => {
@@ -419,9 +417,12 @@ export default function CheckoutPage() {
     setErrors({});
 
     const isPickup = deliveryType === "pickup";
+    const recipientPhone = normalizeUaPhone(form.recipient_phone);
+    setForm((prev) => ({ ...prev, recipient_phone: recipientPhone }));
+
     const payload = {
       recipient_full_name: form.recipient_full_name,
-      recipient_phone: form.recipient_phone,
+      recipient_phone: recipientPhone,
       delivery_type: deliveryType,
       city_name: isPickup ? "" : form.city_name,
       city_ref: isPickup ? "" : form.city_ref,
@@ -479,9 +480,10 @@ export default function CheckoutPage() {
           <Field
             name="recipient_phone"
             label="Телефон"
-            placeholder="+380XXXXXXXXX"
+            placeholder="0991234567 або +380991234567"
             value={form.recipient_phone}
             onChange={handleChange}
+            onBlur={handlePhoneBlur}
             error={errors.recipient_phone}
           />
         </div>

@@ -1,3 +1,5 @@
+import re
+
 from rest_framework import serializers
 from django.core.validators import MinValueValidator
 
@@ -333,12 +335,34 @@ class OrderItemSerializer(serializers.ModelSerializer):
         fields = ["product_size", "quantity", "price"]
 
 
+def _normalize_ua_phone(raw: str) -> str:
+    digits = re.sub(r"\D", "", raw or "")
+    if digits.startswith("380") and len(digits) >= 12:
+        return f"+{digits[:12]}"
+    if digits.startswith("0") and len(digits) >= 10:
+        return f"+38{digits[:10]}"
+    if digits.startswith("380"):
+        return f"+{digits}"
+    if digits.startswith("0"):
+        return f"+38{digits}"
+    if digits:
+        return f"+{digits}"
+    return (raw or "").strip()
+
+
 class DeliveryInfoSerializer(serializers.ModelSerializer):
     """
     Used when creating an order — accepts full delivery data from the client.
     Read-only fields (city_ref, warehouse_ref, tracking_number) are managed
     server-side and will be populated during Nova Poshta API integration.
     """
+
+    def validate_recipient_phone(self, value):
+        from shop.models import ua_phone_validator
+
+        normalized = _normalize_ua_phone(value)
+        ua_phone_validator(normalized)
+        return normalized
 
     class Meta:
         model = DeliveryInfo
