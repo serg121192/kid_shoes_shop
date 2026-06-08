@@ -130,7 +130,7 @@ export default function ProductDetailPage({
   }, [selectedSize]);
 
   const handleSelectSize = (sz: ProductSizeWithCart) => {
-    if (sz.quantity === 0) return;
+    if (sz.quantity === 0 || sz.in_cart) return;
     setSelectedSize(sz);
   };
 
@@ -146,22 +146,27 @@ export default function ProductDetailPage({
 
     setCartLoading(true);
     try {
+      const addedSizeId = selectedSize.id;
+      const addedQuantity = quantity;
       await api.post("/shop/cart/me/cart_add/", {
-        product_size: selectedSize.id,
-        quantity,
+        product_size: addedSizeId,
+        quantity: addedQuantity,
       });
-      // Mark size as in_cart locally
+      // Keep the detail page in sync with the user's cart state.
       setProduct((prev) =>
         prev
           ? {
             ...prev,
             sizes: prev.sizes.map((s) =>
-              s.id === selectedSize.id ? { ...s, in_cart: true } : s
+              s.id === addedSizeId
+                ? { ...s, in_cart: true, quantity: Math.max(0, s.quantity - addedQuantity) }
+                : s
             ),
           }
           : prev
       );
-      setSelectedSize((prev) => prev ? { ...prev, in_cart: true } : prev);
+      setSelectedSize(null);
+      setQuantity(1);
       await refreshCounts();
       showToast("Товар успішно додано до кошику!");
     } catch (err: unknown) {
@@ -405,11 +410,12 @@ export default function ProductDetailPage({
                 {product.sizes.map((sz) => {
                   const inStock = sz.quantity > 0;
                   const isSelected = sz.id === selectedSize?.id;
+                  const isDisabled = !inStock || sz.in_cart;
                   return (
                     <button
                       key={sz.id}
                       onClick={() => handleSelectSize(sz)}
-                      disabled={!inStock}
+                      disabled={isDisabled}
                       title={
                         !inStock
                           ? `Розмір ${sz.size} — немає в наявності`
@@ -423,7 +429,7 @@ export default function ProductDetailPage({
                           : isSelected
                             ? "border-gray-700 bg-teal-400 text-white shadow-sm"
                             : sz.in_cart
-                              ? "border-green-400 text-green-600 hover:border-green-500"
+                              ? "border-green-400 bg-green-50 text-green-600 cursor-not-allowed"
                               : "border-gray-300 text-gray-700 hover:border-teal-400 hover:text-teal-600"
                         }`}
                     >
@@ -479,7 +485,7 @@ export default function ProductDetailPage({
                 {inCart
                   ? "В кошику"
                   : !selectedSize
-                    ? "Оберіть розмір"
+                    ? "Обери розмір"
                     : cartLoading
                       ? "Додаємо..."
                       : "Додати в кошик"}

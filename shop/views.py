@@ -272,6 +272,14 @@ class CartViewSet(viewsets.ModelViewSet):
         quantity = serializer.validated_data.get("quantity", 1)
         product_size = ProductSize.objects.get(id=product_size_id)
 
+        cart_item = CartItem.objects.filter(cart=cart, product_size=product_size).first()
+        current_quantity = cart_item.quantity if cart_item else 0
+        if current_quantity + quantity > product_size.quantity:
+            return Response(
+                {"error": "Недостатньо товару в наявності для цього розміру."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         cart_item, created = CartItem.objects.get_or_create(
             cart=cart,
             product_size=product_size,
