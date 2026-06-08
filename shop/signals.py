@@ -57,6 +57,34 @@ def _create_ttn_on_processing(sender, instance, created, **kwargs):
 
 
 @receiver(post_save, sender=Order)
+def _restore_stock_on_cancel(sender, instance, created, **kwargs):
+    """
+    Повертає кількість товару на склад при скасуванні замовлення.
+    Спрацьовує незалежно від того, звідки змінено статус.
+    """
+    old_status = getattr(instance, "_old_status", None)
+    just_cancelled = (
+        not created
+        and old_status != Order.StatusChoices.CANCELLED
+        and instance.status == Order.StatusChoices.CANCELLED
+    )
+    if not just_cancelled:
+        return
+
+    try:
+        from shop.models import ProductSize
+        items = instance.items.select_related("product_size").all()
+        for item in items:
+            item.product_size.restore_stock(item.quantity)
+            logger.info(
+                "Order #%s: повернуто %s шт. для розміру %s",
+                instance.pk, item.quantity, item.product_size_id,
+            )
+    except Exception:
+        logger.exception("Order #%s: помилка при відновленні залишків", instance.pk)
+
+
+@receiver(post_save, sender=Order)
 def _delete_ttn_on_cancel(sender, instance, created, **kwargs):
     """
     Автоматично скасовує ТТН у НП при переведенні замовлення у статус 'Скасовано'.

@@ -417,11 +417,15 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         new_status = serializer.validated_data["status"]
         order.status = new_status
-        order.save()  # сигнал post_save: при processing→створює ТТН, при cancelled→видаляє
+        order.save()  # сигнали: processing→ТТН, cancelled→видалення ТТН + відновлення залишків
 
-        send_order_status_update(order)
-
-        return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
+        response_data = OrderSerializer(order).data
+        transaction.on_commit(
+            lambda: threading.Thread(
+                target=lambda: send_order_status_update(order), daemon=True
+            ).start()
+        )
+        return Response(response_data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"], url_path="pending_count", permission_classes=[IsAdminUser])
     def pending_count(self, request: Request) -> Response:
@@ -486,10 +490,15 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         order.status = Order.StatusChoices.CANCELLED
-        order.save()  # сигнал _delete_ttn_on_cancel подбає про видалення ТТН
+        order.save()  # сигнали: _restore_stock_on_cancel, _delete_ttn_on_cancel
 
-        send_order_status_update(order)
-        return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
+        response_data = OrderSerializer(order).data
+        transaction.on_commit(
+            lambda: threading.Thread(
+                target=lambda: send_order_status_update(order), daemon=True
+            ).start()
+        )
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

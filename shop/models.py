@@ -147,6 +147,9 @@ class ProductSize(models.Model):
             raise ValueError("Not enough stock available")
         ProductSize.objects.filter(id=self.id).update(quantity=F("quantity") - amount)
 
+    def restore_stock(self, amount: int) -> None:
+        ProductSize.objects.filter(id=self.id).update(quantity=F("quantity") + amount)
+
     class Meta:
         unique_together = ("product", "size")
         ordering = ["size"]
