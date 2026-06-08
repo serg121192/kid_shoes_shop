@@ -5,9 +5,10 @@ import {
   DragEvent, ChangeEvent,
 } from "react";
 
-// Module-level queue: survives client-side navigation within the same tab.
-// Used when videos are dropped in create mode before the product exists.
+// Module-level queues: survive client-side navigation within the same tab.
+// Used when media is dropped in create mode before the product exists.
 const _pendingVideoQueue: File[] = [];
+const _pendingImageQueue: { file: File; is_main: boolean }[] = [];
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import api, { getMediaUrl } from "@/app/lib/api";
@@ -164,9 +165,29 @@ export default function ProductForm({ productId }: { productId?: number }) {
     load();
   }, [isEdit, productId]);
 
-  // ── Auto-upload videos queued from create-mode auto-save ─────────────────────
+  // ── Auto-upload media queued from create-mode auto-save ──────────────────────
   useEffect(() => {
-    if (isEdit && productId && !isLoading && _pendingVideoQueue.length > 0) {
+    if (!isEdit || !productId || isLoading) return;
+
+    if (_pendingImageQueue.length > 0) {
+      const imgs = _pendingImageQueue.splice(0);
+      imgs.forEach(({ file, is_main }, i) => {
+        const fd = new FormData();
+        fd.append("image", file);
+        fd.append("is_main", (is_main && i === 0) ? "true" : "false");
+        fd.append("order", String(i));
+        api.post<ProductImage>(`/shop/products/${productId}/upload_image/`, fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        }).then((res) => {
+          setSavedImages((prev) => {
+            if (res.data.is_main) return [...prev.map((img) => ({ ...img, is_main: false })), res.data];
+            return [...prev, res.data];
+          });
+        }).catch(() => showToast("Не вдалося завантажити збережене фото", "error"));
+      });
+    }
+
+    if (_pendingVideoQueue.length > 0) {
       const files = _pendingVideoQueue.splice(0);
       handleVideoFiles(files);
     }
@@ -303,6 +324,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
         // Create mode: if required fields are ready — auto-create product then upload immediately
         if (form.vendor && form.model_name && form.full_price) {
           vids.forEach((f) => _pendingVideoQueue.push(f));
+          // Also preserve pending images so they're uploaded after auto-navigate
+          pendingImages.forEach((pi) => _pendingImageQueue.push({ file: pi.file, is_main: pi.is_main }));
           setIsSaving(true);
           try {
             const body = {
@@ -317,11 +340,12 @@ export default function ProductForm({ productId }: { productId?: number }) {
               seo_description: form.seo_description || null,
             };
             const res = await api.post<{ id: number }>("/shop/products/", body);
-            // Navigate to edit — the useEffect below will pick up _pendingVideoQueue
+            // Navigate to edit — the useEffects below will pick up the queues
             router.replace(`/manager/products/${res.data.id}`);
           } catch {
-            // Fallback: revert queue, add as pending
+            // Fallback: revert queues, add as pending
             _pendingVideoQueue.length = 0;
+            _pendingImageQueue.length = 0;
             setPendingVideos((prev) => [
               ...prev,
               ...vids.map((file) => ({
@@ -344,7 +368,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
         }
       }
     },
-    [isEdit, productId, savedVideos, showToast, form, router]
+    [isEdit, productId, savedVideos, showToast, form, router, pendingImages]
   );
 
   const onVidDrop = (e: DragEvent) => {

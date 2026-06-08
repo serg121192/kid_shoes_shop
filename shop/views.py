@@ -1,4 +1,5 @@
 import io
+import threading
 from datetime import timedelta
 
 from django.db import transaction
@@ -387,12 +388,25 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()
         cart.cart_items.all().delete()
 
-        # Refresh so that related delivery/items are accessible for emails
+        # Capture the serialized response BEFORE releasing the transaction.
         order.refresh_from_db()
-        send_order_confirmation(order)
-        send_new_order_alert(order)
+        response_data = OrderSerializer(order).data
 
-        return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+        # Send emails in a daemon thread AFTER the transaction commits so that:
+        # 1. The response is returned instantly (no SMTP blocking the request).
+        # 2. Emails see fully committed DB data.
+        def _send_emails():
+            try:
+                send_order_confirmation(order)
+                send_new_order_alert(order)
+            except Exception:
+                pass
+
+        transaction.on_commit(
+            lambda: threading.Thread(target=_send_emails, daemon=True).start()
+        )
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["patch"], url_path="update_status")
     def update_status(self, request: Request, pk=None) -> Response:
