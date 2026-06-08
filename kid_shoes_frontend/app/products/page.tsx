@@ -116,14 +116,16 @@ export default function ProductsPage() {
     if (!isAuthenticated) {
       sessionStorage.setItem("pending_cart_item", String(productSizeId));
       window.location.href = "/login?next=/cart";
-      return;
+      return false;
     }
     try {
       await api.post("/shop/cart/me/cart_add/", { product_size: productSizeId, quantity: 1 });
       setCartCount((c) => c + 1);
       showToast("Товар успішно додано до кошику!");
+      return true;
     } catch {
       showToast("Не вдалося додати товар до кошика", "error");
+      return false;
     }
   };
 

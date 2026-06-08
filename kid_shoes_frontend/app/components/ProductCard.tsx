@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ProductList } from "@/app/types";
@@ -8,7 +8,7 @@ import { getMediaUrl } from "@/app/lib/api";
 
 interface ProductCardProps {
   product: ProductList;
-  onAddToCart?: (productSizeId: number) => void;
+  onAddToCart?: (productSizeId: number) => boolean | Promise<boolean>;
   onToggleWishlist?: (productId: number) => void;
   isInWishlist?: boolean;
 }
@@ -21,13 +21,32 @@ export default function ProductCard({
 }: ProductCardProps) {
   const hasDiscount = product.discount > 0;
   const [selectedSizeId, setSelectedSizeId] = useState<number | null>(null);
+  const [availableSizes, setAvailableSizes] = useState(product.sizes ?? []);
+  const [isAdding, setIsAdding] = useState(false);
 
-  const availableSizes = product.sizes ?? [];
-  const selectedSize = availableSizes.find((s) => s.id === selectedSizeId) ?? null;
+  useEffect(() => {
+    setAvailableSizes(product.sizes ?? []);
+    setSelectedSizeId(null);
+  }, [product.id, product.sizes]);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!onAddToCart || !selectedSizeId) return;
-    onAddToCart(selectedSizeId);
+    setIsAdding(true);
+    try {
+      const added = await onAddToCart(selectedSizeId);
+      if (!added) return;
+
+      setAvailableSizes((prev) =>
+        prev.map((size) =>
+          size.id === selectedSizeId
+            ? { ...size, quantity: Math.max(0, size.quantity - 1) }
+            : size
+        )
+      );
+      setSelectedSizeId(null);
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   const mainImage = product.images?.find((img) => img.is_main) ?? product.images?.[0];
@@ -148,15 +167,15 @@ export default function ProductCard({
           {onAddToCart && (
             <button
               onClick={handleAddToCart}
-              disabled={!selectedSizeId}
-              title={!selectedSizeId ? "Оберіть розмір" : ""}
+              disabled={!selectedSizeId || isAdding}
+              title={!selectedSizeId ? "Обери розмір" : ""}
               className={`flex-1 text-sm font-medium py-2 px-3 rounded-lg transition-colors
-                ${selectedSizeId
+                ${selectedSizeId && !isAdding
                   ? "bg-teal-600 hover:bg-teal-800 text-white"
                   : "bg-teal-50 text-gray-400 cursor-not-allowed"
                 }`}
             >
-              {selectedSizeId ? "Додати в кошик" : "Обери розмір"}
+              {isAdding ? "Додаємо..." : selectedSizeId ? "Додати в кошик" : "Обери розмір"}
             </button>
           )}
           {onToggleWishlist && (
