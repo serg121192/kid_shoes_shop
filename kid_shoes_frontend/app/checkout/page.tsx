@@ -148,8 +148,18 @@ function AuthBlock({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const normalizePhone = (raw: string): string => {
+    const digits = raw.replace(/\D/g, "");
+    if (digits.startsWith("380")) return "+" + digits;
+    if (digits.startsWith("0") && digits.length >= 10) return "+38" + digits;
+    if (digits.length > 0) return "+" + digits;
+    return raw;
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    const normalized = name === "phone" ? normalizePhone(value) : value;
+    setForm((p) => ({ ...p, [name]: normalized }));
     setError("");
   };
 
@@ -344,9 +354,19 @@ export default function CheckoutPage() {
 
   // ── Handlers ──
 
+  const normalizePhone = (raw: string): string => {
+    const digits = raw.replace(/\D/g, "");
+    if (digits.startsWith("380")) return "+" + digits;
+    if (digits.startsWith("0") && digits.length >= 10) return "+38" + digits;
+    if (digits.length > 0) return "+" + digits;
+    return raw;
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    setErrors((prev) => ({ ...prev, [e.target.name]: "" }));
+    const { name, value } = e.target;
+    const normalized = name === "recipient_phone" ? normalizePhone(value) : value;
+    setForm((prev) => ({ ...prev, [name]: normalized }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const handleCityInput = useCallback((val: string) => {
