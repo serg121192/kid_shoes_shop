@@ -28,6 +28,19 @@ const GENDERS = [
 
 const PAGE_SIZE = 20;
 
+interface CatalogReturnState {
+  page: number;
+  search: string;
+  season: string;
+  prodType: string;
+  gender: string;
+  minPrice: string;
+  maxPrice: string;
+  hasDiscount: boolean;
+  size: string;
+  scrollY?: number;
+}
+
 function buildPageNumbers(current: number, total: number): (number | "...")[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
   const pages: (number | "...")[] = [1];
@@ -61,6 +74,8 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
 
   const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set());
+  const [isRestoring, setIsRestoring] = useState(true);
+  const [restoredScrollY, setRestoredScrollY] = useState<number | null>(null);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -102,12 +117,66 @@ export default function ProductsPage() {
   }, [isAuthenticated]);
 
   useEffect(() => {
+    const savedRaw = sessionStorage.getItem("catalogReturnPageState");
+    if (!savedRaw) {
+      setIsRestoring(false);
+      return;
+    }
+
+    try {
+      const saved = JSON.parse(savedRaw) as CatalogReturnState;
+      setSearch(saved.search || "");
+      setSeason(saved.season || "");
+      setProdType(saved.prodType || "");
+      setGender(saved.gender || "");
+      setMinPrice(saved.minPrice || "");
+      setMaxPrice(saved.maxPrice || "");
+      setHasDiscount(saved.hasDiscount || false);
+      setSize(saved.size || "");
+      setPage(saved.page || 1);
+      const scrollRaw = sessionStorage.getItem("catalogReturnScrollY");
+      if (scrollRaw) {
+        setRestoredScrollY(Number(scrollRaw));
+      }
+    } catch {
+      // ignore invalid stored state
+    } finally {
+      sessionStorage.removeItem("catalogReturnPageState");
+      sessionStorage.removeItem("catalogReturnScrollY");
+      setIsRestoring(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isRestoring) return;
     fetchProducts();
-  }, [fetchProducts]);
+  }, [fetchProducts, isRestoring]);
 
   useEffect(() => {
     fetchWishlist();
   }, [fetchWishlist]);
+
+  useEffect(() => {
+    if (isRestoring || isLoading || restoredScrollY === null) return;
+    window.scrollTo({ top: restoredScrollY, behavior: "auto" });
+    setRestoredScrollY(null);
+  }, [isLoading, isRestoring, restoredScrollY]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const state: CatalogReturnState = {
+      page,
+      search,
+      season,
+      prodType,
+      gender,
+      minPrice,
+      maxPrice,
+      hasDiscount,
+      size,
+    };
+    sessionStorage.setItem("catalogReturnPageState", JSON.stringify(state));
+  }, [page, search, season, prodType, gender, minPrice, maxPrice, hasDiscount, size]);
 
   // Reset to page 1 when filters change
   const resetPage = () => setPage(1);
@@ -308,11 +377,10 @@ export default function ProductsPage() {
               <button
                 key={p}
                 onClick={() => setPage(p as number)}
-                className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
-                  p === page
+                className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${p === page
                     ? "bg-teal-600 text-white"
                     : "text-gray-600 hover:bg-gray-100"
-                }`}
+                  }`}
               >
                 {p}
               </button>

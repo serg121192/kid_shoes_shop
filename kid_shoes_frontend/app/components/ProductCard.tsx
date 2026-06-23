@@ -52,6 +52,11 @@ export default function ProductCard({
   const mainImage = product.images?.find((img) => img.is_main) ?? product.images?.[0];
   const imageUrl = mainImage ? getMediaUrl(mainImage.image) : null;
 
+  const saveCatalogScroll = () => {
+    if (typeof window === "undefined") return;
+    sessionStorage.setItem("catalogReturnScrollY", String(window.scrollY));
+  };
+
   return (
     <div
       className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col"
@@ -86,7 +91,7 @@ export default function ProductCard({
         el.style.border = "";
       }}
     >
-      <Link href={`/products/${product.id}`} className="block relative">
+      <Link href={`/products/${product.id}`} onClick={saveCatalogScroll} className="block relative">
         <div className="aspect-square bg-gray-100 relative overflow-hidden">
           {imageUrl ? (
             <Image
@@ -109,7 +114,7 @@ export default function ProductCard({
       </Link>
 
       <div className="p-4 flex flex-col flex-1">
-        <Link href={`/products/${product.id}`}>
+        <Link href={`/products/${product.id}`} onClick={saveCatalogScroll}>
           <h3 className="font-bold text-gray-700 transition-colors line-clamp-2 text-xl">
             {product.vendor}
           </h3>

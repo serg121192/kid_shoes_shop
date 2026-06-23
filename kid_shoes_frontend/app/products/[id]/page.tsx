@@ -86,7 +86,7 @@ export default function ProductDetailPage({
   // Autoplay video when user switches to a video item
   useEffect(() => {
     if (activeIndex >= 0 && mediaItems[activeIndex]?.kind === "video" && videoRef.current) {
-      videoRef.current.play().catch(() => {});
+      videoRef.current.play().catch(() => { });
     }
   }, [activeIndex, mediaItems]);
 
@@ -198,6 +198,14 @@ export default function ProductDetailPage({
     }
   };
 
+  const handleBackToCatalog = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/products");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-96">
@@ -219,7 +227,7 @@ export default function ProductDetailPage({
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <button
-        onClick={() => router.back()}
+        onClick={handleBackToCatalog}
         className="flex items-center gap-2 text-gray-500 hover:text-teal-400 mb-6 transition-colors"
       >
         <ArrowLeft size={18} />
@@ -247,7 +255,7 @@ export default function ProductDetailPage({
               ) : (
                 <>
                   {activeItem?.kind === "image" &&
-                  getMediaUrl((activeItem.data as ProductImage).image) ? (
+                    getMediaUrl((activeItem.data as ProductImage).image) ? (
                     <Image
                       src={getMediaUrl((activeItem.data as ProductImage).image)!}
                       alt={`${product.vendor} ${product.model_name}`}
@@ -540,7 +548,7 @@ export default function ProductDetailPage({
                     <thead>
                       <tr className="bg-teal-100">
                         <th className="px-2 py-1.5 rounded-tl-lg">Розмір EU</th>
-                        {[18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40].map(s => (
+                        {[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40].map(s => (
                           <th key={s} className="px-2 py-1.5">{s}</th>
                         ))}
                       </tr>
@@ -548,7 +556,7 @@ export default function ProductDetailPage({
                     <tbody>
                       <tr>
                         <td className="px-2 py-1.5 font-medium bg-teal-50">Стопа (мм)</td>
-                        {[110,116,122,128,134,140,146,152,158,164,170,176,182,188,194,206,212,218,224,230,236,242,248].map((mm, i) => (
+                        {[110, 116, 122, 128, 134, 140, 146, 152, 158, 164, 170, 176, 182, 188, 194, 206, 212, 218, 224, 230, 236, 242, 248].map((mm, i) => (
                           <td key={i} className="px-2 py-1.5 border-t border-teal-100">{mm}</td>
                         ))}
                       </tr>
