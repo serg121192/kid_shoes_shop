@@ -16,7 +16,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://tak-i-tak.vercel.app"),
+  metadataBase: new URL("https://tak-i-tak.com"),
   title: {
     default: "ТАК і ТАК — Магазин дитячого взуття",
     template: "%s | ТАК і ТАК",

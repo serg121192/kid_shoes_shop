@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/manager/", "/cart", "/checkout", "/orders", "/profile", "/wishlist"],
       },
     ],
-    sitemap: "https://tak-i-tak.vercel.app/sitemap.xml",
+    sitemap: "https://tak-i-tak.com/sitemap.xml",
   };
 }
