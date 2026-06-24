@@ -223,6 +223,7 @@ export default function ProductDetailPage({
   const activeItem = mediaItems[activeIndex] ?? null;
   const hasPrev = activeIndex > 0;
   const hasNext = activeIndex < mediaItems.length - 1;
+  let h1_text: string = '';
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -343,7 +344,27 @@ export default function ProductDetailPage({
             <p className="text-2xl text-gray-700 font-bold uppercase tracking-wide">
               {product.vendor}
             </p>
-            <h1 className="text-medium font-medium text-cyan-600 mt-1">{product.model_name}</h1>
+            <h1 className="text-medium font-medium text-cyan-600 mt-1">
+              {(() => {
+                switch (product.prod_type) {
+                  case "Shoe":
+                    h1_text = "Черевики для";
+                    break;
+                  case "Sandals":
+                    h1_text = "Сандалі для";
+                    break;
+                  case "Sneakers":
+                    h1_text = "Кросівки для";
+                    break;
+                  case "Ugi":
+                    h1_text = "Уггі для";
+                    break;
+                  default:
+                    h1_text = "Взуття для ";
+                }
+                return `${h1_text} ${product.gender === "boy" ? "хлопчика" : "дівчинки"} ${product.model_name}`;
+              })()}
+            </h1>
 
             <div className="flex items-center gap-3 mt-4">
               {hasDiscount ? (
