@@ -341,10 +341,7 @@ export default function ProductDetailPage({
 
           {/* Info */}
           <div className="p-8 flex flex-col bg-white">
-            <p className="text-2xl text-gray-700 font-bold uppercase tracking-wide">
-              {product.vendor}
-            </p>
-            <h1 className="text-medium font-medium text-cyan-600 mt-1">
+            <h1 className="text-2xl font-bold text-gray-700 mt-1 tracking-wide">
               {(() => {
                 switch (product.prod_type) {
                   case "Shoe":
@@ -362,9 +359,12 @@ export default function ProductDetailPage({
                   default:
                     h1_text = "Взуття для ";
                 }
-                return `${h1_text} ${product.gender === "boy" ? "хлопчика" : "дівчинки"} ${product.model_name}`;
+                return `${h1_text} ${product.gender === "boy" ? "хлопчика" : "дівчинки"} ${product.vendor.toUpperCase()}`;
               })()}
             </h1>
+            <p className="text-medium text-teal-600 font-medium mt-1">
+              `Код: ${product.model_name}`
+            </p>
 
             <div className="flex items-center gap-3 mt-4">
               {hasDiscount ? (
