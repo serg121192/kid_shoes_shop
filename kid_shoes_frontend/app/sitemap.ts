@@ -20,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     let page = 1;
     let more = true;
     while (more) {
-      const res = await fetch(`${BACKEND_URL}/shop/products/?page=${page}`, { cache: "no-store" });
+      const res = await fetch(`${BACKEND_URL}/api/shop/products/?page=${page}`, { cache: "no-store" });
       if (!res.ok) break;
       const data = await res.json();
       const results: ProductShort[] = data.results ?? data;
