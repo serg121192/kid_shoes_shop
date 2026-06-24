@@ -359,11 +359,21 @@ export default function ProductDetailPage({
                   default:
                     h1_text = "Взуття для ";
                 }
-                return `${h1_text} ${product.gender === "boy" ? "хлопчика" : "дівчинки"} ${product.vendor.toUpperCase()}`;
+                switch (product.gender) {
+                  case "boy":
+                    h1_text += "хлопчика";
+                    break;
+                  case "girl":
+                    h1_text += "дівчинки";
+                    break;
+                  default:
+                    h1_text += "хлопчика або дівчинки";
+                }
+                return `${h1_text} ${product.vendor.toUpperCase()}`;
               })()}
             </h1>
             <p className="text-medium text-teal-600 font-medium mt-1">
-              `Код: ${product.model_name}`
+              Код: {product.model_name}
             </p>
 
             <div className="flex items-center gap-3 mt-4">
