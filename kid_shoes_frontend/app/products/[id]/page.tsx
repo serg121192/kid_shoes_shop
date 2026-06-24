@@ -345,16 +345,16 @@ export default function ProductDetailPage({
               {(() => {
                 switch (product.prod_type) {
                   case "Shoe":
-                    h1_text = "Черевики для";
+                    h1_text = "Черевики для ";
                     break;
                   case "Sandals":
-                    h1_text = "Сандалі для";
+                    h1_text = "Сандалі для ";
                     break;
                   case "Sneakers":
-                    h1_text = "Кросівки для";
+                    h1_text = "Кросівки для ";
                     break;
                   case "Ugi":
-                    h1_text = "Уггі для";
+                    h1_text = "Уггі для ";
                     break;
                   default:
                     h1_text = "Взуття для ";
