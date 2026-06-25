@@ -82,6 +82,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     ordering_fields = ["full_price", "discount"]
     ordering = ["full_price"]
     lookup_field = "slug"
+    lookup_value_regex = "[^/]+"
 
     def get_queryset(self):
         qs = Product.objects.select_related("vendor").prefetch_related(

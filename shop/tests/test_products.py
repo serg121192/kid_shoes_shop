@@ -229,6 +229,24 @@ class ProductDetailTests(APITestCase):
 
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_retrieve_slug_with_dot(self):
+        dot_product = Product.objects.create(
+            vendor=self.vendor,
+            model_name="Model 871",
+            prod_type=Product.ProductTypeChoices.SNEAKERS,
+            gender=Product.GenderChoices.UNISEX,
+            season=Product.SeasonChoices.SUMMER,
+            full_price=Decimal("1200.00"),
+            discount=0,
+            slug="Tom.m-871",
+        )
+        ProductSize.objects.create(product=dot_product, size=25, quantity=10)
+
+        res = self.client.get(detail_url(dot_product))
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["slug"], dot_product.slug)
+
     def test_discounted_price_calculated_correctly(self):
         product = create_product(
             self.vendor,
