@@ -7,12 +7,14 @@ from django.utils.text import slugify
 def fill_slugs(apps, schema_editor):
     Product = apps.get_model("shop", "Product")
 
-    for product in Product.objects.filter(slug__isnull=True):
-        slug = slugify(
+    for product in Product.objects.filter(slug__in=[None, ""]):
+        base = slugify(
             f"{product.vendor.name}-{product.model_name}", allow_unicode=True
         )
+        if not base:
+            base = str(product.id)
 
-        base = slug
+        slug = base
         counter = 1
 
         while Product.objects.filter(slug=slug).exists():
