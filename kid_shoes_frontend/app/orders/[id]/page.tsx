@@ -137,7 +137,7 @@ export default function OrderDetailPage({
                         const imageUrl = getMediaUrl(product.main_image);
                         return (
                             <div key={idx} className="flex items-center gap-4">
-                                <Link href={`/products/${product.id}`} className="shrink-0">
+                                <Link href={`/products/${product.slug}`} className="shrink-0">
                                     <div className="w-16 h-16 bg-gray-100 rounded-lg relative overflow-hidden">
                                         {imageUrl ? (
                                             <Image src={imageUrl} alt={product.model_name} fill unoptimized className="object-cover" />
@@ -147,7 +147,7 @@ export default function OrderDetailPage({
                                     </div>
                                 </Link>
                                 <div className="flex-1 min-w-0">
-                                    <Link href={`/products/${product.id}`}>
+                                    <Link href={`/products/${product.slug}`}>
                                         <p className="font-medium text-gray-800 hover:text-teal-600 transition-colors">
                                             {product.vendor} {product.model_name}
                                         </p>

@@ -50,7 +50,7 @@ export default function CartPage() {
         sessionStorage.removeItem("pending_cart_item");
         api.post("/shop/cart/me/cart_add/", { product_size: Number(pendingItem), quantity: 1 })
           .then(() => { setCartCount((c) => c + 1); })
-          .catch(() => {})
+          .catch(() => { })
           .finally(() => fetchCart());
       } else {
         fetchCart();
@@ -148,7 +148,7 @@ export default function CartPage() {
             >
               <div className="flex items-start gap-4">
                 {/* Image */}
-                <Link href={`/products/${product.id}`} className="shrink-0">
+                <Link href={`/products/${product.slug}`} className="shrink-0">
                   <div className="w-20 h-20 bg-gray-100 rounded-lg relative overflow-hidden">
                     {imageUrl ? (
                       <Image src={imageUrl} alt={product.model_name} fill unoptimized className="object-cover" />
@@ -162,7 +162,7 @@ export default function CartPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <Link href={`/products/${product.id}`}>
+                      <Link href={`/products/${product.slug}`}>
                         <h3 className="font-semibold text-gray-800 hover:text-[#72a1ff] transition-colors truncate">
                           {product.vendor} {product.model_name}
                         </h3>

@@ -78,7 +78,7 @@ export default function WishlistPage() {
                     const availableSizes = product.sizes.filter((s) => s.quantity > 0);
                     return (
                         <div key={product.id} className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
-                            <Link href={`/products/${product.id}`} className="block">
+                            <Link href={`/products/${product.slug}`} className="block">
                                 <div className="aspect-square bg-gray-100 relative overflow-hidden">
                                     {imageUrl ? (
                                         <Image
@@ -94,7 +94,7 @@ export default function WishlistPage() {
                                 </div>
                             </Link>
                             <div className="p-3 flex flex-col flex-1">
-                                <Link href={`/products/${product.id}`}>
+                                <Link href={`/products/${product.slug}`}>
                                     <h3 className="font-semibold text-gray-800 hover:text-teal-600 text-sm line-clamp-2">
                                         {product.vendor} {product.model_name}
                                     </h3>

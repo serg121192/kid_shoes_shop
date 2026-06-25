@@ -237,6 +237,7 @@ class ProductOrderSerializer(serializers.ModelSerializer):
             "id",
             "vendor",
             "model_name",
+            "slug",
             "prod_type",
             "main_image",
             "discounted_price",
@@ -264,6 +265,7 @@ class CartProductSerializer(serializers.ModelSerializer):
             "id",
             "vendor",
             "model_name",
+            "slug",
             "discounted_price",
             "main_image",
         ]

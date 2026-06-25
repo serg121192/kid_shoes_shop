@@ -64,6 +64,7 @@ export interface CartProduct {
   id: number;
   vendor: string;
   model_name: string;
+  slug: string;
   discounted_price: string;
   main_image: string | null;
 }
@@ -104,7 +105,7 @@ export interface DeliveryInfo {
 export interface OrderItemProductSize {
   id: number;
   size: number;
-  product: Pick<ProductList, "id" | "vendor" | "model_name" | "prod_type" | "discounted_price"> & {
+  product: Pick<ProductList, "id" | "vendor" | "model_name" | "slug" | "prod_type" | "discounted_price"> & {
     main_image: string | null;
   };
 }
