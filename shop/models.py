@@ -134,13 +134,15 @@ class Product(models.Model):
 
             product_type = self.get_prod_type_display()
 
-            self.seo_h1 = f"{product_type} для {_gender} {self.vendor.name}"
+            self.seo_h1 = (
+                f"{product_type} для {_gender} {self.vendor.name.lower()}"
+            )
 
         if not self.seo_title:
             self.seo_title = f"{self.seo_h1} | Купити в Україні"
 
         if not self.slug:
-            self.slug = py_s(f"{self.seo_h1}-{self.model_name}")
+            self.slug = py_s(f"{self.vendor.name.lower()}-{self.model_name}")
 
         super().save(*args, **kwargs)
 
