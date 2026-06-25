@@ -11,8 +11,8 @@ User = get_user_model()
 PRODUCTS_URL = "/api/shop/products/"
 
 
-def detail_url(product_id):
-    return f"{PRODUCTS_URL}{product_id}/"
+def detail_url(product):
+    return f"{PRODUCTS_URL}{product.slug}/"
 
 
 def create_vendor(name: str = "Nike") -> Vendor:
@@ -32,8 +32,12 @@ def create_product(vendor: Vendor, **kwargs) -> Product:
     return Product.objects.create(vendor=vendor, **defaults)
 
 
-def create_product_size(product: Product, size: int = 25, quantity: int = 10) -> ProductSize:
-    return ProductSize.objects.create(product=product, size=size, quantity=quantity)
+def create_product_size(
+    product: Product, size: int = 25, quantity: int = 10
+) -> ProductSize:
+    return ProductSize.objects.create(
+        product=product, size=size, quantity=quantity
+    )
 
 
 def create_user(
@@ -96,13 +100,17 @@ class ProductListTests(APITestCase):
         )
         create_product_size(sandal, size=26)
 
-        res = self.client.get(PRODUCTS_URL, {"prod_type": Product.ProductTypeChoices.SNEAKERS})
+        res = self.client.get(
+            PRODUCTS_URL, {"prod_type": Product.ProductTypeChoices.SNEAKERS}
+        )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["count"], 1)
 
     def test_filter_min_price(self):
-        cheap = create_product(self.vendor, model_name="Cheap", full_price=Decimal("200.00"))
+        cheap = create_product(
+            self.vendor, model_name="Cheap", full_price=Decimal("200.00")
+        )
         create_product_size(cheap, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"min_price": 500})
@@ -112,7 +120,9 @@ class ProductListTests(APITestCase):
         self.assertEqual(res.data["results"][0]["model_name"], "Air Max")
 
     def test_filter_max_price(self):
-        expensive = create_product(self.vendor, model_name="Expensive", full_price=Decimal("5000.00"))
+        expensive = create_product(
+            self.vendor, model_name="Expensive", full_price=Decimal("5000.00")
+        )
         create_product_size(expensive, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"max_price": 2000})
@@ -162,7 +172,9 @@ class ProductListTests(APITestCase):
         self.assertEqual(res.data["count"], 1)
 
     def test_ordering_by_price_ascending(self):
-        cheap = create_product(self.vendor, model_name="Cheap", full_price=Decimal("500.00"))
+        cheap = create_product(
+            self.vendor, model_name="Cheap", full_price=Decimal("500.00")
+        )
         create_product_size(cheap, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"ordering": "full_price"})
@@ -172,7 +184,9 @@ class ProductListTests(APITestCase):
         self.assertEqual(prices, sorted(prices))
 
     def test_ordering_by_price_descending(self):
-        cheap = create_product(self.vendor, model_name="Cheap", full_price=Decimal("500.00"))
+        cheap = create_product(
+            self.vendor, model_name="Cheap", full_price=Decimal("500.00")
+        )
         create_product_size(cheap, size=26)
 
         res = self.client.get(PRODUCTS_URL, {"ordering": "-full_price"})
@@ -190,13 +204,13 @@ class ProductDetailTests(APITestCase):
         self.product_size = create_product_size(self.product)
 
     def test_retrieve_unauthenticated_allowed(self):
-        res = self.client.get(detail_url(self.product.id))
+        res = self.client.get(detail_url(self.product))
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["model_name"], self.product.model_name)
 
     def test_retrieve_returns_retrieve_serializer_fields(self):
-        res = self.client.get(detail_url(self.product.id))
+        res = self.client.get(detail_url(self.product))
 
         self.assertIn("description", res.data)
         self.assertIn("full_price", res.data)
@@ -204,14 +218,14 @@ class ProductDetailTests(APITestCase):
         self.assertIn("in_wishlist", res.data)
 
     def test_retrieve_size_in_cart_false_when_not_authenticated(self):
-        res = self.client.get(detail_url(self.product.id))
+        res = self.client.get(detail_url(self.product))
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         for sz in res.data["sizes"]:
             self.assertFalse(sz["in_cart"])
 
     def test_retrieve_nonexistent_returns_404(self):
-        res = self.client.get(detail_url(99999))
+        res = self.client.get(f"{PRODUCTS_URL}99999/")
 
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -222,10 +236,12 @@ class ProductDetailTests(APITestCase):
             full_price=Decimal("1000.00"),
             discount=20,
         )
-        res = self.client.get(detail_url(product.id))
+        res = self.client.get(detail_url(product))
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(Decimal(res.data["discounted_price"]), Decimal("800.00"))
+        self.assertEqual(
+            Decimal(res.data["discounted_price"]), Decimal("800.00")
+        )
         self.assertEqual(Decimal(res.data["full_price"]), Decimal("1000.00"))
 
 
@@ -283,7 +299,7 @@ class ProductUpdateTests(APITestCase):
         create_product_size(self.product)
 
     def test_update_unauthenticated_returns_401(self):
-        res = self.client.patch(detail_url(self.product.id), {"discount": 10})
+        res = self.client.patch(detail_url(self.product), {"discount": 10})
 
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
@@ -291,7 +307,7 @@ class ProductUpdateTests(APITestCase):
         user = create_user()
         self.client.force_authenticate(user=user)
 
-        res = self.client.patch(detail_url(self.product.id), {"discount": 10})
+        res = self.client.patch(detail_url(self.product), {"discount": 10})
 
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -299,7 +315,7 @@ class ProductUpdateTests(APITestCase):
         admin = create_user(email="admin@test.com", is_staff=True)
         self.client.force_authenticate(user=admin)
 
-        res = self.client.patch(detail_url(self.product.id), {"discount": 10})
+        res = self.client.patch(detail_url(self.product), {"discount": 10})
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.product.refresh_from_db()
@@ -314,7 +330,7 @@ class ProductDeleteTests(APITestCase):
         create_product_size(self.product)
 
     def test_delete_unauthenticated_returns_401(self):
-        res = self.client.delete(detail_url(self.product.id))
+        res = self.client.delete(detail_url(self.product))
 
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
@@ -322,7 +338,7 @@ class ProductDeleteTests(APITestCase):
         user = create_user()
         self.client.force_authenticate(user=user)
 
-        res = self.client.delete(detail_url(self.product.id))
+        res = self.client.delete(detail_url(self.product))
 
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -330,7 +346,7 @@ class ProductDeleteTests(APITestCase):
         admin = create_user(email="admin@test.com", is_staff=True)
         self.client.force_authenticate(user=admin)
 
-        res = self.client.delete(detail_url(self.product.id))
+        res = self.client.delete(detail_url(self.product))
 
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Product.objects.filter(id=self.product.id).exists())

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import api, { getMediaUrl } from "@/app/lib/api";
@@ -54,8 +54,8 @@ const TYPE_LABELS: Record<string, string> = {
   Ugi: "Угги",
 };
 
-export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params);
+export default function ProductDetailPage({ params }: { params: { slug: string } }) {
+  const { slug } = params;
   const { isAuthenticated } = useAuth();
   const { showToast, setWishlistCount, refreshCounts } = useShop();
   const router = useRouter();

@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
             field=models.SlugField(
                 max_length=255,
                 blank=True,
-                null=True,
+                null=False,
                 unique=True,
                 verbose_name="Slug",
             ),

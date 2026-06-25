@@ -95,7 +95,7 @@ class Product(models.Model):
         max_length=255, null=True, blank=True, verbose_name="SEO H1"
     )
     slug = models.SlugField(
-        max_length=255, blank=True, null=True, unique=True, verbose_name="Slug"
+        max_length=255, blank=True, unique=True, verbose_name="Slug"
     )
 
     @property
