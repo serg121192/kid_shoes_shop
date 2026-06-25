@@ -11,7 +11,8 @@ from django.db.models import (
     DecimalField as DjDecimalField,
 )
 from django.core.exceptions import ValidationError
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -84,6 +85,24 @@ class ProductViewSet(viewsets.ModelViewSet):
     lookup_field = "slug"
     lookup_value_regex = "[^/]+"
 
+    def get_object(self):
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        lookup_value = self.kwargs.get(lookup_url_kwarg)
+        queryset = self.filter_queryset(self.get_queryset())
+
+        try:
+            obj = get_object_or_404(
+                queryset, **{self.lookup_field: lookup_value}
+            )
+        except Http404:
+            if lookup_value and str(lookup_value).isdigit():
+                obj = get_object_or_404(queryset, pk=lookup_value)
+            else:
+                raise
+
+        self.check_object_permissions(self.request, obj)
+        return obj
+
     def get_queryset(self):
         qs = Product.objects.select_related("vendor").prefetch_related(
             "sizes", "images", "videos"
@@ -105,7 +124,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         url_path="upload_image",
         permission_classes=[IsAdminUser],
     )
-    def upload_image(self, request: Request, pk=None) -> Response:
+    def upload_image(
+        self, request: Request, pk=None, slug=None, **kwargs
+    ) -> Response:
         product = self.get_object()
         image = request.FILES.get("image")
         if not image:
@@ -130,7 +151,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         permission_classes=[IsAdminUser],
     )
     def delete_image(
-        self, request: Request, pk=None, image_id=None
+        self, request: Request, pk=None, image_id=None, slug=None, **kwargs
     ) -> Response:
         product = self.get_object()
         try:
@@ -146,7 +167,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         permission_classes=[IsAdminUser],
     )
     def set_main_image(
-        self, request: Request, pk=None, image_id=None
+        self, request: Request, pk=None, image_id=None, slug=None, **kwargs
     ) -> Response:
         product = self.get_object()
         try:
@@ -165,7 +186,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         url_path="upload_video",
         permission_classes=[IsAdminUser],
     )
-    def upload_video(self, request: Request, pk=None) -> Response:
+    def upload_video(
+        self, request: Request, pk=None, slug=None, **kwargs
+    ) -> Response:
         product = self.get_object()
         video_file = request.FILES.get("video")
         if not video_file:
@@ -190,7 +213,7 @@ class ProductViewSet(viewsets.ModelViewSet):
         permission_classes=[IsAdminUser],
     )
     def delete_video(
-        self, request: Request, pk=None, video_id=None
+        self, request: Request, pk=None, video_id=None, slug=None, **kwargs
     ) -> Response:
         product = self.get_object()
         try:
@@ -205,7 +228,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         url_path="set_size",
         permission_classes=[IsAdminUser],
     )
-    def set_size(self, request: Request, pk=None) -> Response:
+    def set_size(
+        self, request: Request, pk=None, slug=None, **kwargs
+    ) -> Response:
         product = self.get_object()
         size = request.data.get("size")
         quantity = request.data.get("quantity", 0)
@@ -233,7 +258,9 @@ class ProductViewSet(viewsets.ModelViewSet):
         url_path=r"delete_size/(?P<size_id>[^/.]+)",
         permission_classes=[IsAdminUser],
     )
-    def delete_size(self, request: Request, pk=None, size_id=None) -> Response:
+    def delete_size(
+        self, request: Request, pk=None, size_id=None, slug=None, **kwargs
+    ) -> Response:
         product = self.get_object()
         try:
             ProductSize.objects.get(pk=size_id, product=product).delete()

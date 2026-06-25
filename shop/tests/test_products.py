@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -228,6 +229,32 @@ class ProductDetailTests(APITestCase):
         res = self.client.get(f"{PRODUCTS_URL}99999/")
 
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_retrieve_numeric_pk_falls_back_to_pk(self):
+        res = self.client.get(f"{PRODUCTS_URL}{self.product.id}/")
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["id"], self.product.id)
+        self.assertEqual(res.data["slug"], self.product.slug)
+
+    def test_upload_image_numeric_pk_falls_back(self):
+        admin = create_user(email="admin@example.com", is_staff=True)
+        self.client.force_authenticate(user=admin)
+
+        image = SimpleUploadedFile(
+            "test.jpg",
+            b"\x47\x49\x46\x38\x39\x61",
+            content_type="image/jpeg",
+        )
+        res = self.client.post(
+            f"{PRODUCTS_URL}{self.product.id}/upload_image/",
+            {"image": image, "is_main": "true", "order": "0"},
+            format="multipart",
+        )
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["order"], 0)
+        self.assertTrue("id" in res.data)
 
     def test_retrieve_slug_with_dot(self):
         dot_product = Product.objects.create(
