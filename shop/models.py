@@ -134,9 +134,7 @@ class Product(models.Model):
 
             product_type = self.get_prod_type_display()
 
-            self.seo_h1 = (
-                f"{product_type} для {_gender} {self.vendor.name.lower()}"
-            )
+            self.seo_h1 = f"{product_type} для {_gender} {self.vendor.name}"
 
         if not self.seo_title:
             self.seo_title = f"{self.seo_h1} | Купити в Україні"
