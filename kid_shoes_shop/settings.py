@@ -16,7 +16,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -53,11 +52,12 @@ INSTALLED_APPS = [
     "user",
 ]
 
-if DEBUG:
-    INSTALLED_APPS += ["debug_toolbar"]
+# if DEBUG:
+#     INSTALLED_APPS += ["debug_toolbar"]
 
 INTERNAL_IPS = [
     "127.0.0.1",
+    "localhost",
 ]
 
 MIDDLEWARE = [
@@ -67,8 +67,8 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
 ]
 
-if DEBUG:
-    MIDDLEWARE.insert(2, "debug_toolbar.middleware.DebugToolbarMiddleware")
+# if DEBUG:
+#     MIDDLEWARE.insert(2, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
 MIDDLEWARE += [
     "django.middleware.common.CommonMiddleware",
@@ -105,6 +105,7 @@ WSGI_APPLICATION = "kid_shoes_shop.wsgi.application"
 _DATABASE_URL = os.getenv("RAILWAY_DB_URL") or os.getenv("DATABASE_URL")
 if _DATABASE_URL:
     from urllib.parse import urlparse as _urlparse
+
     _db = _urlparse(_DATABASE_URL)
     DATABASES = {
         "default": {
@@ -174,7 +175,11 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # ── Cloudflare R2 (вмикається при DEBUG=False і наявності R2_BUCKET_NAME) ─────
 _R2_BUCKET = os.getenv("R2_BUCKET_NAME", "")
-_R2_DOMAIN = os.getenv("R2_PUBLIC_DOMAIN", "").removeprefix("https://").removeprefix("http://")
+_R2_DOMAIN = (
+    os.getenv("R2_PUBLIC_DOMAIN", "")
+    .removeprefix("https://")
+    .removeprefix("http://")
+)
 
 if not DEBUG and _R2_BUCKET:
     AWS_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
@@ -260,14 +265,18 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
     "http://localhost:3000,http://127.0.0.1:3000",
 ).split(",")
 
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False") == "True"
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "5"))  # SMTP socket timeout, prevents infinite hangs
+EMAIL_TIMEOUT = int(
+    os.getenv("EMAIL_TIMEOUT", "5")
+)  # SMTP socket timeout, prevents infinite hangs
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@kidshoes.com")
 MANAGER_EMAIL = os.getenv("MANAGER_EMAIL", "")
 
@@ -304,3 +313,23 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+
+
+# *****************
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": True,
+        },
+    },
+}

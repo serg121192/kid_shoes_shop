@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use, useRef } from "react";
+import { use, useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import api, { getMediaUrl } from "@/app/lib/api";
@@ -54,12 +54,8 @@ const TYPE_LABELS: Record<string, string> = {
   Ugi: "Угги",
 };
 
-export default function ProductDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const { isAuthenticated } = useAuth();
   const { showToast, setWishlistCount, refreshCounts } = useShop();
   const router = useRouter();
@@ -93,7 +89,7 @@ export default function ProductDetailPage({
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await api.get<Product>(`/shop/products/${id}/`);
+        const response = await api.get<Product>(`/shop/products/${slug}/`);
         const data = response.data;
         setProduct(data);
         setInWishlist(data.in_wishlist);
@@ -122,7 +118,7 @@ export default function ProductDetailPage({
       }
     };
     fetchProduct();
-  }, [id, router]);
+  }, [slug, router]);
 
   // Reset quantity when size changes
   useEffect(() => {
@@ -183,12 +179,14 @@ export default function ProductDetailPage({
     if (!isAuthenticated) { router.push("/login"); return; }
     try {
       if (inWishlist) {
-        await api.post("/shop/wishlist/me/remove_wish/", { product: Number(id) });
+        if (!product) return;
+        await api.post("/shop/wishlist/me/remove_wish/", { product: product.id });
         setInWishlist(false);
         setWishlistCount((c) => Math.max(0, c - 1));
         showToast("Видалено зі списку вибраного");
       } else {
-        await api.post("/shop/wishlist/me/add_wish/", { product: Number(id) });
+        if (!product) return;
+        await api.post("/shop/wishlist/me/add_wish/", { product: product.id });
         setInWishlist(true);
         setWishlistCount((c) => c + 1);
         showToast("Додано до списку вибраного! ♥");
@@ -223,7 +221,6 @@ export default function ProductDetailPage({
   const activeItem = mediaItems[activeIndex] ?? null;
   const hasPrev = activeIndex > 0;
   const hasNext = activeIndex < mediaItems.length - 1;
-  let h1_text: string = '';
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -342,35 +339,7 @@ export default function ProductDetailPage({
           {/* Info */}
           <div className="p-8 flex flex-col bg-white">
             <h1 className="text-2xl font-bold text-gray-700 mt-1 tracking-wide">
-              {(() => {
-                switch (product.prod_type) {
-                  case "Shoe":
-                    h1_text = "Черевики для ";
-                    break;
-                  case "Sandals":
-                    h1_text = "Сандалі для ";
-                    break;
-                  case "Sneakers":
-                    h1_text = "Кросівки для ";
-                    break;
-                  case "Ugi":
-                    h1_text = "Уггі для ";
-                    break;
-                  default:
-                    h1_text = "Взуття для ";
-                }
-                switch (product.gender) {
-                  case "boy":
-                    h1_text += "хлопчика";
-                    break;
-                  case "girl":
-                    h1_text += "дівчинки";
-                    break;
-                  default:
-                    h1_text += "хлопчика або дівчинки";
-                }
-                return `${h1_text} ${product.vendor.toUpperCase()}`;
-              })()}
+              {product.seo_h1}
             </h1>
             <p className="text-medium text-teal-600 font-medium mt-1">
               Код: {product.model_name}
@@ -619,7 +588,7 @@ export default function ProductDetailPage({
             onReviewChange={async () => {
               const res = await import("@/app/lib/api").then((m) =>
                 m.default.get<{ avg_rating: number | null; review_count: number }>(
-                  `/shop/products/${id}/`
+                  `/shop/products/${slug}/`
                 )
               );
               setReviewStats({ avg: res.data.avg_rating, count: res.data.review_count });

@@ -3,7 +3,13 @@ import threading
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Count, Sum, F, ExpressionWrapper, DecimalField as DjDecimalField
+from django.db.models import (
+    Count,
+    Sum,
+    F,
+    ExpressionWrapper,
+    DecimalField as DjDecimalField,
+)
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.utils import timezone
@@ -16,7 +22,11 @@ from rest_framework.response import Response
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 
-from shop.emails import send_order_confirmation, send_order_status_update, send_new_order_alert
+from shop.emails import (
+    send_order_confirmation,
+    send_order_status_update,
+    send_new_order_alert,
+)
 from shop.permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
 from shop.filters import ProductFilter
 from shop.models import (
@@ -35,7 +45,11 @@ from shop.models import (
     Review,
     SiteVisit,
 )
-from shop.nova_poshta import get_cities_list, get_warehouses_list, get_tracking_status
+from shop.nova_poshta import (
+    get_cities_list,
+    get_warehouses_list,
+    get_tracking_status,
+)
 from shop.serializers import (
     ProductSerializer,
     ProductListSerializer,
@@ -67,9 +81,12 @@ class ProductViewSet(viewsets.ModelViewSet):
     search_fields = ["model_name", "vendor__name", "description"]
     ordering_fields = ["full_price", "discount"]
     ordering = ["full_price"]
+    lookup_field = "slug"
 
     def get_queryset(self):
-        qs = Product.objects.select_related("vendor").prefetch_related("sizes", "images", "videos")
+        qs = Product.objects.select_related("vendor").prefetch_related(
+            "sizes", "images", "videos"
+        )
         if self.request.query_params.get("size"):
             qs = qs.distinct()
         return qs
@@ -81,26 +98,39 @@ class ProductViewSet(viewsets.ModelViewSet):
             return ProductRetrieveSerializer
         return ProductSerializer
 
-    @action(detail=True, methods=["post"], url_path="upload_image", permission_classes=[IsAdminUser])
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="upload_image",
+        permission_classes=[IsAdminUser],
+    )
     def upload_image(self, request: Request, pk=None) -> Response:
         product = self.get_object()
         image = request.FILES.get("image")
         if not image:
-            return Response({"error": "Файл не завантажено"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Файл не завантажено"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         is_main = request.data.get("is_main", "false").lower() == "true"
         order_num = int(request.data.get("order", 0))
-        pi = ProductImage.objects.create(product=product, image=image, is_main=is_main, order=order_num)
+        pi = ProductImage.objects.create(
+            product=product, image=image, is_main=is_main, order=order_num
+        )
         return Response(
             ProductImageSerializer(pi, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
         )
 
     @action(
-        detail=True, methods=["delete"],
+        detail=True,
+        methods=["delete"],
         url_path=r"delete_image/(?P<image_id>[^/.]+)",
         permission_classes=[IsAdminUser],
     )
-    def delete_image(self, request: Request, pk=None, image_id=None) -> Response:
+    def delete_image(
+        self, request: Request, pk=None, image_id=None
+    ) -> Response:
         product = self.get_object()
         try:
             ProductImage.objects.get(pk=image_id, product=product).delete()
@@ -109,40 +139,58 @@ class ProductViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_404_NOT_FOUND)
 
     @action(
-        detail=True, methods=["patch"],
+        detail=True,
+        methods=["patch"],
         url_path=r"set_main_image/(?P<image_id>[^/.]+)",
         permission_classes=[IsAdminUser],
     )
-    def set_main_image(self, request: Request, pk=None, image_id=None) -> Response:
+    def set_main_image(
+        self, request: Request, pk=None, image_id=None
+    ) -> Response:
         product = self.get_object()
         try:
             img = ProductImage.objects.get(pk=image_id, product=product)
             img.is_main = True
             img.save()  # model.save() автоматично скидає is_main у решті
-            return Response(ProductImageSerializer(img, context={"request": request}).data)
+            return Response(
+                ProductImageSerializer(img, context={"request": request}).data
+            )
         except ProductImage.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=["post"], url_path="upload_video", permission_classes=[IsAdminUser])
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="upload_video",
+        permission_classes=[IsAdminUser],
+    )
     def upload_video(self, request: Request, pk=None) -> Response:
         product = self.get_object()
         video_file = request.FILES.get("video")
         if not video_file:
-            return Response({"error": "Файл не завантажено"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Файл не завантажено"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         title = request.data.get("title", "")
         order_num = int(request.data.get("order", 0))
-        pv = ProductVideo.objects.create(product=product, video=video_file, title=title, order=order_num)
+        pv = ProductVideo.objects.create(
+            product=product, video=video_file, title=title, order=order_num
+        )
         return Response(
             ProductVideoSerializer(pv, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
         )
 
     @action(
-        detail=True, methods=["delete"],
+        detail=True,
+        methods=["delete"],
         url_path=r"delete_video/(?P<video_id>[^/.]+)",
         permission_classes=[IsAdminUser],
     )
-    def delete_video(self, request: Request, pk=None, video_id=None) -> Response:
+    def delete_video(
+        self, request: Request, pk=None, video_id=None
+    ) -> Response:
         product = self.get_object()
         try:
             ProductVideo.objects.get(pk=video_id, product=product).delete()
@@ -150,15 +198,25 @@ class ProductViewSet(viewsets.ModelViewSet):
         except ProductVideo.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=["post"], url_path="set_size", permission_classes=[IsAdminUser])
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="set_size",
+        permission_classes=[IsAdminUser],
+    )
     def set_size(self, request: Request, pk=None) -> Response:
         product = self.get_object()
         size = request.data.get("size")
         quantity = request.data.get("quantity", 0)
         if not size:
-            return Response({"error": "size обов'язковий"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "size обов'язковий"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         ps, created = ProductSize.objects.get_or_create(
-            product=product, size=int(size), defaults={"quantity": int(quantity)}
+            product=product,
+            size=int(size),
+            defaults={"quantity": int(quantity)},
         )
         if not created:
             ps.quantity = int(quantity)
@@ -169,7 +227,8 @@ class ProductViewSet(viewsets.ModelViewSet):
         )
 
     @action(
-        detail=True, methods=["delete"],
+        detail=True,
+        methods=["delete"],
         url_path=r"delete_size/(?P<size_id>[^/.]+)",
         permission_classes=[IsAdminUser],
     )
@@ -219,7 +278,10 @@ class WishlistViewSet(viewsets.ModelViewSet):
             )
 
         WishlistItem.objects.get_or_create(wishlist=wishlist, product=product)
-        return Response({"message": "Product added to Wishlist!"}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"message": "Product added to Wishlist!"},
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(
         detail=False,
@@ -231,7 +293,10 @@ class WishlistViewSet(viewsets.ModelViewSet):
         try:
             wishlist = Wishlist.objects.get(user=request.user)
         except Wishlist.DoesNotExist:
-            return Response({"error": "Wishlist not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Wishlist not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -242,7 +307,10 @@ class WishlistViewSet(viewsets.ModelViewSet):
         ).delete()
         if deleted:
             return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response({"error": "Product not found in Wishlist!"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Product not found in Wishlist!"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
 
 class CartViewSet(viewsets.ModelViewSet):
@@ -250,12 +318,14 @@ class CartViewSet(viewsets.ModelViewSet):
     permission_classes = [IsOwnerOrAdmin]
 
     def get_queryset(self):
-        return Cart.objects.filter(
-            user=self.request.user
-        ).prefetch_related(
-            "cart_items__product_size__product__vendor",
-            "cart_items__product_size__product__images",
-        ).order_by("-id")
+        return (
+            Cart.objects.filter(user=self.request.user)
+            .prefetch_related(
+                "cart_items__product_size__product__vendor",
+                "cart_items__product_size__product__images",
+            )
+            .order_by("-id")
+        )
 
     @action(
         detail=False,
@@ -272,7 +342,9 @@ class CartViewSet(viewsets.ModelViewSet):
         quantity = serializer.validated_data.get("quantity", 1)
         product_size = ProductSize.objects.get(id=product_size_id)
 
-        cart_item = CartItem.objects.filter(cart=cart, product_size=product_size).first()
+        cart_item = CartItem.objects.filter(
+            cart=cart, product_size=product_size
+        ).first()
         current_quantity = cart_item.quantity if cart_item else 0
         if current_quantity + quantity > product_size.quantity:
             return Response(
@@ -289,7 +361,9 @@ class CartViewSet(viewsets.ModelViewSet):
             cart_item.quantity += quantity
             cart_item.save()
 
-        return Response({"message": "Item added to cart"}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"message": "Item added to cart"}, status=status.HTTP_201_CREATED
+        )
 
     @action(
         detail=False,
@@ -301,7 +375,9 @@ class CartViewSet(viewsets.ModelViewSet):
         try:
             cart = Cart.objects.get(user=request.user)
         except Cart.DoesNotExist:
-            return Response({"error": "Cart not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Cart not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -309,13 +385,21 @@ class CartViewSet(viewsets.ModelViewSet):
         quantity = serializer.validated_data.get("quantity", None)
 
         try:
-            cart_item = CartItem.objects.get(cart=cart, product_size_id=product_size_id)
+            cart_item = CartItem.objects.get(
+                cart=cart, product_size_id=product_size_id
+            )
         except CartItem.DoesNotExist:
-            return Response({"error": "Item not found in cart"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Item not found in cart"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         if quantity is None or quantity >= cart_item.quantity:
             cart_item.delete()
-            return Response({"message": "Item removed from cart"}, status=status.HTTP_204_NO_CONTENT)
+            return Response(
+                {"message": "Item removed from cart"},
+                status=status.HTTP_204_NO_CONTENT,
+            )
 
         cart_item.quantity -= quantity
         cart_item.save()
@@ -350,24 +434,34 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
         delivery_serializer = DeliveryInfoSerializer(data=delivery_data)
         if not delivery_serializer.is_valid():
-            return Response(delivery_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                delivery_serializer.errors, status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             cart = Cart.objects.get(user=request.user)
         except Cart.DoesNotExist:
-            return Response({"error": "Cart not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "Cart not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
         if not cart.cart_items.exists():
-            return Response({"error": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         order = Order.objects.create(
             user=request.user,
             status=Order.StatusChoices.PENDING,
         )
-        DeliveryInfo.objects.create(order=order, **delivery_serializer.validated_data)
+        DeliveryInfo.objects.create(
+            order=order, **delivery_serializer.validated_data
+        )
 
         total_price = 0
-        for cart_item in cart.cart_items.select_related("product_size__product").all():
+        for cart_item in cart.cart_items.select_related(
+            "product_size__product"
+        ).all():
             product_size = ProductSize.objects.select_for_update().get(
                 id=cart_item.product_size_id
             )
@@ -389,7 +483,9 @@ class OrderViewSet(viewsets.ModelViewSet):
                 quantity=cart_item.quantity,
                 price=product_size.product.discounted_price,
             )
-            total_price += cart_item.quantity * product_size.product.discounted_price
+            total_price += (
+                cart_item.quantity * product_size.product.discounted_price
+            )
             product_size.reduce_stock(cart_item.quantity)
 
         order.total_price = total_price
@@ -435,12 +531,24 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
         return Response(response_data, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=["get"], url_path="pending_count", permission_classes=[IsAdminUser])
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="pending_count",
+        permission_classes=[IsAdminUser],
+    )
     def pending_count(self, request: Request) -> Response:
-        count = Order.objects.filter(status=Order.StatusChoices.PENDING).count()
+        count = Order.objects.filter(
+            status=Order.StatusChoices.PENDING
+        ).count()
         return Response({"count": count})
 
-    @action(detail=True, methods=["post"], url_path="sync_np", permission_classes=[IsAdminUser])
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="sync_np",
+        permission_classes=[IsAdminUser],
+    )
     def sync_np_status(self, request: Request, pk=None) -> Response:
         """
         Запитує НП по ТТН і автоматично оновлює статус замовлення:
@@ -482,19 +590,28 @@ class OrderViewSet(viewsets.ModelViewSet):
         if update_fields:
             order.save(update_fields=update_fields)
 
-        return Response({
-            "np_code": np_code,
-            "np_status": np_status_label,
-            "order_status": order.status,
-            "updated": bool(update_fields),
-        })
+        return Response(
+            {
+                "np_code": np_code,
+                "np_status": np_status_label,
+                "order_status": order.status,
+                "updated": bool(update_fields),
+            }
+        )
 
-    @action(detail=True, methods=["post"], url_path="cancel", permission_classes=[IsAuthenticated])
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="cancel",
+        permission_classes=[IsAuthenticated],
+    )
     def cancel_order(self, request: Request, pk=None) -> Response:
         order = self.get_object()
         if order.status != Order.StatusChoices.PENDING:
             return Response(
-                {"error": "Можна скасувати лише замовлення зі статусом 'Очікує обробки'."},
+                {
+                    "error": "Можна скасувати лише замовлення зі статусом 'Очікує обробки'."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         order.status = Order.StatusChoices.CANCELLED
@@ -539,15 +656,27 @@ class ReviewViewSet(viewsets.ModelViewSet):
             )
         return super().create(request, *args, **kwargs)
 
-    @action(detail=False, methods=["get"], url_path="my", permission_classes=[IsAuthenticated])
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="my",
+        permission_classes=[IsAuthenticated],
+    )
     def my_review(self, request: Request) -> Response:
         product_id = request.query_params.get("product")
         if not product_id:
-            return Response({"error": "Потрібен параметр product."}, status=status.HTTP_400_BAD_REQUEST)
-        review = Review.objects.filter(product_id=product_id, user=request.user).first()
+            return Response(
+                {"error": "Потрібен параметр product."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        review = Review.objects.filter(
+            product_id=product_id, user=request.user
+        ).first()
         if not review:
             return Response(None, status=status.HTTP_200_OK)
-        return Response(ReviewSerializer(review, context={"request": request}).data)
+        return Response(
+            ReviewSerializer(review, context={"request": request}).data
+        )
 
 
 @api_view(["GET"])
@@ -570,11 +699,8 @@ def nova_poshta_warehouses(request: Request) -> Response:
         return Response([], status=status.HTTP_200_OK)
 
     return Response(
-        get_warehouses_list(
-            city_ref,
-            query,
-            warehouse_type
-        ), status=status.HTTP_200_OK
+        get_warehouses_list(city_ref, query, warehouse_type),
+        status=status.HTTP_200_OK,
     )
 
 
@@ -584,9 +710,9 @@ def manager_stats(request: Request) -> Response:
     today = timezone.now().date()
 
     def revenue_since(since_date):
-        result = Order.objects.filter(created_at__date__gte=since_date).aggregate(
-            total=Sum("total_price")
-        )["total"]
+        result = Order.objects.filter(
+            created_at__date__gte=since_date
+        ).aggregate(total=Sum("total_price"))["total"]
         return float(result or 0)
 
     top_products = list(
@@ -594,10 +720,12 @@ def manager_stats(request: Request) -> Response:
             "product_size__product__id",
             "product_size__product__model_name",
             "product_size__product__vendor__name",
-        ).annotate(
+        )
+        .annotate(
             total_sold=Sum("quantity"),
             total_revenue=Sum("price"),
-        ).order_by("-total_sold")[:5]
+        )
+        .order_by("-total_sold")[:5]
     )
 
     orders_by_status = dict(
@@ -606,19 +734,21 @@ def manager_stats(request: Request) -> Response:
         .values_list("status", "count")
     )
 
-    return Response({
-        "revenue": {
-            "today": revenue_since(today),
-            "week": revenue_since(today - timedelta(days=7)),
-            "month": revenue_since(today - timedelta(days=30)),
-        },
-        "orders_by_status": orders_by_status,
-        "top_products": top_products,
-        "total_orders": Order.objects.count(),
-        "total_revenue": float(
-            Order.objects.aggregate(total=Sum("total_price"))["total"] or 0
-        ),
-    })
+    return Response(
+        {
+            "revenue": {
+                "today": revenue_since(today),
+                "week": revenue_since(today - timedelta(days=7)),
+                "month": revenue_since(today - timedelta(days=30)),
+            },
+            "orders_by_status": orders_by_status,
+            "top_products": top_products,
+            "total_orders": Order.objects.count(),
+            "total_revenue": float(
+                Order.objects.aggregate(total=Sum("total_price"))["total"] or 0
+            ),
+        }
+    )
 
 
 ACTIVE_STATUSES = [
@@ -639,8 +769,7 @@ def _get_report_queryset(period: str):
         from_date = today
 
     return (
-        OrderItem.objects
-        .filter(
+        OrderItem.objects.filter(
             order__created_at__date__gte=from_date,
             order__status__in=ACTIVE_STATUSES,
         )
@@ -655,7 +784,9 @@ def _get_report_queryset(period: str):
             total_amount=Sum(
                 ExpressionWrapper(
                     F("price") * F("quantity"),
-                    output_field=DjDecimalField(max_digits=12, decimal_places=2),
+                    output_field=DjDecimalField(
+                        max_digits=12, decimal_places=2
+                    ),
                 )
             ),
         )
@@ -668,17 +799,19 @@ def _get_report_queryset(period: str):
 def sales_report(request: Request) -> Response:
     period = request.GET.get("period", "today")
     rows = list(_get_report_queryset(period))
-    return Response([
-        {
-            "vendor": r["vendor"],
-            "model_name": r["model_name"],
-            "size": r["size"],
-            "sold_qty": r["sold_qty"],
-            "remaining": r["remaining"],
-            "total_amount": float(r["total_amount"] or 0),
-        }
-        for r in rows
-    ])
+    return Response(
+        [
+            {
+                "vendor": r["vendor"],
+                "model_name": r["model_name"],
+                "size": r["size"],
+                "sold_qty": r["sold_qty"],
+                "remaining": r["remaining"],
+                "total_amount": float(r["total_amount"] or 0),
+            }
+            for r in rows
+        ]
+    )
 
 
 @api_view(["GET"])
@@ -690,14 +823,25 @@ def sales_report_xlsx(request: Request) -> HttpResponse:
     period = request.GET.get("period", "today")
     rows = list(_get_report_queryset(period))
 
-    period_labels = {"today": "сьогодні", "week": "за тиждень", "month": "за місяць"}
+    period_labels = {
+        "today": "сьогодні",
+        "week": "за тиждень",
+        "month": "за місяць",
+    }
     period_label = period_labels.get(period, period)
 
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Звіт"
 
-    headers = ["Бренд", "Модель", "Розмір", "Продано, шт.", "Залишок, шт.", "Сума, грн."]
+    headers = [
+        "Бренд",
+        "Модель",
+        "Розмір",
+        "Продано, шт.",
+        "Залишок, шт.",
+        "Сума, грн.",
+    ]
     header_fill = PatternFill(fill_type="solid", fgColor="4F46E5")
     header_font = Font(bold=True, color="FFFFFF", size=11)
 
@@ -722,12 +866,20 @@ def sales_report_xlsx(request: Request) -> HttpResponse:
     # Total row
     total_row = len(rows) + 2
     ws.cell(row=total_row, column=1, value="РАЗОМ").font = Font(bold=True)
-    ws.cell(row=total_row, column=4, value=sum(r["sold_qty"] or 0 for r in rows)).font = Font(bold=True)
-    ws.cell(row=total_row, column=6, value=sum(float(r["total_amount"] or 0) for r in rows)).font = Font(bold=True)
+    ws.cell(
+        row=total_row, column=4, value=sum(r["sold_qty"] or 0 for r in rows)
+    ).font = Font(bold=True)
+    ws.cell(
+        row=total_row,
+        column=6,
+        value=sum(float(r["total_amount"] or 0) for r in rows),
+    ).font = Font(bold=True)
 
     # Column widths
     for col, width in zip(range(1, 7), [20, 25, 10, 14, 14, 14]):
-        ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = width
+        ws.column_dimensions[
+            ws.cell(row=1, column=col).column_letter
+        ].width = width
 
     buffer = io.BytesIO()
     wb.save(buffer)
@@ -743,6 +895,7 @@ def sales_report_xlsx(request: Request) -> HttpResponse:
 
 
 # ── Site visit tracking ────────────────────────────────────────────────────────
+
 
 def _get_client_ip(request: Request) -> str:
     x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
@@ -766,15 +919,22 @@ def track_visit(request: Request) -> Response:
 def visit_stats(request: Request) -> Response:
     """Return visit and user counts for the manager dashboard."""
     from django.contrib.auth import get_user_model
+
     User = get_user_model()
 
     today = timezone.now().date()
     week_ago = today - timedelta(days=7)
     month_ago = today - timedelta(days=30)
 
-    return Response({
-        "visits_today": SiteVisit.objects.filter(date=today).count(),
-        "visits_week": SiteVisit.objects.filter(date__gte=week_ago).count(),
-        "visits_month": SiteVisit.objects.filter(date__gte=month_ago).count(),
-        "total_users": User.objects.filter(is_staff=False).count(),
-    })
+    return Response(
+        {
+            "visits_today": SiteVisit.objects.filter(date=today).count(),
+            "visits_week": SiteVisit.objects.filter(
+                date__gte=week_ago
+            ).count(),
+            "visits_month": SiteVisit.objects.filter(
+                date__gte=month_ago
+            ).count(),
+            "total_users": User.objects.filter(is_staff=False).count(),
+        }
+    )

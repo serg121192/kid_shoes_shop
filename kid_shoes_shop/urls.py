@@ -26,9 +26,8 @@ from django.conf.urls.static import static
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
-    SpectacularRedocView
+    SpectacularRedocView,
 )
-
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -36,18 +35,11 @@ urlpatterns = [
     path("api/user/", include("user.urls", namespace="user")),
     path("api/doc/", SpectacularAPIView.as_view(), name="doc"),
     path(
-        "api/doc/swagger/",
-        SpectacularSwaggerView.as_view(),
-        name="swagger-ui"
+        "api/doc/swagger/", SpectacularSwaggerView.as_view(), name="swagger-ui"
     ),
-    path(
-        "api/doc/redoc/",
-        SpectacularRedocView.as_view(),
-        name="redoc"
-    ),
+    path("api/doc/redoc/", SpectacularRedocView.as_view(), name="redoc"),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-if settings.DEBUG:
-    import debug_toolbar
-    urlpatterns += [path("__debug__/", include(debug_toolbar.urls))]
-
+# if settings.DEBUG:
+#     import debug_toolbar
+#     urlpatterns += [path("__debug__/", include(debug_toolbar.urls))]

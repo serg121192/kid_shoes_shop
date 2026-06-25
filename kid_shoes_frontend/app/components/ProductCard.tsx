@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ProductList } from "@/app/types";
 import { getMediaUrl } from "@/app/lib/api";
 
@@ -19,6 +20,7 @@ export default function ProductCard({
   onToggleWishlist,
   isInWishlist = false,
 }: ProductCardProps) {
+  const router = useRouter();
   const hasDiscount = product.discount > 0;
   const [selectedSizeId, setSelectedSizeId] = useState<number | null>(null);
   const [availableSizes, setAvailableSizes] = useState(product.sizes ?? []);
@@ -57,9 +59,17 @@ export default function ProductCard({
     sessionStorage.setItem("catalogReturnScrollY", String(window.scrollY));
   };
 
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("a, button, input, select, textarea")) return;
+    saveCatalogScroll();
+    router.push(`/products/${product.slug}`);
+  };
+
   return (
     <div
-      className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col"
+      className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col cursor-pointer"
+      onClick={handleCardClick}
       onMouseEnter={(e) => {
         const el = e.currentTarget;
         el.style.outline = "";
@@ -91,7 +101,7 @@ export default function ProductCard({
         el.style.border = "";
       }}
     >
-      <Link href={`/products/${product.id}`} onClick={saveCatalogScroll} className="block relative">
+      <Link href={`/products/${product.slug}`} onClick={saveCatalogScroll} className="block relative">
         <div className="aspect-square bg-gray-100 relative overflow-hidden">
           {imageUrl ? (
             <Image
@@ -114,7 +124,7 @@ export default function ProductCard({
       </Link>
 
       <div className="p-4 flex flex-col flex-1">
-        <Link href={`/products/${product.id}`} onClick={saveCatalogScroll}>
+        <Link href={`/products/${product.slug}`} onClick={saveCatalogScroll}>
           <h3 className="font-bold text-gray-700 transition-colors line-clamp-2 text-xl">
             {product.vendor}
           </h3>

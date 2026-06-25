@@ -40,6 +40,7 @@ export interface ProductList {
   discounted_price: string;
   sizes: ProductSize[];
   images: ProductImage[];
+  slug: string;
 }
 
 // Returned by detail endpoint (ProductRetrieveSerializer)
@@ -54,6 +55,9 @@ export interface Product extends Omit<ProductList, "sizes"> {
   videos: ProductVideo[];
   avg_rating: number | null;
   review_count: number;
+  seo_h1: string;
+  seo_title: string;
+  slug: string;
 }
 
 export interface CartProduct {
