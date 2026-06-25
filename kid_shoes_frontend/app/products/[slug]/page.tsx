@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import api, { getMediaUrl } from "@/app/lib/api";
 import { Product, ProductSizeWithCart, ProductImage, ProductVideo } from "@/app/types";
 import { useAuth } from "@/app/context/AuthContext";
@@ -54,8 +54,9 @@ const TYPE_LABELS: Record<string, string> = {
   Ugi: "Угги",
 };
 
-export default function ProductDetailPage({ params }: { params: { slug: string } }) {
-  const { slug } = params;
+export default function ProductDetailPage() {
+  const params = useParams();
+  const slug = params?.slug ?? "";
   const { isAuthenticated } = useAuth();
   const { showToast, setWishlistCount, refreshCounts } = useShop();
   const router = useRouter();
