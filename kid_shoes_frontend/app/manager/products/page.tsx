@@ -84,7 +84,7 @@ export default function ManagerProductsPage() {
           <div className="text-center py-16 text-gray-400">Товарів не знайдено</div>
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[560px]">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-500 w-12">Фото</th>
@@ -93,6 +93,7 @@ export default function ManagerProductsPage() {
                 <th className="text-left px-4 py-3 font-medium text-gray-500">Знижка</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-500">Розміри</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-500">Наявність</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-500">Каталог</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -112,10 +113,21 @@ export default function ManagerProductsPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-800">{p.vendor} {p.model_name}</p>
-                      <p className="text-xs text-gray-400">{p.gender} · {p.prod_type}</p>
+                      <Link
+                        href={`/manager/products/${p.id}`}
+                        className="group block"
+                        title="Редагувати товар"
+                      >
+                        <p className="font-medium text-gray-800 group-hover:text-teal-600 transition-colors">
+                          <span className="group-hover:underline">{p.vendor}</span>{" "}
+                          {p.model_name}
+                        </p>
+                        <p className="text-xs text-gray-400">{p.gender} · {p.prod_type}</p>
+                      </Link>
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{Number(p.full_price).toFixed(0)} грн</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {Number(p.full_price) > 0 ? `${Number(p.full_price).toFixed(0)} грн` : "—"}
+                    </td>
                     <td className="px-4 py-3">
                       {p.discount > 0 ? (
                         <span className="bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5 rounded-full">
@@ -138,6 +150,13 @@ export default function ManagerProductsPage() {
                       }`}>
                         {p.exists === "В наявності" ? "✓ Є" : p.exists === "Товар закінчується. Поспішіть придбати!" ? "⚠ Мало" : "✕ Нема"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.is_published ? (
+                        <span className="text-xs font-medium text-teal-600">У каталозі</span>
+                      ) : (
+                        <span className="text-xs font-medium text-gray-400">Приховано</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 justify-end">

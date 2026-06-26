@@ -111,6 +111,11 @@ class ProductViewSet(viewsets.ModelViewSet):
         )
         if self.request.query_params.get("size"):
             qs = qs.distinct()
+        user = self.request.user
+        if self.action in ("list", "retrieve") and not (
+            user.is_authenticated and user.is_staff
+        ):
+            qs = qs.filter(is_published=True)
         return qs
 
     def get_serializer_class(self):

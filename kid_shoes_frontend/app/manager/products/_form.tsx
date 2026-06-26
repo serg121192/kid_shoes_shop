@@ -47,6 +47,7 @@ interface ProductDetail {
   season: string;
   full_price: string;
   discount: number;
+  is_published: boolean;
   description: string | null;
   seo_description: string | null;
   sizes: ProductSize[];
@@ -99,6 +100,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
     season: "Winter",
     full_price: "",
     discount: "0",
+    is_published: false,
     description: "",
     seo_description: "",
   });
@@ -148,8 +150,9 @@ export default function ProductForm({ productId }: { productId?: number }) {
           prod_type: p.prod_type,
           gender: p.gender,
           season: p.season,
-          full_price: p.full_price,
+          full_price: p.full_price === "0.00" || p.full_price === "0" ? "" : p.full_price,
           discount: String(p.discount),
+          is_published: p.is_published,
           description: p.description ?? "",
           seo_description: p.seo_description ?? "",
         });
@@ -197,7 +200,32 @@ export default function ProductForm({ productId }: { productId?: number }) {
   // ── Form field handler ───────────────────────────────────────────────────────
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+  ) => {
+    const { name, value } = e.target;
+    setForm((p) => {
+      const next = { ...p, [name]: value };
+      if (name === "full_price") {
+        const price = Number(value) || 0;
+        if (price <= 0) next.is_published = false;
+      }
+      return next;
+    });
+  };
+
+  const catalogEligible = (Number(form.full_price) || 0) > 0;
+
+  const buildProductBody = () => ({
+    vendor: Number(form.vendor),
+    model_name: form.model_name,
+    prod_type: form.prod_type,
+    gender: form.gender,
+    season: form.season,
+    full_price: form.full_price === "" ? 0 : Number(form.full_price),
+    discount: Number(form.discount) || 0,
+    description: form.description || null,
+    seo_description: form.seo_description || null,
+    is_published: catalogEligible ? form.is_published : false,
+  });
 
   // ── Create new vendor inline ──────────────────────────────────────────────────
   const handleCreateVendor = async () => {
@@ -322,23 +350,13 @@ export default function ProductForm({ productId }: { productId?: number }) {
         }
       } else {
         // Create mode: if required fields are ready — auto-create product then upload immediately
-        if (form.vendor && form.model_name && form.full_price) {
+        if (form.vendor && form.model_name) {
           vids.forEach((f) => _pendingVideoQueue.push(f));
           // Also preserve pending images so they're uploaded after auto-navigate
           pendingImages.forEach((pi) => _pendingImageQueue.push({ file: pi.file, is_main: pi.is_main }));
           setIsSaving(true);
           try {
-            const body = {
-              vendor: Number(form.vendor),
-              model_name: form.model_name,
-              prod_type: form.prod_type,
-              gender: form.gender,
-              season: form.season,
-              full_price: Number(form.full_price),
-              discount: Number(form.discount) || 0,
-              description: form.description || null,
-              seo_description: form.seo_description || null,
-            };
+            const body = buildProductBody();
             const res = await api.post<{ id: number }>("/shop/products/", body);
             // Navigate to edit — the useEffects below will pick up the queues
             router.replace(`/manager/products/${res.data.id}`);
@@ -478,22 +496,12 @@ export default function ProductForm({ productId }: { productId?: number }) {
 
   // ── Save ─────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (!form.vendor || !form.model_name || !form.full_price) {
-      showToast("Заповніть обов'язкові поля", "error");
+    if (!form.vendor || !form.model_name) {
+      showToast("Заповніть обов'язкові поля: бренд і назва моделі", "error");
       return;
     }
     setIsSaving(true);
-    const body = {
-      vendor: Number(form.vendor),
-      model_name: form.model_name,
-      prod_type: form.prod_type,
-      gender: form.gender,
-      season: form.season,
-      full_price: Number(form.full_price),
-      discount: Number(form.discount),
-      description: form.description || null,
-      seo_description: form.seo_description || null,
-    };
+    const body = buildProductBody();
 
     try {
       if (isEdit) {
@@ -664,10 +672,10 @@ export default function ProductForm({ productId }: { productId?: number }) {
           </div>
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-600 mb-1">Ціна (грн) *</label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Ціна (грн)</label>
               <input name="full_price" type="number" value={form.full_price} onChange={handleChange}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-                placeholder="0" min="0" />
+                placeholder="0 — без ціни, не показується в каталозі" min="0" />
             </div>
             <div className="w-24">
               <label className="block text-sm font-medium text-gray-600 mb-1">Знижка %</label>
@@ -675,6 +683,37 @@ export default function ProductForm({ productId }: { productId?: number }) {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                 placeholder="0" min="0" max="100" />
             </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium text-gray-800">Показувати в каталозі</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {catalogEligible
+                  ? "Картка видима покупцям на головній сторінці каталогу"
+                  : "Вкажіть ціну більше 0, щоб увімкнути показ"}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={form.is_published}
+              disabled={!catalogEligible}
+              onClick={() => catalogEligible && setForm((p) => ({ ...p, is_published: !p.is_published }))}
+              className={`relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors ${
+                !catalogEligible
+                  ? "cursor-not-allowed bg-gray-300 opacity-60"
+                  : form.is_published
+                  ? "bg-teal-500"
+                  : "bg-gray-300"
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform mt-1 ${
+                  form.is_published ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
           </div>
         </div>
         <div>

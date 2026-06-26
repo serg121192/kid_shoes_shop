@@ -75,7 +75,10 @@ class Product(models.Model):
         verbose_name="Сезон",
     )
     full_price = models.DecimalField(
-        max_digits=10, decimal_places=2, verbose_name="Повна ціна (грн)"
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Повна ціна (грн)",
     )
     discount = models.IntegerField(
         default=0,
@@ -96,6 +99,10 @@ class Product(models.Model):
     )
     slug = models.SlugField(
         max_length=255, blank=True, unique=True, verbose_name="Slug"
+    )
+    is_published = models.BooleanField(
+        default=False,
+        verbose_name="Показувати в каталозі",
     )
 
     @property
@@ -123,6 +130,9 @@ class Product(models.Model):
         verbose_name_plural = "Товари"
 
     def save(self, *args, **kwargs):
+        if not self.full_price or self.full_price <= 0:
+            self.is_published = False
+
         if not self.seo_h1:
             _gender = ""
             if self.gender == "boy":

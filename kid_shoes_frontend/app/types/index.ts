@@ -41,6 +41,7 @@ export interface ProductList {
   sizes: ProductSize[];
   images: ProductImage[];
   slug: string;
+  is_published?: boolean;
 }
 
 // Returned by detail endpoint (ProductRetrieveSerializer)

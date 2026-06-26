@@ -1,5 +1,7 @@
 import re
 
+from decimal import Decimal
+
 from rest_framework import serializers
 from django.core.validators import MinValueValidator
 
@@ -66,6 +68,9 @@ class ProductSerializer(serializers.ModelSerializer):
     discounted_price = serializers.DecimalField(
         read_only=True, max_digits=10, decimal_places=2
     )
+    full_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, required=False, default=Decimal("0")
+    )
 
     class Meta:
         model = Product
@@ -84,7 +89,30 @@ class ProductSerializer(serializers.ModelSerializer):
             "seo_title",
             "seo_h1",
             "slug",
+            "is_published",
         ]
+
+    def validate(self, attrs):
+        instance = getattr(self, "instance", None)
+        full_price = attrs.get(
+            "full_price",
+            instance.full_price if instance is not None else Decimal("0"),
+        )
+        if full_price is None:
+            full_price = Decimal("0")
+        is_published = attrs.get(
+            "is_published",
+            instance.is_published if instance is not None else False,
+        )
+        if is_published and full_price <= 0:
+            raise serializers.ValidationError(
+                {
+                    "is_published": "Неможливо показати в каталозі товар без ціни.",
+                }
+            )
+        if full_price <= 0:
+            attrs["is_published"] = False
+        return attrs
 
 
 class ProductListSerializer(serializers.ModelSerializer):
@@ -116,6 +144,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             "discounted_price",
             "sizes",
             "images",
+            "is_published",
         ]
 
 
@@ -197,6 +226,7 @@ class ProductRetrieveSerializer(serializers.ModelSerializer):
             "videos",
             "avg_rating",
             "review_count",
+            "is_published",
         ]
 
     def get_sizes(self, obj):
