@@ -126,6 +126,26 @@ class ProductViewSet(viewsets.ModelViewSet):
         return ProductSerializer
 
     @action(
+        detail=False,
+        methods=["post"],
+        url_path="bulk_publish",
+        permission_classes=[IsAdminUser],
+    )
+    def bulk_publish(self, request: Request) -> Response:
+        """Publish products that have a price. Optional body: {"ids": [1, 2, 3]}."""
+        ids = request.data.get("ids")
+        qs = Product.objects.filter(full_price__gt=0, is_published=False)
+        if ids is not None:
+            if not isinstance(ids, list) or not ids:
+                return Response(
+                    {"error": "ids must be a non-empty list"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            qs = qs.filter(id__in=ids)
+        published = qs.update(is_published=True)
+        return Response({"published": published})
+
+    @action(
         detail=True,
         methods=["post"],
         url_path="upload_image",
