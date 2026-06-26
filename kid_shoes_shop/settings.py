@@ -270,8 +270,11 @@ EMAIL_BACKEND = os.getenv(
 )
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False") == "True"
+# Resend on port 465 uses SSL only — TLS must be off when SSL is on.
+EMAIL_USE_TLS = (
+    os.getenv("EMAIL_USE_TLS", "True") == "True" and not EMAIL_USE_SSL
+)
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_TIMEOUT = int(

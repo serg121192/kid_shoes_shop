@@ -1,5 +1,5 @@
 import io
-import threading
+import logging
 from datetime import timedelta
 
 from django.db import transaction
@@ -72,6 +72,8 @@ from shop.serializers import (
     DeliveryInfoSerializer,
     ReviewSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -524,19 +526,15 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.refresh_from_db()
         response_data = OrderSerializer(order).data
 
-        # Send emails in a daemon thread AFTER the transaction commits so that:
-        # 1. The response is returned instantly (no SMTP blocking the request).
-        # 2. Emails see fully committed DB data.
+        # Send after commit (sync). Daemon threads were killed by Gunicorn before SMTP finished.
         def _send_emails():
             try:
                 send_order_confirmation(order)
                 send_new_order_alert(order)
             except Exception:
-                pass
+                logger.exception("Order #%s: failed to send notification emails", order.pk)
 
-        transaction.on_commit(
-            lambda: threading.Thread(target=_send_emails, daemon=True).start()
-        )
+        transaction.on_commit(_send_emails)
 
         return Response(response_data, status=status.HTTP_201_CREATED)
 
@@ -552,11 +550,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()  # сигнали: processing→ТТН, cancelled→видалення ТТН + відновлення залишків
 
         response_data = OrderSerializer(order).data
-        transaction.on_commit(
-            lambda: threading.Thread(
-                target=lambda: send_order_status_update(order), daemon=True
-            ).start()
-        )
+
+        def _notify_status():
+            try:
+                send_order_status_update(order)
+            except Exception:
+                logger.exception("Order #%s: failed to send status update email", order.pk)
+
+        transaction.on_commit(_notify_status)
         return Response(response_data, status=status.HTTP_200_OK)
 
     @action(
@@ -646,11 +647,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.save()  # сигнали: _restore_stock_on_cancel, _delete_ttn_on_cancel
 
         response_data = OrderSerializer(order).data
-        transaction.on_commit(
-            lambda: threading.Thread(
-                target=lambda: send_order_status_update(order), daemon=True
-            ).start()
-        )
+
+        def _notify_cancel():
+            try:
+                send_order_status_update(order)
+            except Exception:
+                logger.exception("Order #%s: failed to send cancellation email", order.pk)
+
+        transaction.on_commit(_notify_cancel)
         return Response(response_data, status=status.HTTP_200_OK)
 
 

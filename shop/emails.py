@@ -7,9 +7,12 @@ Functions:
   send_new_order_alert     — to manager when a new order arrives
 """
 
+import logging
+
 from django.conf import settings
 from django.core.mail import send_mail
 
+logger = logging.getLogger(__name__)
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +32,10 @@ DELIVERY_LABELS = {
     "pickup":       "Самовивіз з магазину",
 }
 
-STORE_ADDRESS = "вул. Хрещатик 1, Київ (пн–пт 9:00–18:00)"
+STORE_ADDRESS = (
+    'м. Чернігів, проспект Левка Лук\'яненка 78, '
+    '2-й поверх (поряд з ТРЦ "Hollywood")'
+)
 
 
 def _delivery_lines(delivery) -> str:
@@ -86,6 +92,7 @@ def _items_table(order) -> str:
 
 
 def _base_html(title: str, body: str) -> str:
+    site_url = settings.FRONTEND_URL.rstrip("/")
     return f"""<!DOCTYPE html>
 <html lang="uk">
 <head><meta charset="utf-8"><title>{title}</title></head>
@@ -99,11 +106,31 @@ def _base_html(title: str, body: str) -> str:
       {body}
     </div>
     <div style="padding:14px 30px;background:#f0fdfa;text-align:center;font-size:12px;color:#6b7280">
-      ТАК і ТАК · <a href="https://tak-i-tak.vercel.app" style="color:#0d9488">tak-i-tak.vercel.app</a>
+      ТАК і ТАК · <a href="{site_url}" style="color:#0d9488">{site_url.replace("https://", "")}</a>
     </div>
   </div>
 </body>
 </html>"""
+
+
+def _send(subject: str, message: str, html_message: str, recipients: list[str]) -> None:
+    if not recipients:
+        return
+    try:
+        sent = send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=recipients,
+            html_message=html_message,
+            fail_silently=False,
+        )
+        if sent:
+            logger.info("Email sent: %s → %s", subject, ", ".join(recipients))
+        else:
+            logger.warning("Email not sent (send_mail returned 0): %s → %s", subject, recipients)
+    except Exception:
+        logger.exception("Email failed: %s → %s", subject, ", ".join(recipients))
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
@@ -112,6 +139,7 @@ def send_order_confirmation(order) -> None:
     """Send booking confirmation email to the customer."""
     customer_email = order.user.email
     if not customer_email:
+        logger.warning("Order #%s: no customer email, skip confirmation", order.pk)
         return
 
     delivery = getattr(order, "delivery", None)
@@ -139,13 +167,11 @@ def send_order_confirmation(order) -> None:
     </p>
     """
 
-    send_mail(
+    _send(
         subject=f"Замовлення № {order.id} — ТАК і ТАК",
         message=f"Замовлення № {order.id} прийнято. Деталі: {settings.FRONTEND_URL}/orders/{order.id}",
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[customer_email],
         html_message=_base_html(f"Замовлення № {order.id}", body),
-        fail_silently=True,
+        recipients=[customer_email],
     )
 
 
@@ -186,13 +212,11 @@ def send_order_status_update(order) -> None:
     </p>
     """
 
-    send_mail(
+    _send(
         subject=f"Замовлення № {order.id}: {status_label}",
         message=f"Статус замовлення № {order.id} змінено на «{status_label}». {settings.FRONTEND_URL}/orders/{order.id}",
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[customer_email],
         html_message=_base_html(f"Статус замовлення № {order.id}", body),
-        fail_silently=True,
+        recipients=[customer_email],
     )
 
 
@@ -200,6 +224,7 @@ def send_new_order_alert(order) -> None:
     """Notify the manager about a newly placed order."""
     manager_email = getattr(settings, "MANAGER_EMAIL", "")
     if not manager_email:
+        logger.warning("MANAGER_EMAIL not set — skip manager alert for order #%s", order.pk)
         return
 
     delivery = getattr(order, "delivery", None)
@@ -221,18 +246,16 @@ def send_new_order_alert(order) -> None:
     </p>
 
     <p>
-      <a href="{settings.FRONTEND_URL.replace('localhost:3000', 'tak-i-tak.vercel.app')}/manager/orders"
+      <a href="{settings.FRONTEND_URL}/manager/orders"
          style="display:inline-block;background:#0d9488;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none">
         Відкрити панель менеджера
       </a>
     </p>
     """
 
-    send_mail(
+    _send(
         subject=f"[ТАК і ТАК] Нове замовлення № {order.id}",
         message=f"Нове замовлення № {order.id} від {customer.email}. Сума: {order.total_price} грн.",
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[manager_email],
         html_message=_base_html(f"Нове замовлення № {order.id}", body),
-        fail_silently=True,
+        recipients=[manager_email],
     )
