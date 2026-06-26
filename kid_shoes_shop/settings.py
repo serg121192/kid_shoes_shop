@@ -268,6 +268,8 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
 )
+# Resend HTTP API key (preferred on Railway — SMTP ports are often blocked).
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "") or os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False") == "True"
