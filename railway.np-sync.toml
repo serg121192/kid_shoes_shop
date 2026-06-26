@@ -1,0 +1,18 @@
+# Окремий Railway-сервіс для cron (не змішувати з web-сервісом!).
+#
+# Як підключити:
+# 1. Railway → проєкт → New Service → GitHub Repo (той самий репозиторій)
+# 2. Settings → Config file path → railway.np-sync.toml
+# 3. Підключити змінні середовища (див. docs/RAILWAY_CRON.md).
+#    ОБОВʼЯЗКОВО: SECRET_KEY — той самий, що в основному backend!
+# 4. Redeploy
+#
+# Розклад: кожні 30 хвилин (UTC). Мінімум на Railway — 5 хвилин.
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "python manage.py sync_np_statuses"
+cronSchedule = "*/30 * * * *"
+restartPolicyType = "NEVER"
