@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import api from "@/app/lib/api";
 import { Order } from "@/app/types";
 import { useAuth } from "@/app/context/AuthContext";
+import { useShop } from "@/app/context/ShopContext";
 import { Package } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -28,6 +29,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function OrdersPage() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const { markOrdersSeen } = useShop();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,8 +49,11 @@ export default function OrdersPage() {
   useEffect(() => {
     if (!authLoading && !isAuthenticated) { router.push("/login"); return; }
     if (!authLoading && user?.is_staff) { router.push("/manager/orders"); return; }
-    if (!authLoading && isAuthenticated) { fetchOrders(); }
-  }, [authLoading, isAuthenticated, router, fetchOrders]);
+    if (!authLoading && isAuthenticated) {
+      markOrdersSeen();
+      fetchOrders();
+    }
+  }, [authLoading, isAuthenticated, router, fetchOrders, user, markOrdersSeen]);
 
   if (authLoading || isLoading) {
     return (

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import api from "@/app/lib/api";
 import { normalizeUaPhone } from "@/app/lib/phone";
 import { useAuth } from "@/app/context/AuthContext";
+import { useShop } from "@/app/context/ShopContext";
 import { Loader2, CheckCircle, ChevronDown, LogIn, UserPlus } from "lucide-react";
 
 type DeliveryType = "np_warehouse" | "np_postamat" | "np_address" | "pickup";
@@ -273,6 +274,7 @@ function AuthBlock({ onSuccess }: { onSuccess: () => void }) {
 
 export default function CheckoutPage() {
   const { isAuthenticated, user } = useAuth();
+  const { setCartCount, setOrdersBadgeCount, refreshCounts } = useShop();
   const router = useRouter();
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("np_warehouse");
   const [isLoading, setIsLoading] = useState(false);
@@ -436,6 +438,9 @@ export default function CheckoutPage() {
     try {
       const response = await api.post("/shop/orders/me/create_order/", payload);
       const orderId: number = response.data.id;
+      setCartCount(0);
+      setOrdersBadgeCount((c) => c + 1);
+      await refreshCounts();
       router.push(`/orders/${orderId}`);
     } catch (err: unknown) {
       const data = (err as { response?: { data?: Record<string, string[]> } })?.response?.data;

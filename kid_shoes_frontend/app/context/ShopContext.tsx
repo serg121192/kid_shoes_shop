@@ -19,13 +19,18 @@ export interface Toast {
   type: "success" | "error";
 }
 
+const ORDERS_BADGE_KEY = "shop_orders_badge";
+
 interface ShopContextType {
   cartCount: number;
   wishlistCount: number;
+  ordersBadgeCount: number;
   toasts: Toast[];
   showToast: (message: string, type?: "success" | "error") => void;
   setCartCount: React.Dispatch<React.SetStateAction<number>>;
   setWishlistCount: React.Dispatch<React.SetStateAction<number>>;
+  setOrdersBadgeCount: React.Dispatch<React.SetStateAction<number>>;
+  markOrdersSeen: () => void;
   refreshCounts: () => Promise<void>;
 }
 
@@ -37,8 +42,36 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const [cartCount, setCartCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [ordersBadgeCount, setOrdersBadgeCountState] = useState(0);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+
+  const setOrdersBadgeCount = useCallback((value: React.SetStateAction<number>) => {
+    setOrdersBadgeCountState((prev) => {
+      const next = typeof value === "function" ? value(prev) : value;
+      if (typeof window !== "undefined") {
+        if (next <= 0) sessionStorage.removeItem(ORDERS_BADGE_KEY);
+        else sessionStorage.setItem(ORDERS_BADGE_KEY, String(next));
+      }
+      return next;
+    });
+  }, []);
+
+  const markOrdersSeen = useCallback(() => {
+    setOrdersBadgeCount(0);
+  }, [setOrdersBadgeCount]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setOrdersBadgeCountState(0);
+      if (typeof window !== "undefined") sessionStorage.removeItem(ORDERS_BADGE_KEY);
+      return;
+    }
+    if (typeof window !== "undefined") {
+      const stored = sessionStorage.getItem(ORDERS_BADGE_KEY);
+      if (stored) setOrdersBadgeCountState(Number(stored));
+    }
+  }, [isAuthenticated]);
 
   const refreshCounts = useCallback(async () => {
     if (!isAuthenticated) {
@@ -93,10 +126,13 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       value={{
         cartCount,
         wishlistCount,
+        ordersBadgeCount,
         toasts,
         showToast,
         setCartCount,
         setWishlistCount,
+        setOrdersBadgeCount,
+        markOrdersSeen,
         refreshCounts,
       }}
     >

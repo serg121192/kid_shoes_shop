@@ -229,12 +229,16 @@ export default function CartPage() {
           <span>{total.toFixed(2)} грн</span>
         </div>
 
-        <Link
-          href="/checkout"
+        <button
+          type="button"
+          onClick={() => {
+            setCartCount(0);
+            router.push("/checkout");
+          }}
           className="block w-full bg-teal-600 hover:bg-teal-700 text-white text-center font-semibold py-3 rounded-xl transition-colors"
         >
           Забронювати розміри
-        </Link>
+        </button>
       </div>
     </div>
   );

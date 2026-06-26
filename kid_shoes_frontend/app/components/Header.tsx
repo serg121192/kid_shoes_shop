@@ -74,7 +74,7 @@ function ManagerHeader() {
 
 export default function Header() {
   const { user, isAuthenticated, logout } = useAuth();
-  const { cartCount, wishlistCount } = useShop();
+  const { cartCount, wishlistCount, ordersBadgeCount } = useShop();
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
@@ -157,10 +157,11 @@ export default function Header() {
 
                   <Link
                     href="/orders"
-                    className="flex items-center gap-1 text-gray-700 hover:text-teal-500 transition-colors"
+                    className="relative flex items-center gap-1 text-gray-700 hover:text-teal-500 transition-colors"
                     title="Замовлення"
                   >
                     <Package size={26} />
+                    <Badge count={ordersBadgeCount} />
                   </Link>
 
                   <Link
@@ -262,6 +263,11 @@ export default function Header() {
               >
                 <Package size={20} />
                 <span>Замовлення</span>
+                {ordersBadgeCount > 0 && (
+                  <span className="ml-auto bg-rose-400 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                    {ordersBadgeCount > 99 ? "99+" : ordersBadgeCount}
+                  </span>
+                )}
               </Link>
               <Link
                 href="/profile"
