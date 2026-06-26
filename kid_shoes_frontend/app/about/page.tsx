@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AboutVideoSection from "@/app/about/AboutVideoSection";
 
 export const metadata: Metadata = {
   title: "Про нас",
@@ -23,6 +24,8 @@ export default function AboutPage() {
           <strong>ТАК і ТАК</strong> — магазин дитячого взуття в Чернігові. Ми підбираємо моделі від
           перевірених виробників: зручні, міцні та підходять для щоденного носіння й активних ігор.
         </p>
+
+        <AboutVideoSection />
 
         <section>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Самовивіз</h2>
