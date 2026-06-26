@@ -160,7 +160,8 @@ export default function ManagerOrdersPage() {
         ) : orders.length === 0 ? (
           <div className="text-center py-16 text-gray-400">Замовлень не знайдено</div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-500">ID</th>
@@ -273,6 +274,7 @@ export default function ManagerOrdersPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

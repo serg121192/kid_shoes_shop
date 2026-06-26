@@ -127,7 +127,8 @@ function ReportsContent() {
             Продажів за цей період не знайдено
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[480px]">
             <thead className="bg-teal-600 text-white">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold">Бренд</th>
@@ -162,6 +163,7 @@ function ReportsContent() {
               </tr>
             </tfoot>
           </table>
+          </div>
         )}
       </div>
 

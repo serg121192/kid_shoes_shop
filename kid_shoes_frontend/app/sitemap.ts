@@ -32,9 +32,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (!results || results.length === 0) break;
 
       for (const p of results) {
-        const path = p.slug ?? String(p.id);
+        if (!p.slug) continue;
         const lastMod = p.updated_at ?? p.created_at ?? new Date().toISOString();
-        urls.push({ url: `${BASE_URL}/products/${path}`, lastModified: new Date(lastMod) });
+        urls.push({ url: `${BASE_URL}/products/${p.slug}`, lastModified: new Date(lastMod) });
       }
 
       more = Boolean(data.next);
