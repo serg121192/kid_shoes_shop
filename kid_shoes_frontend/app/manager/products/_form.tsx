@@ -4,12 +4,6 @@ import {
   useState, useEffect, useRef, useCallback,
   DragEvent, ChangeEvent,
 } from "react";
-
-// Module-level queues: survive client-side navigation within the same tab.
-// Used when media is dropped in create mode before the product exists.
-const _pendingVideoQueue: File[] = [];
-const _pendingImageQueue: { file: File; is_main: boolean }[] = [];
-const _pendingSizeQueue: { size: number; quantity: number }[] = [];
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import api, { getMediaUrl } from "@/app/lib/api";
@@ -87,6 +81,11 @@ export default function ProductForm({ productId }: { productId?: number }) {
   const { showToast } = useShop();
   const router = useRouter();
   const isEdit = !!productId;
+  /** Server-side product id for create-mode early uploads (before final save). */
+  const [draftProductId, setDraftProductId] = useState<number | null>(null);
+  const activeProductId = productId ?? draftProductId ?? undefined;
+  const hasServerProduct = activeProductId != null;
+  const creatingDraftRef = useRef<Promise<number | null> | null>(null);
 
   // ── Basic form ──────────────────────────────────────────────────────────────
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -105,6 +104,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
     description: "",
     seo_description: "",
   });
+  const formRef = useRef(form);
+  formRef.current = form;
 
   // ── Saved state (edit mode) ──────────────────────────────────────────────────
   const [savedImages, setSavedImages] = useState<ProductImage[]>([]);
@@ -169,57 +170,152 @@ export default function ProductForm({ productId }: { productId?: number }) {
     load();
   }, [isEdit, productId]);
 
-  // ── Auto-upload media queued from create-mode save ───────────────────────────
-  useEffect(() => {
-    if (!isEdit || !productId || isLoading) return;
+  const catalogEligible = (Number(form.full_price) || 0) > 0;
 
-    if (_pendingImageQueue.length > 0) {
-      const imgs = _pendingImageQueue.splice(0);
-      Promise.all(
-        imgs.map(({ file, is_main }, i) => {
-          const fd = new FormData();
-          fd.append("image", file);
-          fd.append("is_main", is_main && i === 0 ? "true" : "false");
-          fd.append("order", String(i));
-          return api.post<ProductImage>(`/shop/products/${productId}/upload_image/`, fd, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-        })
-      )
-        .then((results) => {
-          setSavedImages((prev) => {
-            let next = [...prev];
-            for (const res of results) {
+  const buildProductBody = useCallback(() => {
+    const f = formRef.current;
+    const eligible = (Number(f.full_price) || 0) > 0;
+    return {
+      vendor: Number(f.vendor),
+      model_name: f.model_name,
+      prod_type: f.prod_type,
+      gender: f.gender,
+      season: f.season,
+      full_price: f.full_price === "" ? 0 : Number(f.full_price),
+      discount: Number(f.discount) || 0,
+      description: f.description || null,
+      seo_description: f.seo_description || null,
+      is_published: eligible ? f.is_published : false,
+    };
+  }, []);
+
+  const ensureDraftProduct = useCallback(async (): Promise<number | null> => {
+    if (productId) return productId;
+    if (draftProductId) return draftProductId;
+    const f = formRef.current;
+    if (!f.vendor || !f.model_name) return null;
+    if (creatingDraftRef.current) return creatingDraftRef.current;
+
+    creatingDraftRef.current = (async () => {
+      try {
+        const res = await api.post<{ id: number }>("/shop/products/", buildProductBody());
+        setDraftProductId(res.data.id);
+        return res.data.id;
+      } catch {
+        showToast("Не вдалося створити чернетку товару", "error");
+        return null;
+      } finally {
+        creatingDraftRef.current = null;
+      }
+    })();
+    return creatingDraftRef.current;
+  }, [productId, draftProductId, buildProductBody, showToast]);
+
+  const uploadImagesToServer = useCallback(
+    async (id: number, items: { file: File; is_main: boolean }[]) => {
+      if (!items.length) return;
+      let orderBase = 0;
+      let hasMain = false;
+      setSavedImages((prev) => {
+        orderBase = prev.length;
+        hasMain = prev.some((i) => i.is_main);
+        return prev;
+      });
+      let mainAssigned = hasMain;
+      try {
+        await Promise.all(
+          items.map(async ({ file, is_main }, idx) => {
+            const setAsMain = !mainAssigned && (is_main || idx === 0);
+            if (setAsMain) mainAssigned = true;
+            const fd = new FormData();
+            fd.append("image", file);
+            fd.append("is_main", setAsMain ? "true" : "false");
+            fd.append("order", String(orderBase + idx));
+            const res = await api.post<ProductImage>(
+              `/shop/products/${id}/upload_image/`,
+              fd,
+              { headers: { "Content-Type": "multipart/form-data" } }
+            );
+            setSavedImages((prev) => {
               if (res.data.is_main) {
-                next = next.map((img) => ({ ...img, is_main: false }));
+                return [...prev.map((i) => ({ ...i, is_main: false })), res.data];
               }
-              next.push(res.data);
-            }
-            return next;
-          });
-        })
-        .catch(() => showToast("Не вдалося завантажити фото", "error"));
-    }
+              return [...prev, res.data];
+            });
+          })
+        );
+      } catch {
+        throw new Error("upload failed");
+      }
+    },
+    []
+  );
 
-    if (_pendingSizeQueue.length > 0) {
-      const sizes = _pendingSizeQueue.splice(0);
-      Promise.all(
-        sizes.map((s) =>
-          api.post<ProductSize>(`/shop/products/${productId}/set_size/`, s)
-        )
-      )
-        .then((results) => {
-          setSavedSizes((prev) => [...prev, ...results.map((r) => r.data)]);
-        })
-        .catch(() => showToast("Не вдалося завантажити розміри", "error"));
-    }
+  const uploadVideoToServer = useCallback(
+    async (id: number, file: File, title: string, localId?: string) => {
+      const progressKey = localId ?? uid();
+      setEditUploadProgress((prev) => ({ ...prev, [progressKey]: 0 }));
+      const fd = new FormData();
+      fd.append("video", file);
+      fd.append("title", title);
+      fd.append("order", String(savedVideos.length));
+      try {
+        const res = await api.post<ProductVideo>(`/shop/products/${id}/upload_video/`, fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: (event) => {
+            const pct = event.total ? Math.round((event.loaded / event.total) * 100) : 0;
+            setEditUploadProgress((prev) => ({ ...prev, [progressKey]: pct }));
+          },
+        });
+        setSavedVideos((prev) => [...prev, res.data]);
+      } finally {
+        setEditUploadProgress((prev) => {
+          const next = { ...prev };
+          delete next[progressKey];
+          return next;
+        });
+      }
+    },
+    [savedVideos.length]
+  );
 
-    if (_pendingVideoQueue.length > 0) {
-      const files = _pendingVideoQueue.splice(0);
-      handleVideoFiles(files);
-    }
+  // When brand + model appear, upload media that was queued locally first.
+  useEffect(() => {
+    if (hasServerProduct || isLoading) return;
+    if (!form.vendor || !form.model_name) return;
+    if (pendingImages.length === 0 && pendingVideos.length === 0) return;
+
+    void (async () => {
+      const id = await ensureDraftProduct();
+      if (!id) return;
+
+      const imgs = pendingImages;
+      if (imgs.length) {
+        setPendingImages([]);
+        try {
+          await uploadImagesToServer(
+            id,
+            imgs.map((p) => ({ file: p.file, is_main: p.is_main }))
+          );
+        } catch {
+          showToast("Не вдалося завантажити фото", "error");
+        }
+      }
+
+      const vids = [...pendingVideos];
+      if (vids.length) {
+        setPendingVideos([]);
+        for (const v of vids) {
+          try {
+            await uploadVideoToServer(id, v.file, v.title, v.localId);
+          } catch {
+            showToast(`Не вдалося завантажити ${v.file.name}`, "error");
+          }
+        }
+      }
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading]);
+  }, [form.vendor, form.model_name, pendingImages.length, pendingVideos.length, hasServerProduct, isLoading]);
 
   // ── Form field handler ───────────────────────────────────────────────────────
   const handleChange = (
@@ -235,21 +331,6 @@ export default function ProductForm({ productId }: { productId?: number }) {
       return next;
     });
   };
-
-  const catalogEligible = (Number(form.full_price) || 0) > 0;
-
-  const buildProductBody = () => ({
-    vendor: Number(form.vendor),
-    model_name: form.model_name,
-    prod_type: form.prod_type,
-    gender: form.gender,
-    season: form.season,
-    full_price: form.full_price === "" ? 0 : Number(form.full_price),
-    discount: Number(form.discount) || 0,
-    description: form.description || null,
-    seo_description: form.seo_description || null,
-    is_published: catalogEligible ? form.is_published : false,
-  });
 
   // ── Create new vendor inline ──────────────────────────────────────────────────
   const handleCreateVendor = async () => {
@@ -277,48 +358,49 @@ export default function ProductForm({ productId }: { productId?: number }) {
       const imgs = files.filter((f) => f.type.startsWith("image/"));
       if (!imgs.length) return;
 
-      if (isEdit && productId) {
-        const baseOrder = savedImages.length + pendingImages.length;
+      const id = hasServerProduct ? activeProductId : await ensureDraftProduct();
+
+      if (id) {
+        const queued = pendingImages;
+        if (queued.length) setPendingImages([]);
+        const batch = [
+          ...queued.map((p) => ({ file: p.file, is_main: p.is_main })),
+          ...imgs.map((file, i) => ({
+            file,
+            is_main: queued.length === 0 && savedImages.length === 0 && i === 0,
+          })),
+        ];
         try {
-          await Promise.all(
-            imgs.map(async (file, idx) => {
-              const fd = new FormData();
-              fd.append("image", file);
-              const isMain = baseOrder === 0 && idx === 0;
-              fd.append("is_main", isMain ? "true" : "false");
-              fd.append("order", String(baseOrder + idx));
-              const res = await api.post<ProductImage>(
-                `/shop/products/${productId}/upload_image/`, fd,
-                { headers: { "Content-Type": "multipart/form-data" } }
-              );
-              setSavedImages((prev) => {
-                if (res.data.is_main) {
-                  return [...prev.map((i) => ({ ...i, is_main: false })), res.data];
-                }
-                return [...prev, res.data];
-              });
-            })
-          );
+          await uploadImagesToServer(id, batch);
         } catch {
           showToast("Не вдалося завантажити фото", "error");
         }
-      } else {
-        // Queue locally
-        setPendingImages((prev) => {
-          const isFirstEver = prev.length === 0;
-          return [
-            ...prev,
-            ...imgs.map((file, i) => ({
-              localId: uid(),
-              file,
-              preview: URL.createObjectURL(file),
-              is_main: isFirstEver && i === 0,
-            })),
-          ];
-        });
+        return;
       }
+
+      setPendingImages((prev) => {
+        const isFirstEver = prev.length === 0;
+        return [
+          ...prev,
+          ...imgs.map((file, i) => ({
+            localId: uid(),
+            file,
+            preview: URL.createObjectURL(file),
+            is_main: isFirstEver && i === 0,
+          })),
+        ];
+      });
+      showToast("Вкажіть бренд і модель — фото завантажаться автоматично", "success");
     },
-    [isEdit, productId, savedImages, pendingImages, showToast]
+    [
+      hasServerProduct,
+      activeProductId,
+      ensureDraftProduct,
+      pendingImages,
+      savedImages.length,
+      uploadImagesToServer,
+      showToast,
+    ]
   );
 
   const onImgDrop = (e: DragEvent) => {
@@ -337,82 +419,43 @@ export default function ProductForm({ productId }: { productId?: number }) {
       const vids = files.filter((f) => f.type.startsWith("video/"));
       if (!vids.length) return;
 
-      if (isEdit && productId) {
-        for (const file of vids) {
-          const localId = uid();
-          setEditUploadProgress((prev) => ({ ...prev, [localId]: 0 }));
-          const fd = new FormData();
-          fd.append("video", file);
-          fd.append("title", file.name.replace(/\.[^/.]+$/, ""));
-          fd.append("order", String(savedVideos.length));
+      const id = hasServerProduct ? activeProductId : await ensureDraftProduct();
+
+      if (id) {
+        const queued = pendingVideos;
+        if (queued.length) setPendingVideos([]);
+        for (const v of queued) {
           try {
-            const res = await api.post<ProductVideo>(
-              `/shop/products/${productId}/upload_video/`, fd,
-              {
-                headers: { "Content-Type": "multipart/form-data" },
-                onUploadProgress: (event) => {
-                  const pct = event.total
-                    ? Math.round((event.loaded / event.total) * 100)
-                    : 0;
-                  setEditUploadProgress((prev) => ({ ...prev, [localId]: pct }));
-                },
-              }
-            );
-            setEditUploadProgress((prev) => {
-              const next = { ...prev };
-              delete next[localId];
-              return next;
-            });
-            setSavedVideos((prev) => [...prev, res.data]);
-            showToast("Відео завантажено");
+            await uploadVideoToServer(id, v.file, v.title, v.localId);
           } catch {
-            setEditUploadProgress((prev) => {
-              const next = { ...prev };
-              delete next[localId];
-              return next;
-            });
+            showToast(`Не вдалося завантажити ${v.file.name}`, "error");
+          }
+        }
+        for (const file of vids) {
+          try {
+            await uploadVideoToServer(
+              id,
+              file,
+              file.name.replace(/\.[^/.]+$/, "")
+            );
+          } catch {
             showToast(`Не вдалося завантажити ${file.name}`, "error");
           }
         }
-      } else {
-        // Create mode: if required fields are ready — auto-create product then upload immediately
-        if (form.vendor && form.model_name) {
-          vids.forEach((f) => _pendingVideoQueue.push(f));
-          // Also preserve pending images so they're uploaded after auto-navigate
-          pendingImages.forEach((pi) => _pendingImageQueue.push({ file: pi.file, is_main: pi.is_main }));
-          setIsSaving(true);
-          try {
-            const body = buildProductBody();
-            const res = await api.post<{ id: number }>("/shop/products/", body);
-            // Navigate to edit — the useEffects below will pick up the queues
-            router.replace(`/manager/products/${res.data.id}`);
-          } catch {
-            // Fallback: revert queues, add as pending
-            _pendingVideoQueue.length = 0;
-            _pendingImageQueue.length = 0;
-            setPendingVideos((prev) => [
-              ...prev,
-              ...vids.map((file) => ({
-                localId: uid(), file, title: file.name.replace(/\.[^/.]+$/, ""),
-              })),
-            ]);
-            showToast("Помилка авто-збереження. Відео завантажиться при збереженні.", "error");
-          } finally {
-            setIsSaving(false);
-          }
-        } else {
-          // Required fields not yet filled — add to pending queue, upload on save
-          setPendingVideos((prev) => [
-            ...prev,
-            ...vids.map((file) => ({
-              localId: uid(), file, title: file.name.replace(/\.[^/.]+$/, ""),
-            })),
-          ]);
-          showToast("Відео буде завантажено при збереженні товару");
-        }
+        return;
       }
+
+      setPendingVideos((prev) => [
+        ...prev,
+        ...vids.map((file) => ({
+          localId: uid(),
+          file,
+          title: file.name.replace(/\.[^/.]+$/, ""),
+        })),
+      ]);
+      showToast("Вкажіть бренд і модель — відео завантажиться автоматично", "success");
     },
-    [isEdit, productId, savedVideos, showToast, form, router, pendingImages]
+    [hasServerProduct, activeProductId, ensureDraftProduct, pendingVideos, uploadVideoToServer, showToast]
   );
 
   const onVidDrop = (e: DragEvent) => {
@@ -427,8 +470,9 @@ export default function ProductForm({ productId }: { productId?: number }) {
 
   // ── Saved image actions (edit mode) ──────────────────────────────────────────
   const handleSetMainSaved = async (imgId: number) => {
+    if (!activeProductId) return;
     try {
-      await api.patch(`/shop/products/${productId}/set_main_image/${imgId}/`);
+      await api.patch(`/shop/products/${activeProductId}/set_main_image/${imgId}/`);
       setSavedImages((prev) =>
         prev.map((i) => ({ ...i, is_main: i.id === imgId }))
       );
@@ -438,8 +482,9 @@ export default function ProductForm({ productId }: { productId?: number }) {
   };
 
   const handleDeleteSavedImage = async (imgId: number) => {
+    if (!activeProductId) return;
     try {
-      await api.delete(`/shop/products/${productId}/delete_image/${imgId}/`);
+      await api.delete(`/shop/products/${activeProductId}/delete_image/${imgId}/`);
       setSavedImages((prev) => prev.filter((i) => i.id !== imgId));
       showToast("Фото видалено");
     } catch {
@@ -448,8 +493,9 @@ export default function ProductForm({ productId }: { productId?: number }) {
   };
 
   const handleDeleteSavedVideo = async (vidId: number) => {
+    if (!activeProductId) return;
     try {
-      await api.delete(`/shop/products/${productId}/delete_video/${vidId}/`);
+      await api.delete(`/shop/products/${activeProductId}/delete_video/${vidId}/`);
       setSavedVideos((prev) => prev.filter((v) => v.id !== vidId));
       showToast("Відео видалено");
     } catch {
@@ -482,9 +528,9 @@ export default function ProductForm({ productId }: { productId?: number }) {
     const sz = Number(newSize.size);
     const qty = Number(newSize.quantity);
 
-    if (isEdit && productId) {
+    if (activeProductId) {
       try {
-        const res = await api.post<ProductSize>(`/shop/products/${productId}/set_size/`, {
+        const res = await api.post<ProductSize>(`/shop/products/${activeProductId}/set_size/`, {
           size: sz, quantity: qty,
         });
         setSavedSizes((prev) => {
@@ -508,8 +554,9 @@ export default function ProductForm({ productId }: { productId?: number }) {
   };
 
   const handleDeleteSize = async (sizeId: number, sizeNum: number) => {
+    if (!activeProductId) return;
     try {
-      await api.delete(`/shop/products/${productId}/delete_size/${sizeId}/`);
+      await api.delete(`/shop/products/${activeProductId}/delete_size/${sizeId}/`);
       setSavedSizes((prev) => prev.filter((s) => s.id !== sizeId));
       showToast(`Розмір ${sizeNum} видалено`);
     } catch {
@@ -530,27 +577,22 @@ export default function ProductForm({ productId }: { productId?: number }) {
     const body = buildProductBody();
 
     try {
-      if (isEdit) {
-        await api.patch(`/shop/products/${productId}/`, body);
-        showToast("Товар оновлено");
+      if (activeProductId) {
+        await api.patch(`/shop/products/${activeProductId}/`, body);
+        for (const s of pendingSizes) {
+          await api.post(`/shop/products/${activeProductId}/set_size/`, s).catch(() => {});
+        }
+        setPendingSizes([]);
+        showToast(isEdit ? "Товар оновлено" : "Товар створено");
+        router.replace(`/manager/products/${activeProductId}`);
       } else {
         const res = await api.post<{ id: number }>("/shop/products/", body);
         const newId = res.data.id;
-
-        pendingImages.forEach((img) => {
-          _pendingImageQueue.push({ file: img.file, is_main: img.is_main });
-        });
-        pendingSizes.forEach((s) => _pendingSizeQueue.push(s));
-        pendingVideos.forEach((v) => _pendingVideoQueue.push(v.file));
-
-        const mediaCount = pendingImages.length + pendingSizes.length + pendingVideos.length;
-        showToast(
-          mediaCount > 0
-            ? "Товар створено — медіа завантажуються у фоні"
-            : "Товар створено"
-        );
+        for (const s of pendingSizes) {
+          await api.post(`/shop/products/${newId}/set_size/`, s).catch(() => {});
+        }
+        showToast("Товар створено");
         router.replace(`/manager/products/${newId}`);
-        return;
       }
     } catch {
       showToast("Помилка збереження", "error");
@@ -569,8 +611,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
     );
   }
 
-  const allImages = isEdit ? savedImages : pendingImages;
-  const allSizes  = isEdit ? savedSizes  : pendingSizes;
+  const allImages = hasServerProduct ? savedImages : pendingImages;
+  const allSizes  = hasServerProduct ? savedSizes  : pendingSizes;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -581,8 +623,13 @@ export default function ProductForm({ productId }: { productId?: number }) {
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-2xl font-bold text-gray-900">
-          {isEdit ? "Редагувати товар" : "Новий товар"}
+          {isEdit ? "Редагувати товар" : draftProductId ? "Новий товар" : "Новий товар"}
         </h1>
+        {draftProductId && !isEdit && (
+          <span className="text-xs font-medium text-teal-600 bg-teal-50 border border-teal-200 rounded-full px-2.5 py-0.5">
+            чернетка · медіа на сервері
+          </span>
+        )}
       </div>
 
       {/* ── Basic info ── */}
@@ -745,12 +792,14 @@ export default function ProductForm({ productId }: { productId?: number }) {
         >
           <Upload size={22} className="mx-auto text-gray-400 mb-1.5" />
           <p className="text-sm text-gray-500">Перетягніть фото або натисніть для вибору</p>
-          <p className="text-xs text-gray-400 mt-0.5">JPG, PNG, WebP</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            JPG, PNG, WebP · після бренду та моделі завантажуються одразу
+          </p>
           <input ref={imgInputRef} type="file" multiple accept="image/*" onChange={onImgInput} className="hidden" />
         </div>
 
-        {/* Saved images (edit) */}
-        {isEdit && savedImages.length > 0 && (
+        {/* Saved images (server) */}
+        {hasServerProduct && savedImages.length > 0 && (
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
             {savedImages.map((img) => {
               const url = getMediaUrl(img.image);
@@ -785,8 +834,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
           </div>
         )}
 
-        {/* Pending images (create) */}
-        {!isEdit && pendingImages.length > 0 && (
+        {/* Pending images (waiting for brand/model or uploading) */}
+        {!hasServerProduct && pendingImages.length > 0 && (
           <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
             {pendingImages.map((img) => (
               <div key={img.localId} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
@@ -832,12 +881,14 @@ export default function ProductForm({ productId }: { productId?: number }) {
         >
           <Upload size={22} className="mx-auto text-gray-400 mb-1.5" />
           <p className="text-sm text-gray-500">Перетягніть відео або натисніть для вибору</p>
-          <p className="text-xs text-gray-400 mt-0.5">MP4, MOV, WebM</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            MP4, MOV, WebM · після бренду та моделі завантажуються одразу
+          </p>
           <input ref={vidInputRef} type="file" multiple accept="video/*" onChange={onVidInput} className="hidden" />
         </div>
 
         {/* Saved videos */}
-        {isEdit && savedVideos.length > 0 && (
+        {hasServerProduct && savedVideos.length > 0 && (
           <ul className="space-y-2">
             {savedVideos.map((v) => (
               <li key={v.id} className="flex items-center gap-3 border border-gray-100 rounded-lg px-3 py-2">
@@ -857,8 +908,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
           </ul>
         )}
 
-        {/* Pending videos */}
-        {!isEdit && pendingVideos.length > 0 && (
+        {/* Pending videos (waiting for brand/model) */}
+        {!hasServerProduct && pendingVideos.length > 0 && (
           <ul className="space-y-2">
             {pendingVideos.map((v) => (
               <li key={v.localId} className="border border-gray-100 rounded-lg px-3 py-2 space-y-1.5">
@@ -899,7 +950,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
         )}
 
         {/* Edit mode: live upload progress */}
-        {isEdit && Object.keys(editUploadProgress).length > 0 && (
+        {hasServerProduct && Object.keys(editUploadProgress).length > 0 && (
           <ul className="space-y-2">
             {Object.entries(editUploadProgress).map(([id, pct]) => (
               <li key={id} className="border border-teal-100 bg-teal-50 rounded-lg px-3 py-2 space-y-1.5">
@@ -918,7 +969,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
           </ul>
         )}
 
-        {(isEdit ? savedVideos : pendingVideos).length === 0 && (
+        {(hasServerProduct ? savedVideos : pendingVideos).length === 0 &&
+          Object.keys(editUploadProgress).length === 0 && (
           <p className="text-xs text-gray-400 text-center">Відео ще не додано</p>
         )}
       </div>
@@ -945,7 +997,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
           <button onClick={handleAddOrUpdateSize}
             className="flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
             <Plus size={14} />
-            {(isEdit ? savedSizes : pendingSizes).find((s) => s.size === Number(newSize.size))
+            {(hasServerProduct ? savedSizes : pendingSizes).find((s) => s.size === Number(newSize.size))
               ? "Оновити" : "Додати"}
           </button>
         </div>
@@ -960,7 +1012,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
                 </span>
                 <button
                   onClick={() =>
-                    isEdit
+                    hasServerProduct && "id" in s
                       ? handleDeleteSize((s as ProductSize).id, s.size)
                       : removePendingSize(s.size)
                   }
@@ -985,9 +1037,11 @@ export default function ProductForm({ productId }: { productId?: number }) {
         className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 text-white py-3 rounded-xl text-sm font-semibold transition-colors"
       >
         {isSaving
-          ? isEdit ? "Зберігаємо..." : "Створюємо..."
+          ? isEdit || draftProductId ? "Зберігаємо..." : "Створюємо..."
           : isEdit
           ? "Зберегти зміни"
+          : draftProductId
+          ? "Завершити створення"
           : "Створити товар"}
       </button>
     </div>
