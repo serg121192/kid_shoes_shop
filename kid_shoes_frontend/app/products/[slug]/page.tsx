@@ -387,7 +387,12 @@ export default function ProductDetailPage() {
             {/* Attributes */}
             <div className="mt-6 grid grid-cols-2 gap-3">
               {[
-                { label: "Сезон", value: SEASON_LABELS[product.season] ?? product.season },
+                {
+                  label: "Сезон",
+                  value: (product.seasons ?? [])
+                    .map((s) => SEASON_LABELS[s] ?? s)
+                    .join(", ") || "—",
+                },
                 { label: "Тип", value: TYPE_LABELS[product.prod_type] ?? product.prod_type },
                 { label: "Стать", value: GENDER_LABELS[product.gender] ?? product.gender },
               ].map(({ label, value }) => (

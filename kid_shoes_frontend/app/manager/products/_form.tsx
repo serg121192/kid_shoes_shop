@@ -39,7 +39,7 @@ interface ProductDetail {
   model_name: string;
   prod_type: string;
   gender: string;
-  season: string;
+  seasons: string[];
   full_price: string;
   discount: number;
   is_published: boolean;
@@ -97,7 +97,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
     model_name: "",
     prod_type: "Shoe",
     gender: "unisex",
-    season: "Winter",
+    seasons: ["Winter"] as string[],
     full_price: "",
     discount: "0",
     is_published: false,
@@ -151,7 +151,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
           model_name: p.model_name,
           prod_type: p.prod_type,
           gender: p.gender,
-          season: p.season,
+          seasons: p.seasons?.length ? p.seasons : ["Winter"],
           full_price: p.full_price === "0.00" || p.full_price === "0" ? "" : p.full_price,
           discount: String(p.discount),
           is_published: p.is_published,
@@ -180,7 +180,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
       model_name: f.model_name,
       prod_type: f.prod_type,
       gender: f.gender,
-      season: f.season,
+      seasons: f.seasons,
       full_price: f.full_price === "" ? 0 : Number(f.full_price),
       discount: Number(f.discount) || 0,
       description: f.description || null,
@@ -568,9 +568,23 @@ export default function ProductForm({ productId }: { productId?: number }) {
     setPendingSizes((prev) => prev.filter((s) => s.size !== sz));
 
   // ── Save ─────────────────────────────────────────────────────────────────────
+  const toggleSeason = (value: string) => {
+    setForm((p) => {
+      const has = p.seasons.includes(value);
+      const seasons = has
+        ? p.seasons.filter((s) => s !== value)
+        : [...p.seasons, value];
+      return { ...p, seasons };
+    });
+  };
+
   const handleSave = async () => {
     if (!form.vendor || !form.model_name) {
       showToast("Заповніть обов'язкові поля: бренд і назва моделі", "error");
+      return;
+    }
+    if (!form.seasons.length) {
+      showToast("Оберіть хоча б один сезон", "error");
       return;
     }
     setIsSaving(true);
@@ -709,11 +723,27 @@ export default function ProductForm({ productId }: { productId?: number }) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Сезон</label>
-            <select name="season" value={form.season} onChange={handleChange}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
-              {SEASONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
+            <label className="block text-sm font-medium text-gray-600 mb-2">Сезони</label>
+            <div className="flex flex-wrap gap-2">
+              {SEASONS.map((s) => {
+                const checked = form.seasons.includes(s.value);
+                return (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => toggleSeason(s.value)}
+                    className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                      checked
+                        ? "border-teal-500 bg-teal-50 text-teal-800"
+                        : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-500 mt-1.5">Можна обрати кілька — наприклад, літо та демісезон</p>
           </div>
           <div className="flex gap-3">
             <div className="flex-1">

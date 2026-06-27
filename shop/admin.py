@@ -122,12 +122,16 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ["id", "vendor", "model_name", "prod_type", "gender", "season", "full_price", "discount", "is_published", "discounted_price"]
+    list_display = ["id", "vendor", "model_name", "prod_type", "gender", "display_seasons", "full_price", "discount", "is_published", "discounted_price"]
     list_display_links = ["id", "model_name"]
-    list_filter = ["vendor", "prod_type", "gender", "season"]
+    list_filter = ["vendor", "prod_type", "gender"]
     search_fields = ["model_name", "vendor__name"]
     readonly_fields = ["discounted_price"]
     inlines = [ProductSizeInline, ProductImageInline, ProductVideoInline, ReviewInline]
+
+    @admin.display(description="Сезони")
+    def display_seasons(self, obj):
+        return ", ".join(obj.seasons or [])
 
     @admin.display(description="Ціна зі знижкою (грн)")
     def discounted_price(self, obj):

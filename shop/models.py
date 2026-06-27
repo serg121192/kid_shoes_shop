@@ -69,10 +69,9 @@ class Product(models.Model):
         default=GenderChoices.UNISEX,
         verbose_name="Стать",
     )
-    season = models.CharField(
-        max_length=25,
-        choices=SeasonChoices.choices,
-        verbose_name="Сезон",
+    seasons = models.JSONField(
+        default=list,
+        verbose_name="Сезони",
     )
     full_price = models.DecimalField(
         max_digits=10,

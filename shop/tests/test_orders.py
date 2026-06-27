@@ -29,7 +29,7 @@ def create_product(vendor: Vendor, **kwargs) -> Product:
         "model_name": "Air Max",
         "prod_type": Product.ProductTypeChoices.SNEAKERS,
         "gender": Product.GenderChoices.UNISEX,
-        "season": Product.SeasonChoices.SUMMER,
+        "seasons": [Product.SeasonChoices.SUMMER],
         "full_price": Decimal("1200.00"),
         "discount": 0,
     }

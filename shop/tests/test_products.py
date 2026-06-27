@@ -25,9 +25,10 @@ def create_product(vendor: Vendor, **kwargs) -> Product:
         "model_name": "Air Max",
         "prod_type": Product.ProductTypeChoices.SNEAKERS,
         "gender": Product.GenderChoices.UNISEX,
-        "season": Product.SeasonChoices.SUMMER,
+        "seasons": [Product.SeasonChoices.SUMMER],
         "full_price": Decimal("1200.00"),
         "discount": 0,
+        "is_published": True,
     }
     defaults.update(kwargs)
     return Product.objects.create(vendor=vendor, **defaults)
@@ -83,6 +84,70 @@ class ProductListTests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["count"], 1)
         self.assertEqual(res.data["results"][0]["model_name"], "Air Max")
+
+    def test_filter_by_season_matches_multi_season_product(self):
+        multi = create_product(
+            self.vendor,
+            model_name="Demi Summer",
+            seasons=[
+                Product.SeasonChoices.SUMMER,
+                Product.SeasonChoices.DEMISEASON,
+            ],
+        )
+        create_product_size(multi, size=26)
+
+        res = self.client.get(
+            PRODUCTS_URL, {"season": Product.SeasonChoices.SUMMER}
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        names = {p["model_name"] for p in res.data["results"]}
+        self.assertIn("Demi Summer", names)
+        self.assertIn("Air Max", names)
+
+        res_winter = self.client.get(
+            PRODUCTS_URL, {"season": Product.SeasonChoices.WINTER}
+        )
+        self.assertEqual(res_winter.data["count"], 0)
+
+    def test_filter_gender_boy_includes_unisex(self):
+        boy = create_product(
+            self.vendor,
+            model_name="Boy Only",
+            gender=Product.GenderChoices.BOY,
+        )
+        girl = create_product(
+            self.vendor,
+            model_name="Girl Only",
+            gender=Product.GenderChoices.GIRL,
+        )
+        create_product_size(boy, size=26)
+        create_product_size(girl, size=26)
+
+        res = self.client.get(PRODUCTS_URL, {"gender": Product.GenderChoices.BOY})
+        names = {p["model_name"] for p in res.data["results"]}
+        self.assertIn("Boy Only", names)
+        self.assertIn("Air Max", names)
+        self.assertNotIn("Girl Only", names)
+
+    def test_filter_gender_girl_includes_unisex(self):
+        boy = create_product(
+            self.vendor,
+            model_name="Boy Only",
+            gender=Product.GenderChoices.BOY,
+        )
+        girl = create_product(
+            self.vendor,
+            model_name="Girl Only",
+            gender=Product.GenderChoices.GIRL,
+        )
+        create_product_size(boy, size=26)
+        create_product_size(girl, size=26)
+
+        res = self.client.get(PRODUCTS_URL, {"gender": Product.GenderChoices.GIRL})
+        names = {p["model_name"] for p in res.data["results"]}
+        self.assertIn("Girl Only", names)
+        self.assertIn("Air Max", names)
+        self.assertNotIn("Boy Only", names)
 
     def test_filter_by_vendor(self):
         other_vendor = create_vendor(name="Adidas")
@@ -262,10 +327,11 @@ class ProductDetailTests(APITestCase):
             model_name="Model 871",
             prod_type=Product.ProductTypeChoices.SNEAKERS,
             gender=Product.GenderChoices.UNISEX,
-            season=Product.SeasonChoices.SUMMER,
+            seasons=[Product.SeasonChoices.SUMMER],
             full_price=Decimal("1200.00"),
             discount=0,
             slug="Tom.m-871",
+            is_published=True,
         )
         ProductSize.objects.create(product=dot_product, size=25, quantity=10)
 
@@ -299,7 +365,7 @@ class ProductCreateTests(APITestCase):
             "model_name": "React",
             "prod_type": Product.ProductTypeChoices.SNEAKERS,
             "gender": Product.GenderChoices.UNISEX,
-            "season": Product.SeasonChoices.SUMMER,
+            "seasons": [Product.SeasonChoices.SUMMER],
             "full_price": "999.00",
             "discount": 0,
         }

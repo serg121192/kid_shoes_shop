@@ -48,7 +48,7 @@ export interface ProductList {
 export interface Product extends Omit<ProductList, "sizes"> {
   sizes: ProductSizeWithCart[];
   full_price: string;
-  season: "Winter" | "Summer" | "Demiseason" | "Fleece Demiseason";
+  seasons: ("Winter" | "Summer" | "Demiseason" | "Fleece Demiseason")[];
   description: string | null;
   seo_description: string | null;
   in_wishlist: boolean;

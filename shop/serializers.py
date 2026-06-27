@@ -71,6 +71,11 @@ class ProductSerializer(serializers.ModelSerializer):
     full_price = serializers.DecimalField(
         max_digits=10, decimal_places=2, required=False, default=Decimal("0")
     )
+    seasons = serializers.ListField(
+        child=serializers.ChoiceField(choices=Product.SeasonChoices.values),
+        allow_empty=False,
+        min_length=1,
+    )
 
     class Meta:
         model = Product
@@ -80,7 +85,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "model_name",
             "prod_type",
             "gender",
-            "season",
+            "seasons",
             "full_price",
             "discount",
             "discounted_price",
@@ -91,6 +96,15 @@ class ProductSerializer(serializers.ModelSerializer):
             "slug",
             "is_published",
         ]
+
+    def validate_seasons(self, value):
+        seen = set()
+        unique = []
+        for item in value:
+            if item not in seen:
+                seen.add(item)
+                unique.append(item)
+        return unique
 
     def validate(self, attrs):
         instance = getattr(self, "instance", None)
@@ -211,7 +225,7 @@ class ProductRetrieveSerializer(serializers.ModelSerializer):
             "exists",
             "prod_type",
             "gender",
-            "season",
+            "seasons",
             "full_price",
             "discount",
             "discounted_price",
