@@ -5,6 +5,7 @@ import "./globals.css";
 import { AuthProvider } from "@/app/context/AuthContext";
 import { ShopProvider } from "@/app/context/ShopContext";
 import Header from "@/app/components/Header";
+import Footer from "@/app/components/Footer";
 import IntroVideoGate from "@/app/components/IntroVideoGate";
 import ToastContainer from "@/app/components/Toast";
 import VisitTracker from "@/app/components/VisitTracker";
@@ -62,6 +63,7 @@ export default function RootLayout({
             <IntroVideoGate />
             <VisitTracker />
             <main className="flex-1">{children}</main>
+            <Footer />
             <ToastContainer />
           </ShopProvider>
         </AuthProvider>
