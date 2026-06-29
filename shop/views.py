@@ -2,6 +2,7 @@ import io
 import logging
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import (
@@ -75,6 +76,7 @@ from shop.serializers import (
     OrderSerializer,
     OrderStatusSerializer,
     StaffCreateOrderSerializer,
+    QuickSaleSerializer,
     OrderItemSerializer,
     DeliveryInfoSerializer,
     ReviewSerializer,
@@ -93,12 +95,14 @@ def _create_order_with_items(
     created_by=None,
     initial_status=None,
     send_emails: bool = True,
+    sale_channel=Order.SaleChannelChoices.ONLINE,
 ) -> Order:
     """Create order, delivery, items; reduce stock. Caller must wrap in transaction."""
     order = Order.objects.create(
         user=order_user,
         created_by=created_by,
         status=initial_status or Order.StatusChoices.PENDING,
+        sale_channel=sale_channel,
     )
     DeliveryInfo.objects.create(order=order, **delivery_data)
 
@@ -667,6 +671,80 @@ class OrderViewSet(viewsets.ModelViewSet):
             OrderSerializer(order).data, status=status.HTTP_201_CREATED
         )
 
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="staff/quick_sale",
+        permission_classes=[IsStaffOrSeller],
+    )
+    @transaction.atomic
+    def quick_sale(self, request: Request) -> Response:
+        """Оформлення з QR цінника: один розмір, самовивіз, очікує підтвердження оплати."""
+        serializer = QuickSaleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+        name = (data.get("recipient_full_name") or "").strip() or "Покупець в магазині"
+        phone = (data.get("recipient_phone") or "").strip() or settings.STORE_SALE_PHONE
+
+        delivery_data = {
+            "recipient_full_name": name,
+            "recipient_phone": phone,
+            "delivery_type": DeliveryInfo.DeliveryTypeChoices.PICKUP,
+        }
+        delivery_serializer = DeliveryInfoSerializer(data=delivery_data)
+        delivery_serializer.is_valid(raise_exception=True)
+
+        try:
+            order = _create_order_with_items(
+                order_user=None,
+                delivery_data=delivery_serializer.validated_data,
+                items_data=[
+                    {
+                        "product_size": data["product_size"],
+                        "quantity": data["quantity"],
+                    }
+                ],
+                created_by=request.user,
+                initial_status=Order.StatusChoices.PENDING,
+                send_emails=False,
+                sale_channel=Order.SaleChannelChoices.STORE,
+            )
+        except ValidationError as exc:
+            return Response(
+                {"error": str(exc.message)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        order.refresh_from_db()
+        return Response(
+            OrderSerializer(order).data, status=status.HTTP_201_CREATED
+        )
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="confirm_payment",
+        permission_classes=[IsStaffOrSeller],
+    )
+    def confirm_payment(self, request: Request, pk=None) -> Response:
+        """Продавець підтверджує оплату (готівка або термінал) для замовлення з магазину."""
+        order = self.get_object()
+        if order.sale_channel != Order.SaleChannelChoices.STORE:
+            return Response(
+                {"error": "Підтвердження оплати лише для продажів у магазині"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if order.status != Order.StatusChoices.PENDING:
+            return Response(
+                {"error": "Замовлення вже оброблене"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        order.status = Order.StatusChoices.RECEIVED
+        order.save()
+        return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=["patch"], url_path="update_status")
     def update_status(self, request: Request, pk=None) -> Response:
         if not can_manage_orders(request.user):
@@ -785,6 +863,55 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         transaction.on_commit(_notify_cancel)
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class ProductSizeViewSet(viewsets.GenericViewSet):
+    """QR цінники та контекст сканування для продажу в магазині."""
+
+    queryset = ProductSize.objects.select_related("product__vendor").prefetch_related(
+        "product__images"
+    )
+    permission_classes = [IsStaffOrSeller]
+
+    @action(detail=True, methods=["get"], url_path="scan_info")
+    def scan_info(self, request: Request, pk=None) -> Response:
+        product_size = get_object_or_404(self.queryset, pk=pk)
+        product = product_size.product
+        if product.full_price <= 0:
+            return Response(
+                {"error": "Товар без ціни"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        main_image = product.images.filter(is_main=True).first() or product.images.first()
+        image_url = None
+        if main_image and main_image.image:
+            image_url = request.build_absolute_uri(main_image.image.url)
+
+        return Response(
+            {
+                "id": product_size.id,
+                "size": product_size.size,
+                "quantity": product_size.quantity,
+                "vendor": product.vendor.name,
+                "model_name": product.model_name,
+                "prod_type": product.prod_type,
+                "slug": product.slug,
+                "discounted_price": str(product.discounted_price),
+                "main_image": image_url,
+                "scan_url": f"{settings.SITE_BASE_URL}/seller/scan/{product_size.id}",
+            }
+        )
+
+    @action(detail=True, methods=["get"], url_path="qr_code")
+    def qr_code(self, request: Request, pk=None) -> Response:
+        import qrcode
+
+        product_size = get_object_or_404(self.queryset, pk=pk)
+        scan_url = f"{settings.SITE_BASE_URL}/seller/scan/{product_size.id}"
+        img = qrcode.make(scan_url)
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        return HttpResponse(buffer.getvalue(), content_type="image/png")
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

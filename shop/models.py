@@ -315,6 +315,16 @@ class Order(models.Model):
         default=0.00,
         verbose_name="Загальна сума (грн)",
     )
+    class SaleChannelChoices(models.TextChoices):
+        ONLINE = "online", "Онлайн"
+        STORE = "store", "Магазин"
+
+    sale_channel = models.CharField(
+        max_length=10,
+        choices=SaleChannelChoices.choices,
+        default=SaleChannelChoices.ONLINE,
+        verbose_name="Канал продажу",
+    )
 
     class Meta:
         ordering = ["-created_at"]

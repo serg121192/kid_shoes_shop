@@ -251,3 +251,46 @@ class SellerOrderTests(APITestCase):
             format="json",
         )
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+
+QUICK_SALE_URL = "/api/shop/orders/staff/quick_sale/"
+CONFIRM_PAYMENT_URL = "/api/shop/orders/{id}/confirm_payment/"
+
+
+class StoreQrSaleTests(APITestCase):
+    def setUp(self):
+        self.vendor = create_vendor()
+        self.product = create_product(self.vendor, is_published=True)
+        self.product_size = create_product_size(self.product, quantity=3)
+        self.seller = create_user(email="seller@example.com", is_seller=True)
+
+    def test_quick_sale_creates_store_order(self):
+        self.client.force_authenticate(user=self.seller)
+        res = self.client.post(
+            QUICK_SALE_URL,
+            {"product_size": self.product_size.id, "quantity": 1},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["sale_channel"], "store")
+        self.assertEqual(res.data["status"], "pending")
+        self.product_size.refresh_from_db()
+        self.assertEqual(self.product_size.quantity, 2)
+
+    def test_confirm_payment_marks_received(self):
+        self.client.force_authenticate(user=self.seller)
+        create = self.client.post(
+            QUICK_SALE_URL,
+            {"product_size": self.product_size.id, "quantity": 1},
+            format="json",
+        )
+        order_id = create.data["id"]
+        res = self.client.post(CONFIRM_PAYMENT_URL.format(id=order_id))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["status"], "received")
+
+    def test_scan_info_requires_seller(self):
+        res = self.client.get(
+            f"/api/shop/product-sizes/{self.product_size.id}/scan_info/"
+        )
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)

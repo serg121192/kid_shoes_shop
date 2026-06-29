@@ -9,6 +9,7 @@ import Image from "next/image";
 import api, { getMediaUrl } from "@/app/lib/api";
 import { useShop } from "@/app/context/ShopContext";
 import { ArrowLeft, Upload, X, Plus, Trash2, Star, Check } from "lucide-react";
+import SizePriceTagQr from "@/app/components/SizePriceTagQr";
 import { Vendor, ProductImage, ProductSize, ProductVideo } from "@/app/types";
 
 // ─── Local types ──────────────────────────────────────────────────────────────
@@ -1099,21 +1100,26 @@ export default function ProductForm({ productId }: { productId?: number }) {
         {allSizes.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {[...allSizes].sort((a, b) => a.size - b.size).map((s) => (
-              <div key={s.size} className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-1.5 text-sm">
-                <span className="font-medium text-gray-700">{s.size}</span>
-                <span className={`text-xs ${s.quantity === 0 ? "text-red-500" : "text-gray-400"}`}>
-                  {s.quantity} шт
-                </span>
-                <button
-                  onClick={() =>
-                    hasServerProduct && "id" in s
-                      ? handleDeleteSize((s as ProductSize).id, s.size)
-                      : removePendingSize(s.size)
-                  }
-                  className="text-gray-300 hover:text-red-500 transition-colors"
-                >
-                  <Trash2 size={12} />
-                </button>
+              <div key={s.size} className="flex flex-col items-center border border-gray-200 rounded-lg px-3 py-2 text-sm min-w-[88px]">
+                <div className="flex items-center gap-2 w-full">
+                  <span className="font-medium text-gray-700">{s.size}</span>
+                  <span className={`text-xs ${s.quantity === 0 ? "text-red-500" : "text-gray-400"}`}>
+                    {s.quantity} шт
+                  </span>
+                  <button
+                    onClick={() =>
+                      hasServerProduct && "id" in s
+                        ? handleDeleteSize((s as ProductSize).id, s.size)
+                        : removePendingSize(s.size)
+                    }
+                    className="text-gray-300 hover:text-red-500 transition-colors ml-auto"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+                {hasServerProduct && "id" in s && (s as ProductSize).id && (
+                  <SizePriceTagQr sizeId={(s as ProductSize).id} sizeLabel={s.size} />
+                )}
               </div>
             ))}
           </div>

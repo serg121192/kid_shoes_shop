@@ -126,6 +126,7 @@ export interface Order {
   total_price: string;
   items: OrderItem[];
   delivery: DeliveryInfo | null;
+  sale_channel?: "online" | "store";
 }
 
 export interface Review {

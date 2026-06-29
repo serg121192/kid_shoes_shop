@@ -556,6 +556,13 @@ class StaffOrderItemSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1)
 
 
+class QuickSaleSerializer(serializers.Serializer):
+    product_size = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1, default=1)
+    recipient_full_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    recipient_phone = serializers.CharField(required=False, allow_blank=True, max_length=20)
+
+
 class StaffCreateOrderSerializer(serializers.Serializer):
     delivery = DeliveryInfoSerializer()
     items = StaffOrderItemSerializer(many=True, min_length=1)
@@ -582,6 +589,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "created_by",
             "status",
             "total_price",
+            "sale_channel",
             "delivery",
             "items",
         ]

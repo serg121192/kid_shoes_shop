@@ -295,6 +295,8 @@ LIQPAY_PUBLIC_KEY = os.getenv("LIQPAY_PUBLIC_KEY", "")
 LIQPAY_PRIVATE_KEY = os.getenv("LIQPAY_PRIVATE_KEY", "")
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+SITE_BASE_URL = os.getenv("SITE_BASE_URL", "https://tak-i-tak.com")
+STORE_SALE_PHONE = os.getenv("STORE_SALE_PHONE", "+380462000000")
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),

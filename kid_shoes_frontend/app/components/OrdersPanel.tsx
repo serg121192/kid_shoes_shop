@@ -200,7 +200,11 @@ export default function OrdersPanel({
                     className={`cursor-pointer transition-colors ${order.status === "pending" ? "bg-rose-200 hover:bg-rose-300" : "hover:bg-gray-50"}`}
                     onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}
                   >
-                    <td className="px-4 py-3 font-medium text-teal-600">#{order.id}</td>
+                    <td className="px-4 py-3 font-medium text-teal-600">
+                      <Link href={`/seller/orders/${order.id}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+                        #{order.id}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(order.created_at)}</td>
                     <td className="px-4 py-3 text-gray-700">{buyerLabel(order)}</td>
                     <td className="px-4 py-3 font-semibold text-gray-900">
