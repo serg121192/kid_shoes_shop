@@ -68,19 +68,30 @@ export default function Footer() {
 
         {/* Social */}
         <div className="flex items-center justify-center gap-5">
-          {SOCIAL.map(({ id, label, href, className, icon }) => (
-            <a
-              key={id}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={label}
-              title={label}
-              className={`text-gray-600 transition-colors ${className}`}
-            >
-              {icon}
-            </a>
-          ))}
+          {SOCIAL.map(({ id, label, href, className, icon }) =>
+            href ? (
+              <a
+                key={id}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={label}
+                title={label}
+                className={`text-gray-600 transition-colors ${className}`}
+              >
+                {icon}
+              </a>
+            ) : (
+              <span
+                key={id}
+                aria-label={`${label} (скоро)`}
+                title={`${label} (скоро)`}
+                className="text-gray-400 opacity-60 cursor-default"
+              >
+                {icon}
+              </span>
+            )
+          )}
         </div>
 
         {/* Email & phone */}

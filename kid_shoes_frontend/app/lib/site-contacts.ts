@@ -6,15 +6,9 @@ export const SITE_CONTACTS = {
   social: {
     instagram:
       process.env.NEXT_PUBLIC_SOCIAL_INSTAGRAM ??
-      "https://www.instagram.com/tak_i_tak_original/",
-    telegram:
-      process.env.NEXT_PUBLIC_SOCIAL_TELEGRAM ??
-      "https://t.me/tak_i_tak_original",
-    viber:
-      process.env.NEXT_PUBLIC_SOCIAL_VIBER ??
-      "viber://chat?number=380689276318",
-    whatsapp:
-      process.env.NEXT_PUBLIC_SOCIAL_WHATSAPP ??
-      "https://wa.me/380689276318",
+      "https://www.instagram.com/taki_tak5_8",
+    telegram: process.env.NEXT_PUBLIC_SOCIAL_TELEGRAM ?? "",
+    viber: process.env.NEXT_PUBLIC_SOCIAL_VIBER ?? "",
+    whatsapp: process.env.NEXT_PUBLIC_SOCIAL_WHATSAPP ?? "",
   },
 };
