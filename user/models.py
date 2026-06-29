@@ -40,8 +40,17 @@ class User(AbstractUser):
     username = None
     email = models.EmailField(_("email address"), unique=True)
     phone = models.CharField(_("phone number"), max_length=20, blank=True, default="")
+    is_seller = models.BooleanField(
+        _("продавець"),
+        default=False,
+        help_text="Доступ до панелі продавця: перегляд і оформлення замовлень.",
+    )
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
     objects = UserManager()
+
+    @property
+    def can_manage_orders(self) -> bool:
+        return self.is_staff or self.is_seller

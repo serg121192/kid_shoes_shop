@@ -49,6 +49,7 @@ export default function OrdersPage() {
   useEffect(() => {
     if (!authLoading && !isAuthenticated) { router.push("/login"); return; }
     if (!authLoading && user?.is_staff) { router.push("/manager/orders"); return; }
+    if (!authLoading && user?.is_seller && !user?.is_staff) { router.push("/seller/orders"); return; }
     if (!authLoading && isAuthenticated) {
       markOrdersSeen();
       fetchOrders();

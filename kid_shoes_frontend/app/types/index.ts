@@ -120,7 +120,8 @@ export interface OrderItem {
 export interface Order {
   id: number;
   created_at: string;
-  user: string; // email (SlugField)
+  user: string | null;
+  created_by?: string | null;
   status: "pending" | "processing" | "completed" | "received" | "refused" | "cancelled";
   total_price: string;
   items: OrderItem[];
@@ -148,6 +149,7 @@ export interface User {
   last_name: string;
   phone: string;
   is_staff: boolean;
+  is_seller: boolean;
 }
 
 export interface TokenPair {

@@ -4,11 +4,12 @@ import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/app/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
+import Link from "next/link";
 import { User } from "@/app/types";
 import { AxiosError } from "axios";
 
 export default function ProfilePage() {
-  const { isAuthenticated, isLoading: authLoading, refreshUser } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, refreshUser, user } = useAuth();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -98,7 +99,30 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">Мій профіль</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">Мій профіль</h1>
+
+      {(user?.is_staff || user?.is_seller) && (
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          {user.is_staff && (
+            <span className="inline-flex items-center rounded-full bg-teal-100 text-teal-800 text-xs font-semibold px-3 py-1">
+              Менеджер
+            </span>
+          )}
+          {user.is_seller && !user.is_staff && (
+            <span className="inline-flex items-center rounded-full bg-indigo-100 text-indigo-800 text-xs font-semibold px-3 py-1">
+              Продавець-консультант
+            </span>
+          )}
+          {user.is_seller && !user.is_staff && (
+            <Link
+              href="/seller/orders"
+              className="text-sm text-indigo-600 hover:text-indigo-800 underline"
+            >
+              Перейти до панелі продавця →
+            </Link>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="bg-emerald-50 rounded-2xl shadow-sm p-8 space-y-5">
         {/* Profile fields */}

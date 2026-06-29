@@ -1,6 +1,14 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
+def can_manage_orders(user) -> bool:
+    return bool(
+        user
+        and user.is_authenticated
+        and (user.is_staff or getattr(user, "is_seller", False))
+    )
+
+
 class IsAdminOrReadOnly(BasePermission):
     """Read access for everyone; write access only for staff/admin."""
 
@@ -10,14 +18,23 @@ class IsAdminOrReadOnly(BasePermission):
         return bool(request.user and request.user.is_staff)
 
 
+class IsStaffOrSeller(BasePermission):
+    """Staff managers or shop sellers."""
+
+    def has_permission(self, request, view):
+        return can_manage_orders(request.user)
+
+
 class IsOwnerOrAdmin(BasePermission):
     """
     View-level: requires authentication.
-    Object-level: only the owner or staff/admin can access the object.
+    Object-level: owner, staff, or seller can access the object.
     """
 
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj):
-        return obj.user == request.user or request.user.is_staff
+        if can_manage_orders(request.user):
+            return True
+        return getattr(obj, "user", None) == request.user

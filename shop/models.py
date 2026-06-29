@@ -292,6 +292,16 @@ class Order(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         verbose_name="Користувач",
+        null=True,
+        blank=True,
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="orders_created",
+        verbose_name="Оформив",
+        null=True,
+        blank=True,
     )
     status = models.CharField(
         max_length=20,

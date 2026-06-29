@@ -45,11 +45,13 @@ def create_user(
     email: str = "test@example.com",
     password: str = "testpassword",
     is_staff: bool = False,
+    is_seller: bool = False,
 ) -> User:
     return User.objects.create_user(
         email=email,
         password=password,
         is_staff=is_staff,
+        is_seller=is_seller,
     )
 
 
@@ -180,3 +182,72 @@ class OrderDetailTests(APITestCase):
         res = self.client.get(f"{ORDERS_URL}{order.id}/")
 
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+
+STAFF_CREATE_URL = "/api/shop/orders/staff/create_order/"
+
+
+class SellerOrderTests(APITestCase):
+    def setUp(self):
+        self.vendor = create_vendor()
+        self.product = create_product(self.vendor, is_published=True)
+        self.product_size = create_product_size(self.product, quantity=5)
+        self.customer = create_user(email="buyer@example.com")
+        self.seller = create_user(email="seller@example.com", is_seller=True)
+        self.order = Order.objects.create(
+            user=self.customer,
+            status=Order.StatusChoices.PENDING,
+            total_price=Decimal("1200.00"),
+        )
+
+    def test_seller_sees_all_orders(self):
+        self.client.force_authenticate(user=self.seller)
+        res = self.client.get(ORDERS_URL)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["count"], 1)
+
+    def test_seller_can_update_order_status(self):
+        self.client.force_authenticate(user=self.seller)
+        res = self.client.patch(
+            f"{ORDERS_URL}{self.order.id}/update_status/",
+            {"status": Order.StatusChoices.PROCESSING},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.StatusChoices.PROCESSING)
+
+    def test_seller_can_create_offline_order(self):
+        self.client.force_authenticate(user=self.seller)
+        res = self.client.post(
+            STAFF_CREATE_URL,
+            {
+                "delivery": {
+                    "recipient_full_name": "Offline Buyer",
+                    "recipient_phone": "+380991234567",
+                    "delivery_type": DeliveryInfo.DeliveryTypeChoices.PICKUP,
+                },
+                "items": [{"product_size": self.product_size.id, "quantity": 1}],
+                "status": Order.StatusChoices.RECEIVED,
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Order.objects.count(), 2)
+        self.product_size.refresh_from_db()
+        self.assertEqual(self.product_size.quantity, 4)
+
+    def test_regular_user_cannot_use_staff_create(self):
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.post(
+            STAFF_CREATE_URL,
+            {
+                "delivery": {
+                    "recipient_full_name": "X",
+                    "recipient_phone": "+380991234567",
+                    "delivery_type": DeliveryInfo.DeliveryTypeChoices.PICKUP,
+                },
+                "items": [{"product_size": self.product_size.id, "quantity": 1}],
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)

@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: ["/products", "/about"],
-        disallow: ["/manager/", "/cart", "/checkout", "/orders", "/profile", "/wishlist"],
+        disallow: ["/manager/", "/seller/", "/cart", "/checkout", "/orders", "/profile", "/wishlist"],
       },
     ],
     sitemap: "https://tak-i-tak.com/sitemap.xml",

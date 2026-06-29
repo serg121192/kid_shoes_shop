@@ -2,6 +2,7 @@ import io
 import logging
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import (
     Count,
@@ -28,7 +29,12 @@ from shop.emails import (
     send_order_status_update,
     send_new_order_alert,
 )
-from shop.permissions import IsAdminOrReadOnly, IsOwnerOrAdmin
+from shop.permissions import (
+    IsAdminOrReadOnly,
+    IsOwnerOrAdmin,
+    IsStaffOrSeller,
+    can_manage_orders,
+)
 from shop.filters import ProductFilter
 from shop.models import (
     Product,
@@ -68,12 +74,75 @@ from shop.serializers import (
     RemoveFromWishlistSerializer,
     OrderSerializer,
     OrderStatusSerializer,
+    StaffCreateOrderSerializer,
     OrderItemSerializer,
     DeliveryInfoSerializer,
     ReviewSerializer,
 )
 
 logger = logging.getLogger(__name__)
+
+User = get_user_model()
+
+
+def _create_order_with_items(
+    *,
+    order_user,
+    delivery_data: dict,
+    items_data: list[dict],
+    created_by=None,
+    initial_status=None,
+    send_emails: bool = True,
+) -> Order:
+    """Create order, delivery, items; reduce stock. Caller must wrap in transaction."""
+    order = Order.objects.create(
+        user=order_user,
+        created_by=created_by,
+        status=initial_status or Order.StatusChoices.PENDING,
+    )
+    DeliveryInfo.objects.create(order=order, **delivery_data)
+
+    total_price = 0
+    for item in items_data:
+        product_size = ProductSize.objects.select_related("product").select_for_update().get(
+            id=item["product_size"]
+        )
+        quantity = item["quantity"]
+        try:
+            OrderItem.validate_product_quantity(
+                product_size=product_size,
+                quantity=quantity,
+                error_to_raise=ValidationError,
+            )
+        except ValidationError as exc:
+            raise ValidationError(exc.message) from exc
+
+        OrderItem.objects.create(
+            order=order,
+            product_size=product_size,
+            quantity=quantity,
+            price=product_size.product.discounted_price,
+        )
+        total_price += quantity * product_size.product.discounted_price
+        product_size.reduce_stock(quantity)
+
+    order.total_price = total_price
+    order.save()
+
+    if send_emails:
+        def _send_emails():
+            try:
+                if order.user_id:
+                    send_order_confirmation(order)
+                send_new_order_alert(order)
+            except Exception:
+                logger.exception(
+                    "Order #%s: failed to send notification emails", order.pk
+                )
+
+        transaction.on_commit(_send_emails)
+
+    return order
 
 
 class ProductViewSet(viewsets.ModelViewSet):
@@ -500,10 +569,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def get_queryset(self):
-        base = Order.objects.select_related("delivery").prefetch_related(
+        base = Order.objects.select_related("delivery", "user", "created_by").prefetch_related(
             "items__product_size__product__vendor"
         )
-        if self.request.user.is_staff:
+        if can_manage_orders(self.request.user):
             return base
         return base.filter(user=self.request.user)
 
@@ -533,67 +602,74 @@ class OrderViewSet(viewsets.ModelViewSet):
                 {"error": "Cart is empty"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        order = Order.objects.create(
-            user=request.user,
-            status=Order.StatusChoices.PENDING,
-        )
-        DeliveryInfo.objects.create(
-            order=order, **delivery_serializer.validated_data
-        )
+        items_data = [
+            {
+                "product_size": cart_item.product_size_id,
+                "quantity": cart_item.quantity,
+            }
+            for cart_item in cart.cart_items.select_related("product_size").all()
+        ]
 
-        total_price = 0
-        for cart_item in cart.cart_items.select_related(
-            "product_size__product"
-        ).all():
-            product_size = ProductSize.objects.select_for_update().get(
-                id=cart_item.product_size_id
+        try:
+            order = _create_order_with_items(
+                order_user=request.user,
+                delivery_data=delivery_serializer.validated_data,
+                items_data=items_data,
+                send_emails=True,
             )
-            product_size.product = cart_item.product_size.product
-            try:
-                OrderItem.validate_product_quantity(
-                    product_size=product_size,
-                    quantity=cart_item.quantity,
-                    error_to_raise=ValidationError,
-                )
-            except ValidationError as exc:
-                return Response(
-                    {"error": exc.message},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            OrderItem.objects.create(
-                order=order,
-                product_size=product_size,
-                quantity=cart_item.quantity,
-                price=product_size.product.discounted_price,
+        except ValidationError as exc:
+            return Response(
+                {"error": str(exc.message)},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-            total_price += (
-                cart_item.quantity * product_size.product.discounted_price
-            )
-            product_size.reduce_stock(cart_item.quantity)
 
-        order.total_price = total_price
-        order.save()
         cart.cart_items.all().delete()
-
-        # Capture the serialized response BEFORE releasing the transaction.
         order.refresh_from_db()
-        response_data = OrderSerializer(order).data
+        return Response(
+            OrderSerializer(order).data, status=status.HTTP_201_CREATED
+        )
 
-        # Send after commit (sync). Daemon threads were killed by Gunicorn before SMTP finished.
-        def _send_emails():
-            try:
-                send_order_confirmation(order)
-                send_new_order_alert(order)
-            except Exception:
-                logger.exception("Order #%s: failed to send notification emails", order.pk)
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="staff/create_order",
+        permission_classes=[IsStaffOrSeller],
+    )
+    @transaction.atomic
+    def staff_create_order(self, request: Request) -> Response:
+        serializer = StaffCreateOrderSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        transaction.on_commit(_send_emails)
+        data = serializer.validated_data
+        customer_email = (data.get("customer_email") or "").strip()
+        order_user = None
+        if customer_email:
+            order_user = User.objects.filter(email__iexact=customer_email).first()
 
-        return Response(response_data, status=status.HTTP_201_CREATED)
+        try:
+            order = _create_order_with_items(
+                order_user=order_user,
+                delivery_data=data["delivery"],
+                items_data=data["items"],
+                created_by=request.user,
+                initial_status=data.get("status"),
+                send_emails=bool(order_user),
+            )
+        except ValidationError as exc:
+            return Response(
+                {"error": str(exc.message)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        order.refresh_from_db()
+        return Response(
+            OrderSerializer(order).data, status=status.HTTP_201_CREATED
+        )
 
     @action(detail=True, methods=["patch"], url_path="update_status")
     def update_status(self, request: Request, pk=None) -> Response:
-        if not request.user.is_staff:
+        if not can_manage_orders(request.user):
             return Response(status=status.HTTP_403_FORBIDDEN)
         order = self.get_object()
         serializer = OrderStatusSerializer(data=request.data)
@@ -617,7 +693,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         detail=False,
         methods=["get"],
         url_path="pending_count",
-        permission_classes=[IsAdminUser],
+        permission_classes=[IsStaffOrSeller],
     )
     def pending_count(self, request: Request) -> Response:
         count = Order.objects.filter(
@@ -629,7 +705,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         detail=True,
         methods=["post"],
         url_path="sync_np",
-        permission_classes=[IsAdminUser],
+        permission_classes=[IsStaffOrSeller],
     )
     def sync_np_status(self, request: Request, pk=None) -> Response:
         """

@@ -551,12 +551,27 @@ class OrderStatusSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=Order.StatusChoices.choices)
 
 
+class StaffOrderItemSerializer(serializers.Serializer):
+    product_size = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1)
+
+
+class StaffCreateOrderSerializer(serializers.Serializer):
+    delivery = DeliveryInfoSerializer()
+    items = StaffOrderItemSerializer(many=True, min_length=1)
+    customer_email = serializers.EmailField(required=False, allow_blank=True)
+    status = serializers.ChoiceField(
+        choices=Order.StatusChoices.choices,
+        required=False,
+        default=Order.StatusChoices.PENDING,
+    )
+
+
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     delivery = DeliveryInfoSerializer(read_only=True)
-    user = serializers.SlugRelatedField(
-        many=False, read_only=True, slug_field="email"
-    )
+    user = serializers.SerializerMethodField()
+    created_by = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -564,8 +579,15 @@ class OrderSerializer(serializers.ModelSerializer):
             "id",
             "created_at",
             "user",
+            "created_by",
             "status",
             "total_price",
             "delivery",
             "items",
         ]
+
+    def get_user(self, obj):
+        return obj.user.email if obj.user_id else None
+
+    def get_created_by(self, obj):
+        return obj.created_by.email if obj.created_by_id else None

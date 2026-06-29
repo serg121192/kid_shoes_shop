@@ -7,7 +7,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { useShop } from "@/app/context/ShopContext";
 import {
   ShoppingCart, Heart, Package, LogOut, LogIn,
-  UserCircle, Menu, X, LayoutDashboard,
+  UserCircle, Menu, X, LayoutDashboard, Store,
 } from "lucide-react";
 import Logo from "@/app/components/Logo";
 
@@ -137,6 +137,16 @@ export default function Header() {
                       <span className="hidden lg:inline">Панель менеджера</span>
                     </Link>
                   )}
+                  {user?.is_seller && !user?.is_staff && (
+                    <Link
+                      href="/seller/orders"
+                      className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+                      title="Панель продавця"
+                    >
+                      <Store size={15} />
+                      <span className="hidden lg:inline">Панель продавця</span>
+                    </Link>
+                  )}
                   <Link
                     href="/cart"
                     className="relative flex items-center gap-1 text-gray-700 hover:text-teal-500 transition-colors"
@@ -234,6 +244,16 @@ export default function Header() {
                 >
                   <LayoutDashboard size={20} />
                   <span>Панель менеджера</span>
+                </Link>
+              )}
+              {user?.is_seller && !user?.is_staff && (
+                <Link
+                  href="/seller/orders"
+                  onClick={closeMobile}
+                  className="flex items-center gap-3 py-3 border-b border-[#b8caca] text-indigo-700 hover:text-indigo-600 transition-colors font-semibold"
+                >
+                  <Store size={20} />
+                  <span>Панель продавця</span>
                 </Link>
               )}
               <Link
