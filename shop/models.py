@@ -44,8 +44,11 @@ class Product(models.Model):
 
     class ProductTypeChoices(models.TextChoices):
         SHOE = "Shoe", "Черевики"
+        BOOTS = "Boots", "Чоботи"
         SANDALS = "Sandals", "Сандалі"
         SNEAKERS = "Sneakers", "Кросівки"
+        DRESS_SHOES = "DressShoes", "Туфлі"
+        BOOTIES = "Booties", "Пінетки"
         UGI = "Ugi", "Угі"
 
     class GenderChoices(models.TextChoices):

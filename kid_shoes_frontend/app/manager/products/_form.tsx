@@ -54,8 +54,11 @@ interface ProductDetail {
 
 const PROD_TYPES = [
   { value: "Shoe",              label: "Черевики" },
+  { value: "Boots",             label: "Чоботи" },
   { value: "Sandals",           label: "Сандалі" },
   { value: "Sneakers",          label: "Кросівки / Кеди" },
+  { value: "DressShoes",        label: "Туфлі" },
+  { value: "Booties",           label: "Пінетки" },
   { value: "Ugi",               label: "Угі" },
 ];
 const GENDERS = [

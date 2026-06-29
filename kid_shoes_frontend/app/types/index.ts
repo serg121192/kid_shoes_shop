@@ -33,7 +33,7 @@ export interface ProductList {
   vendor: string;
   model_name: string;
   exists: string; // quantity_message (aggregate across all sizes)
-  prod_type: "Shoe" | "Sandals" | "Sneakers" | "Ugi";
+  prod_type: "Shoe" | "Boots" | "Sandals" | "Sneakers" | "DressShoes" | "Booties" | "Ugi";
   gender: "boy" | "girl" | "unisex";
   full_price: string;
   discount: number;

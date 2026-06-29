@@ -49,8 +49,11 @@ const GENDER_LABELS: Record<string, string> = {
 
 const TYPE_LABELS: Record<string, string> = {
   Shoe: "Черевики",
+  Boots: "Чоботи",
   Sandals: "Сандалі",
   Sneakers: "Кросівки",
+  DressShoes: "Туфлі",
+  Booties: "Пінетки",
   Ugi: "Угги",
 };
 
