@@ -72,7 +72,7 @@ const SEASONS = [
   { value: "Demiseason",        label: "Демісезон" },
   { value: "Fleece Demiseason", label: "Демісезон флісовий" },
 ];
-const SIZES = Array.from({ length: 27 }, (_, i) => i + 18);
+const SIZES = Array.from({ length: 29 }, (_, i) => i + 16);
 
 function uid() {
   return Math.random().toString(36).slice(2);

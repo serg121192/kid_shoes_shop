@@ -159,6 +159,8 @@ class Product(models.Model):
 
 class ProductSize(models.Model):
     class SizeChoices(models.IntegerChoices):
+        small_16 = 16, "16"
+        small_17 = 17, "17"
         small_18 = 18, "18"
         small_19 = 19, "19"
         small_20 = 20, "20"

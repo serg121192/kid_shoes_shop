@@ -305,7 +305,7 @@ export default function ProductsPage() {
           className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
         >
           <option value="">Всі розміри</option>
-          {Array.from({ length: 27 }, (_, i) => i + 18).map((s) => (
+          {Array.from({ length: 29 }, (_, i) => i + 16).map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>

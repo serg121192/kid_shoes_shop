@@ -557,7 +557,7 @@ export default function ProductDetailPage() {
                     <thead>
                       <tr className="bg-teal-100">
                         <th className="px-2 py-1.5 rounded-tl-lg">Розмір EU</th>
-                        {[18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40].map(s => (
+                        {[16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40].map(s => (
                           <th key={s} className="px-2 py-1.5">{s}</th>
                         ))}
                       </tr>
@@ -565,7 +565,7 @@ export default function ProductDetailPage() {
                     <tbody>
                       <tr>
                         <td className="px-2 py-1.5 font-medium bg-teal-50">Стопа (мм)</td>
-                        {[110, 116, 122, 128, 134, 140, 146, 152, 158, 164, 170, 176, 182, 188, 194, 206, 212, 218, 224, 230, 236, 242, 248].map((mm, i) => (
+                        {[98, 104, 110, 116, 122, 128, 134, 140, 146, 152, 158, 164, 170, 176, 182, 188, 194, 206, 212, 218, 224, 230, 236, 242, 248].map((mm, i) => (
                           <td key={i} className="px-2 py-1.5 border-t border-teal-100">{mm}</td>
                         ))}
                       </tr>
