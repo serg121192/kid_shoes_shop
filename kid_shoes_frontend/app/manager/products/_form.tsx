@@ -74,6 +74,17 @@ const SEASONS = [
 ];
 const SIZES = Array.from({ length: 29 }, (_, i) => i + 16);
 
+const DUPLICATE_MSG =
+  "Така комбінація виробника (або бренду) та моделі вже існує";
+
+function fieldClass(hasError: boolean) {
+  return `w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+    hasError
+      ? "border-red-500 focus:ring-red-400"
+      : "border-gray-200 focus:ring-teal-400"
+  }`;
+}
+
 function uid() {
   return Math.random().toString(36).slice(2);
 }
@@ -130,6 +141,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
   const [editUploadProgress, setEditUploadProgress] = useState<Record<string, number>>({});
   const [isSaving, setIsSaving]           = useState(false);
   const [isLoading, setIsLoading]         = useState(isEdit);
+  const [duplicateCombo, setDuplicateCombo] = useState(false);
 
   const imgInputRef = useRef<HTMLInputElement>(null);
   const vidInputRef = useRef<HTMLInputElement>(null);
@@ -173,14 +185,12 @@ export default function ProductForm({ productId }: { productId?: number }) {
     load();
   }, [isEdit, productId]);
 
-  const catalogEligible = (Number(form.full_price) || 0) > 0;
-
   const buildProductBody = useCallback(() => {
     const f = formRef.current;
     const eligible = (Number(f.full_price) || 0) > 0;
     return {
       vendor: Number(f.vendor),
-      model_name: f.model_name,
+      model_name: f.model_name.trim(),
       prod_type: f.prod_type,
       gender: f.gender,
       seasons: f.seasons,
@@ -192,6 +202,44 @@ export default function ProductForm({ productId }: { productId?: number }) {
     };
   }, []);
 
+  const catalogEligible = (Number(form.full_price) || 0) > 0;
+
+  const checkDuplicateCombo = useCallback(async (): Promise<boolean> => {
+    const f = formRef.current;
+    const model = f.model_name.trim();
+    if (!f.vendor || !model) return false;
+
+    const params: Record<string, string> = {
+      vendor: f.vendor,
+      model_name: model,
+    };
+    const exclude = productId ?? draftProductId;
+    if (exclude) params.exclude = String(exclude);
+
+    const res = await api.get<{ exists: boolean }>(
+      "/shop/products/check_duplicate/",
+      { params }
+    );
+    return res.data.exists;
+  }, [productId, draftProductId]);
+
+  useEffect(() => {
+    const vendor = form.vendor;
+    const model = form.model_name.trim();
+    if (!vendor || !model) {
+      setDuplicateCombo(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      void checkDuplicateCombo()
+        .then(setDuplicateCombo)
+        .catch(() => setDuplicateCombo(false));
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [form.vendor, form.model_name, checkDuplicateCombo]);
+
   const ensureDraftProduct = useCallback(async (): Promise<number | null> => {
     if (productId) return productId;
     if (draftProductId) return draftProductId;
@@ -201,6 +249,11 @@ export default function ProductForm({ productId }: { productId?: number }) {
 
     creatingDraftRef.current = (async () => {
       try {
+        if (await checkDuplicateCombo()) {
+          setDuplicateCombo(true);
+          showToast(DUPLICATE_MSG, "error");
+          return null;
+        }
         const res = await api.post<{ id: number }>("/shop/products/", buildProductBody());
         setDraftProductId(res.data.id);
         return res.data.id;
@@ -212,7 +265,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
       }
     })();
     return creatingDraftRef.current;
-  }, [productId, draftProductId, buildProductBody, showToast]);
+  }, [productId, draftProductId, buildProductBody, checkDuplicateCombo, showToast]);
 
   const uploadImagesToServer = useCallback(
     async (id: number, items: { file: File; is_main: boolean }[]) => {
@@ -590,6 +643,11 @@ export default function ProductForm({ productId }: { productId?: number }) {
       showToast("Оберіть хоча б один сезон", "error");
       return;
     }
+    if (duplicateCombo || (await checkDuplicateCombo())) {
+      setDuplicateCombo(true);
+      showToast(DUPLICATE_MSG, "error");
+      return;
+    }
     setIsSaving(true);
     const body = buildProductBody();
 
@@ -669,7 +727,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
 
             {!showNewVendor ? (
               <select name="vendor" value={form.vendor} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400">
+                className={fieldClass(duplicateCombo)}>
                 <option value="">Оберіть...</option>
                 {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
               </select>
@@ -708,9 +766,12 @@ export default function ProductForm({ productId }: { productId?: number }) {
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Назва моделі *</label>
             <input name="model_name" value={form.model_name} onChange={handleChange}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+              className={fieldClass(duplicateCombo)}
               placeholder="Наприклад: Air Max 90" />
           </div>
+          {duplicateCombo && (
+            <p className="sm:col-span-2 text-sm text-red-600">{DUPLICATE_MSG}</p>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Тип</label>
             <select name="prod_type" value={form.prod_type} onChange={handleChange}
@@ -1066,7 +1127,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
       {/* ── Save button ── */}
       <button
         onClick={handleSave}
-        disabled={isSaving}
+        disabled={isSaving || duplicateCombo}
         className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 text-white py-3 rounded-xl text-sm font-semibold transition-colors"
       >
         {isSaving

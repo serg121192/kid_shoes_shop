@@ -146,6 +146,34 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response({"published": published})
 
     @action(
+        detail=False,
+        methods=["get"],
+        url_path="check_duplicate",
+        permission_classes=[IsAdminUser],
+    )
+    def check_duplicate(self, request: Request) -> Response:
+        vendor_id = request.query_params.get("vendor")
+        model_name = (request.query_params.get("model_name") or "").strip()
+        exclude_id = request.query_params.get("exclude")
+
+        if not vendor_id or not model_name:
+            return Response({"exists": False})
+
+        qs = Product.objects.filter(
+            vendor_id=vendor_id, model_name=model_name
+        )
+        if exclude_id:
+            qs = qs.exclude(pk=exclude_id)
+
+        product = qs.first()
+        return Response(
+            {
+                "exists": product is not None,
+                "product_id": product.id if product else None,
+            }
+        )
+
+    @action(
         detail=True,
         methods=["post"],
         url_path="upload_image",

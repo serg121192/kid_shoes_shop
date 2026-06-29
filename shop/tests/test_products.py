@@ -401,6 +401,55 @@ class ProductCreateTests(APITestCase):
 
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_create_duplicate_vendor_model_returns_400(self):
+        admin = create_user(email="admin@test.com", is_staff=True)
+        self.client.force_authenticate(user=admin)
+        create_product(self.vendor, model_name="React")
+
+        res = self.client.post(PRODUCTS_URL, self.payload)
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("model_name", res.data)
+        self.assertIn("vendor", res.data)
+
+    def test_check_duplicate_returns_true_for_existing(self):
+        admin = create_user(email="admin@test.com", is_staff=True)
+        self.client.force_authenticate(user=admin)
+        create_product(self.vendor, model_name="React")
+
+        res = self.client.get(
+            f"{PRODUCTS_URL}check_duplicate/",
+            {"vendor": self.vendor.id, "model_name": "React"},
+        )
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertTrue(res.data["exists"])
+
+    def test_check_duplicate_exclude_current_product(self):
+        admin = create_user(email="admin@test.com", is_staff=True)
+        self.client.force_authenticate(user=admin)
+        product = create_product(self.vendor, model_name="React")
+
+        res = self.client.get(
+            f"{PRODUCTS_URL}check_duplicate/",
+            {
+                "vendor": self.vendor.id,
+                "model_name": "React",
+                "exclude": product.id,
+            },
+        )
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertFalse(res.data["exists"])
+
+    def test_check_duplicate_unauthenticated_returns_401(self):
+        res = self.client.get(
+            f"{PRODUCTS_URL}check_duplicate/",
+            {"vendor": self.vendor.id, "model_name": "React"},
+        )
+
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
 
 class ProductUpdateTests(APITestCase):
 

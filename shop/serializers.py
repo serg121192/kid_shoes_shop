@@ -96,6 +96,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "slug",
             "is_published",
         ]
+        validators = []
 
     def validate_seasons(self, value):
         seen = set()
@@ -126,6 +127,25 @@ class ProductSerializer(serializers.ModelSerializer):
             )
         if full_price <= 0:
             attrs["is_published"] = False
+
+        vendor = attrs.get("vendor") or (instance.vendor if instance else None)
+        model_name = attrs.get("model_name") or (
+            instance.model_name if instance else None
+        )
+        if vendor and model_name:
+            model_name = model_name.strip()
+            attrs["model_name"] = model_name
+            qs = Product.objects.filter(vendor=vendor, model_name=model_name)
+            if instance:
+                qs = qs.exclude(pk=instance.pk)
+            if qs.exists():
+                msg = (
+                    "Така комбінація виробника (або бренду) та моделі вже існує"
+                )
+                raise serializers.ValidationError(
+                    {"vendor": msg, "model_name": msg}
+                )
+
         return attrs
 
 
