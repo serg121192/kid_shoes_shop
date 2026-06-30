@@ -13,6 +13,7 @@ interface ProductCardProps {
   onToggleWishlist?: (productId: number) => void;
   isInWishlist?: boolean;
   priority?: boolean;
+  onSaveCatalogState?: () => void;
 }
 
 export default function ProductCard({
@@ -21,6 +22,7 @@ export default function ProductCard({
   onToggleWishlist,
   isInWishlist = false,
   priority = false,
+  onSaveCatalogState,
 }: ProductCardProps) {
   const router = useRouter();
   const hasDiscount = product.discount > 0;
@@ -65,10 +67,15 @@ export default function ProductCard({
     sessionStorage.setItem("catalogReturnScrollY", String(window.scrollY));
   };
 
+  const saveCatalogReturn = () => {
+    saveCatalogScroll();
+    onSaveCatalogState?.();
+  };
+
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (target.closest("a, button, input, select, textarea")) return;
-    saveCatalogScroll();
+    saveCatalogReturn();
     router.push(`/products/${product.slug}`);
   };
 
@@ -107,7 +114,7 @@ export default function ProductCard({
         el.style.border = "";
       }}
     >
-      <Link href={`/products/${product.slug}`} onClick={saveCatalogScroll} className="block relative">
+      <Link href={`/products/${product.slug}`} onClick={saveCatalogReturn} className="block relative">
         <div className="aspect-square bg-gray-100 relative overflow-hidden">
           {mainImageUrl ? (
             <Image
@@ -130,7 +137,7 @@ export default function ProductCard({
       </Link>
 
       <div className="p-4 flex flex-col flex-1">
-        <Link href={`/products/${product.slug}`} onClick={saveCatalogScroll}>
+        <Link href={`/products/${product.slug}`} onClick={saveCatalogReturn}>
           <h3 className="font-bold text-gray-700 transition-colors line-clamp-2 text-xl">
             {product.vendor}
           </h3>

@@ -79,7 +79,24 @@ export default function ProductsPage() {
   const [isRestoring, setIsRestoring] = useState(true);
   const [restoredScrollY, setRestoredScrollY] = useState<number | null>(null);
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  const saveCatalogReturnState = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const state: CatalogReturnState = {
+      page,
+      search,
+      season,
+      prodType,
+      gender,
+      minPrice,
+      maxPrice,
+      hasDiscount,
+      size,
+    };
+    sessionStorage.setItem("catalogReturnPageState", JSON.stringify(state));
+    sessionStorage.setItem("catalogReturnPending", "1");
+  }, [page, search, season, prodType, gender, minPrice, maxPrice, hasDiscount, size]);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -106,8 +123,13 @@ export default function ProductsPage() {
   }, [search, season, prodType, gender, minPrice, maxPrice, hasDiscount, size, page]);
 
   useEffect(() => {
+    const pending = sessionStorage.getItem("catalogReturnPending");
     const savedRaw = sessionStorage.getItem("catalogReturnPageState");
-    if (!savedRaw) {
+
+    if (pending !== "1" || !savedRaw) {
+      sessionStorage.removeItem("catalogReturnPageState");
+      sessionStorage.removeItem("catalogReturnScrollY");
+      sessionStorage.removeItem("catalogReturnPending");
       setIsRestoring(false);
       return;
     }
@@ -132,6 +154,7 @@ export default function ProductsPage() {
     } finally {
       sessionStorage.removeItem("catalogReturnPageState");
       sessionStorage.removeItem("catalogReturnScrollY");
+      sessionStorage.removeItem("catalogReturnPending");
       setIsRestoring(false);
     }
   }, []);
@@ -142,28 +165,18 @@ export default function ProductsPage() {
   }, [fetchProducts, isRestoring]);
 
   useEffect(() => {
+    if (isRestoring || isLoading || totalCount === 0) return;
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages, totalCount, isLoading, isRestoring]);
+
+  useEffect(() => {
     if (isRestoring || isLoading || restoredScrollY === null) return;
     window.scrollTo({ top: restoredScrollY, behavior: "auto" });
     setRestoredScrollY(null);
   }, [isLoading, isRestoring, restoredScrollY]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const state: CatalogReturnState = {
-      page,
-      search,
-      season,
-      prodType,
-      gender,
-      minPrice,
-      maxPrice,
-      hasDiscount,
-      size,
-    };
-    sessionStorage.setItem("catalogReturnPageState", JSON.stringify(state));
-  }, [page, search, season, prodType, gender, minPrice, maxPrice, hasDiscount, size]);
-
-  // Reset to page 1 when filters change
   const resetPage = () => setPage(1);
 
   const handleAddToCart = async (productSizeId: number) => {
@@ -325,6 +338,18 @@ export default function ProductsPage() {
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600" />
         </div>
+      ) : products.length === 0 && totalCount > 0 ? (
+        <div className="text-center py-16 text-gray-500">
+          <span className="text-5xl block mb-4">📄</span>
+          <p className="mb-4">На цій сторінці немає товарів</p>
+          <button
+            type="button"
+            onClick={() => setPage(1)}
+            className="text-sm font-medium text-teal-600 hover:text-teal-800 underline"
+          >
+            Перейти на першу сторінку
+          </button>
+        </div>
       ) : products.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
           <span className="text-5xl block mb-4">🔍</span>
@@ -340,13 +365,14 @@ export default function ProductsPage() {
               onToggleWishlist={handleToggleWishlist}
               isInWishlist={wishlistProductIds.has(product.id)}
               priority={index < 2}
+              onSaveCatalogState={saveCatalogReturnState}
             />
           ))}
         </div>
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {(totalPages > 1 || page > 1) && (
         <div className="flex flex-wrap justify-center items-center gap-1 mt-10">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
