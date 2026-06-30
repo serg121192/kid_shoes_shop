@@ -10,6 +10,15 @@ import {
   markIntroSeen,
 } from "@/app/lib/intro-video";
 
+function scheduleIdle(task: () => void) {
+  if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+    const id = window.requestIdleCallback(task, { timeout: 4000 });
+    return () => window.cancelIdleCallback(id);
+  }
+  const timer = setTimeout(task, 1200);
+  return () => clearTimeout(timer);
+}
+
 export default function IntroVideoGate() {
   const pathname = usePathname();
   const router = useRouter();
@@ -28,13 +37,18 @@ export default function IntroVideoGate() {
     if (pathname?.startsWith("/manager")) return;
     if (hasSeenIntro()) return;
 
-    setVisible(true);
-    document.body.style.overflow = "hidden";
+    return scheduleIdle(() => {
+      setVisible(true);
+      document.body.style.overflow = "hidden";
+    });
+  }, [pathname, videoUrl]);
 
+  useEffect(() => {
+    if (!visible) return;
     return () => {
       document.body.style.overflow = "";
     };
-  }, [pathname, videoUrl]);
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -57,7 +71,7 @@ export default function IntroVideoGate() {
 
       <div className="w-full max-w-4xl">
         <StoreIntroVideo
-          autoPlay
+          autoPlay={false}
           showPlayOverlay
           onEnded={dismiss}
           className="aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-2xl"

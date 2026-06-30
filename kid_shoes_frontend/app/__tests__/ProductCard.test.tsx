@@ -77,6 +77,16 @@ describe("ProductCard", () => {
     expect(screen.getByText("👟")).toBeInTheDocument();
   });
 
+  it("renders main image when main_image url is set", () => {
+    const withImage: ProductList = {
+      ...baseProduct,
+      main_image: "/media/products/shoe.jpg",
+    };
+    render(<ProductCard product={withImage} />);
+    const img = screen.getByRole("img");
+    expect(img).toHaveAttribute("src", expect.stringContaining("shoe.jpg"));
+  });
+
   it("renders main image when images present", () => {
     const withImage: ProductList = {
       ...baseProduct,

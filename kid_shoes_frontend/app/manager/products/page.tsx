@@ -222,8 +222,12 @@ export default function ManagerProductsPage() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {products.map((p) => {
-                const mainImg = p.images.find((img) => img.is_main) ?? p.images[0];
-                const imgUrl = mainImg ? getMediaUrl(mainImg.image) : null;
+                const imgUrl = p.main_image
+                  ? getMediaUrl(p.main_image)
+                  : (() => {
+                      const mainImg = p.images?.find((img) => img.is_main) ?? p.images?.[0];
+                      return mainImg ? getMediaUrl(mainImg.image) : null;
+                    })();
                 const priced = hasPrice(p);
                 const canSelect = !p.is_published && priced;
                 return (

@@ -73,8 +73,12 @@ export default function WishlistPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {wishlist.products.map((product) => {
-                    const mainImg = product.images?.find((i) => i.is_main) ?? product.images?.[0];
-                    const imageUrl = mainImg ? getMediaUrl(mainImg.image) : null;
+                    const imageUrl = product.main_image
+                        ? getMediaUrl(product.main_image)
+                        : (() => {
+                            const mainImg = product.images?.find((i) => i.is_main) ?? product.images?.[0];
+                            return mainImg ? getMediaUrl(mainImg.image) : null;
+                          })();
                     const availableSizes = product.sizes.filter((s) => s.quantity > 0);
                     return (
                         <div key={product.id} className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
@@ -85,7 +89,7 @@ export default function WishlistPage() {
                                             src={imageUrl}
                                             alt={product.model_name}
                                             fill
-                                            unoptimized
+                                            sizes="(max-width: 640px) 50vw, 25vw"
                                             className="object-cover hover:scale-105 transition-transform duration-300"
                                         />
                                     ) : (

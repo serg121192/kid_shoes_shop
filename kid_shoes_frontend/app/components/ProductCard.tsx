@@ -12,6 +12,7 @@ interface ProductCardProps {
   onAddToCart?: (productSizeId: number) => boolean | Promise<boolean>;
   onToggleWishlist?: (productId: number) => void;
   isInWishlist?: boolean;
+  priority?: boolean;
 }
 
 export default function ProductCard({
@@ -19,6 +20,7 @@ export default function ProductCard({
   onAddToCart,
   onToggleWishlist,
   isInWishlist = false,
+  priority = false,
 }: ProductCardProps) {
   const router = useRouter();
   const hasDiscount = product.discount > 0;
@@ -51,8 +53,12 @@ export default function ProductCard({
     }
   };
 
-  const mainImage = product.images?.find((img) => img.is_main) ?? product.images?.[0];
-  const imageUrl = mainImage ? getMediaUrl(mainImage.image) : null;
+  const mainImageUrl = product.main_image
+    ? getMediaUrl(product.main_image)
+    : (() => {
+        const mainImage = product.images?.find((img) => img.is_main) ?? product.images?.[0];
+        return mainImage ? getMediaUrl(mainImage.image) : null;
+      })();
 
   const saveCatalogScroll = () => {
     if (typeof window === "undefined") return;
@@ -103,13 +109,13 @@ export default function ProductCard({
     >
       <Link href={`/products/${product.slug}`} onClick={saveCatalogScroll} className="block relative">
         <div className="aspect-square bg-gray-100 relative overflow-hidden">
-          {imageUrl ? (
+          {mainImageUrl ? (
             <Image
-              src={imageUrl}
+              src={mainImageUrl}
               alt={`${product.vendor} ${product.model_name}`}
               fill
-              unoptimized
-              loading="eager"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              priority={priority}
               className="object-cover hover:scale-105 transition-transform duration-300"
             />
           ) : (

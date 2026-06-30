@@ -179,9 +179,11 @@ class ProductViewSet(viewsets.ModelViewSet):
         return obj
 
     def get_queryset(self):
-        qs = Product.objects.select_related("vendor").prefetch_related(
-            "sizes", "images", "videos"
-        )
+        qs = Product.objects.select_related("vendor")
+        if self.action == "list":
+            qs = qs.prefetch_related("sizes", "images")
+        else:
+            qs = qs.prefetch_related("sizes", "images", "videos")
         if self.request.query_params.get("size"):
             qs = qs.distinct()
         user = self.request.user

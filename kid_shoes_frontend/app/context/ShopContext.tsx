@@ -21,14 +21,25 @@ export interface Toast {
 
 const ORDERS_BADGE_KEY = "shop_orders_badge";
 
+function scheduleIdle(task: () => void, timeoutMs = 2500) {
+  if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+    const id = window.requestIdleCallback(task, { timeout: timeoutMs });
+    return () => window.cancelIdleCallback(id);
+  }
+  const timer = setTimeout(task, 300);
+  return () => clearTimeout(timer);
+}
+
 interface ShopContextType {
   cartCount: number;
   wishlistCount: number;
+  wishlistProductIds: Set<number>;
   ordersBadgeCount: number;
   toasts: Toast[];
   showToast: (message: string, type?: "success" | "error") => void;
   setCartCount: React.Dispatch<React.SetStateAction<number>>;
   setWishlistCount: React.Dispatch<React.SetStateAction<number>>;
+  setWishlistProductIds: React.Dispatch<React.SetStateAction<Set<number>>>;
   setOrdersBadgeCount: React.Dispatch<React.SetStateAction<number>>;
   markOrdersSeen: () => void;
   refreshCounts: () => Promise<void>;
@@ -42,6 +53,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const [cartCount, setCartCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set());
   const [ordersBadgeCount, setOrdersBadgeCountState] = useState(0);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
@@ -64,6 +76,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isAuthenticated) {
       setOrdersBadgeCountState(0);
+      setWishlistProductIds(new Set());
       if (typeof window !== "undefined") sessionStorage.removeItem(ORDERS_BADGE_KEY);
       return;
     }
@@ -77,6 +90,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated) {
       setCartCount(0);
       setWishlistCount(0);
+      setWishlistProductIds(new Set());
       return;
     }
     try {
@@ -98,7 +112,9 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       if (wishRes.status === "fulfilled") {
         const data = wishRes.value.data;
         const wishlists = Array.isArray(data) ? data : data.results;
-        setWishlistCount(wishlists[0]?.products.length ?? 0);
+        const ids = new Set(wishlists[0]?.products.map((p) => p.id) ?? []);
+        setWishlistProductIds(ids);
+        setWishlistCount(ids.size);
       }
     } catch {
       // silent
@@ -106,7 +122,9 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    refreshCounts();
+    return scheduleIdle(() => {
+      void refreshCounts();
+    });
   }, [refreshCounts]);
 
   const showToast = useCallback((message: string, type: "success" | "error" = "success") => {
@@ -126,11 +144,13 @@ export function ShopProvider({ children }: { children: ReactNode }) {
       value={{
         cartCount,
         wishlistCount,
+        wishlistProductIds,
         ordersBadgeCount,
         toasts,
         showToast,
         setCartCount,
         setWishlistCount,
+        setWishlistProductIds,
         setOrdersBadgeCount,
         markOrdersSeen,
         refreshCounts,

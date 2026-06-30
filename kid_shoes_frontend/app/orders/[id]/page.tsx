@@ -140,7 +140,7 @@ export default function OrderDetailPage({
                                 <Link href={`/products/${product.slug}`} className="shrink-0">
                                     <div className="w-16 h-16 bg-gray-100 rounded-lg relative overflow-hidden">
                                         {imageUrl ? (
-                                            <Image src={imageUrl} alt={product.model_name} fill unoptimized className="object-cover" />
+                                            <Image src={imageUrl} alt={product.model_name} fill sizes="64px" className="object-cover" />
                                         ) : (
                                             <div className="flex items-center justify-center h-full text-2xl">👟</div>
                                         )}

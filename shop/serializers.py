@@ -161,7 +161,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         read_only=True, max_digits=10, decimal_places=2
     )
     sizes = ProductSizeListSerializer(many=True, read_only=True)
-    images = ProductImageSerializer(many=True, read_only=True)
+    main_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -177,9 +177,14 @@ class ProductListSerializer(serializers.ModelSerializer):
             "discount",
             "discounted_price",
             "sizes",
-            "images",
+            "main_image",
             "is_published",
         ]
+
+    def get_main_image(self, obj):
+        imgs = list(obj.images.all())
+        img = next((i for i in imgs if i.is_main), None) or (imgs[0] if imgs else None)
+        return img.image.url if img else None
 
 
 class ReviewSerializer(serializers.ModelSerializer):

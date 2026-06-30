@@ -39,7 +39,8 @@ export interface ProductList {
   discount: number;
   discounted_price: string;
   sizes: ProductSize[];
-  images: ProductImage[];
+  main_image?: string | null;
+  images?: ProductImage[];
   slug: string;
   is_published?: boolean;
 }

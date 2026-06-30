@@ -21,7 +21,7 @@ export default function StoreIntroVideo({
 }: StoreIntroVideoProps) {
   const src = getIntroVideoUrl();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [needsTap, setNeedsTap] = useState(false);
+  const [needsTap, setNeedsTap] = useState(showPlayOverlay || !autoPlay);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const tryPlay = useCallback(async () => {
@@ -37,9 +37,9 @@ export default function StoreIntroVideo({
   }, []);
 
   useEffect(() => {
-    if (!autoPlay || !src) return;
+    if (!autoPlay || !src || showPlayOverlay) return;
     tryPlay();
-  }, [autoPlay, src, tryPlay]);
+  }, [autoPlay, src, showPlayOverlay, tryPlay]);
 
   if (!src) return null;
 
@@ -48,7 +48,7 @@ export default function StoreIntroVideo({
       <video
         ref={videoRef}
         src={src}
-        preload="auto"
+        preload="none"
         playsInline
         controls={!showPlayOverlay || isPlaying}
         controlsList="nodownload"

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import api from "@/app/lib/api";
-import { ProductList, PaginatedResponse, Wishlist } from "@/app/types";
+import { ProductList, PaginatedResponse } from "@/app/types";
 import ProductCard from "@/app/components/ProductCard";
 import { useAuth } from "@/app/context/AuthContext";
 import { useShop } from "@/app/context/ShopContext";
@@ -29,7 +29,7 @@ const GENDERS = [
   { value: "unisex", label: "Унісекс" },
 ];
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 12;
 
 interface CatalogReturnState {
   page: number;
@@ -58,7 +58,7 @@ function buildPageNumbers(current: number, total: number): (number | "...")[] {
 
 export default function ProductsPage() {
   const { isAuthenticated } = useAuth();
-  const { showToast, setCartCount, setWishlistCount } = useShop();
+  const { showToast, setCartCount, setWishlistCount, setWishlistProductIds, wishlistProductIds } = useShop();
   const [products, setProducts] = useState<ProductList[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -76,7 +76,6 @@ export default function ProductsPage() {
   // Pagination
   const [page, setPage] = useState(1);
 
-  const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set());
   const [isRestoring, setIsRestoring] = useState(true);
   const [restoredScrollY, setRestoredScrollY] = useState<number | null>(null);
 
@@ -105,19 +104,6 @@ export default function ProductsPage() {
       setIsLoading(false);
     }
   }, [search, season, prodType, gender, minPrice, maxPrice, hasDiscount, size, page]);
-
-  const fetchWishlist = useCallback(async () => {
-    if (!isAuthenticated) return;
-    try {
-      const response = await api.get<Wishlist[]>("/shop/wishlist/");
-      const wishlists = response.data;
-      if (wishlists.length > 0) {
-        setWishlistProductIds(new Set(wishlists[0].products.map((p) => p.id)));
-      }
-    } catch {
-      // silent
-    }
-  }, [isAuthenticated]);
 
   useEffect(() => {
     const savedRaw = sessionStorage.getItem("catalogReturnPageState");
@@ -154,10 +140,6 @@ export default function ProductsPage() {
     if (isRestoring) return;
     fetchProducts();
   }, [fetchProducts, isRestoring]);
-
-  useEffect(() => {
-    fetchWishlist();
-  }, [fetchWishlist]);
 
   useEffect(() => {
     if (isRestoring || isLoading || restoredScrollY === null) return;
@@ -350,13 +332,14 @@ export default function ProductsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {products.map((product) => (
+          {products.map((product, index) => (
             <ProductCard
               key={product.id}
               product={product}
               onAddToCart={handleAddToCart}
               onToggleWishlist={handleToggleWishlist}
               isInWishlist={wishlistProductIds.has(product.id)}
+              priority={index < 2}
             />
           ))}
         </div>

@@ -248,7 +248,8 @@ export default function ProductDetailPage() {
                   key={(activeItem.data as ProductVideo).id}
                   src={getMediaUrl((activeItem.data as ProductVideo).video) ?? ""}
                   controls
-                  autoPlay
+                  preload="none"
+                  playsInline
                   loop
                   controlsList="nodownload"
                   onContextMenu={(e) => e.preventDefault()}
@@ -262,7 +263,8 @@ export default function ProductDetailPage() {
                       src={getMediaUrl((activeItem.data as ProductImage).image)!}
                       alt={`${product.vendor} ${product.model_name}`}
                       fill
-                      unoptimized
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      priority
                       className="object-cover"
                     />
                   ) : (
@@ -324,7 +326,7 @@ export default function ProductDetailPage() {
                           src={getMediaUrl((item.data as ProductImage).image) ?? ""}
                           alt={`Фото ${idx + 1}`}
                           fill
-                          unoptimized
+                          sizes="64px"
                           className="object-cover"
                         />
                       )}
