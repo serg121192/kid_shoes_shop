@@ -30,6 +30,7 @@ from shop.emails import (
     send_order_status_update,
     send_new_order_alert,
 )
+from shop.pagination import CatalogPagination
 from shop.permissions import (
     IsAdminOrReadOnly,
     IsOwnerOrAdmin,
@@ -152,6 +153,7 @@ def _create_order_with_items(
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     permission_classes = [IsAdminOrReadOnly]
+    pagination_class = CatalogPagination
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ProductFilter
     search_fields = ["model_name", "vendor__name", "description"]

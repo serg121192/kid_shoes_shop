@@ -101,7 +101,10 @@ export default function ProductsPage() {
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     try {
-      const params: Record<string, string | number | boolean> = { page };
+      const params: Record<string, string | number | boolean> = {
+        page,
+        page_size: PAGE_SIZE,
+      };
       if (search) params.search = search;
       if (season) params.season = season;
       if (prodType) params.prod_type = prodType;
