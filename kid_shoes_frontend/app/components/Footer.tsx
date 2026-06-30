@@ -113,11 +113,11 @@ export default function Footer() {
         </div>
 
         {/* Logo + copyright */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-[#b8caca]/80 w-full max-w-2xl">
-          <Link href="/products" aria-label="На головну">
-            <Logo className="h-12 w-12 sm:h-14 sm:w-14 shrink-0" />
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 border-t border-[#b8caca]/80 w-full">
+          <Link href="/products" aria-label="На головну" className="shrink-0">
+            <Logo className="h-12 w-12 sm:h-14 sm:w-14" />
           </Link>
-          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed text-center">
             Магазин дитячого взуття — Так І Так © {year}. All rights reserved.
           </p>
         </div>
