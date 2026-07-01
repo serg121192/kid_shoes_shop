@@ -270,7 +270,8 @@ export default function ProductsCatalog({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Каталог взуття</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-2">Магазин дитячого взуття</h1>
+      <p className="text-gray-600 mb-6">Каталог у Чернігові та з доставкою по Україні</p>
 
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-48">

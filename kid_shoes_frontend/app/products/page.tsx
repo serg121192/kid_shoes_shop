@@ -1,15 +1,22 @@
 ﻿import type { Metadata } from "next";
 import ProductsCatalog from "@/app/products/ProductsCatalog";
 import { fetchCatalogProducts } from "@/app/lib/catalog";
+import { HOME_DESCRIPTION, HOME_TITLE, SEO_KEYWORDS, SITE_URL } from "@/app/lib/seo";
 
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Каталог взуття",
-  description:
-    "Каталог дитячого взуття ТАК і ТАК. Черевики, кросівки, сандалі та інше — з доставкою по Україні.",
+  title: HOME_TITLE,
+  description: HOME_DESCRIPTION,
+  keywords: SEO_KEYWORDS,
+  openGraph: {
+    title: `${HOME_TITLE} | ТАК і ТАК`,
+    description: HOME_DESCRIPTION,
+    url: "/products",
+    type: "website",
+  },
   alternates: {
-    canonical: "https://tak-i-tak.com/products",
+    canonical: `${SITE_URL}/products`,
   },
 };
 

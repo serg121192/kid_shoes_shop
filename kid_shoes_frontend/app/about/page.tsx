@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import AboutVideoSection from "@/app/about/AboutVideoSection";
+import { ABOUT_DESCRIPTION, ABOUT_TITLE, SEO_KEYWORDS } from "@/app/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Про нас",
-  description:
-    "Магазин дитячого взуття ТАК і ТАК у Чернігові — якісне взуття для дітей від перевірених виробників. Самовивіз, доставка Новою Поштою по всій Україні.",
+  title: ABOUT_TITLE,
+  description: ABOUT_DESCRIPTION,
+  keywords: SEO_KEYWORDS,
   openGraph: {
-    title: "Про нас — ТАК і ТАК",
+    title: `${ABOUT_TITLE} | ТАК і ТАК`,
+    description: ABOUT_DESCRIPTION,
     url: "/about",
   },
 };
 
-const STORE_ADDRESS =
-  'м. Чернігів, проспект Левка Лук\'яненка 78, 2-й поверх (поряд з ТРЦ «Hollywood»)';
+import { STORE_ADDRESS } from "@/app/lib/seo";
 
 export default function AboutPage() {
   return (

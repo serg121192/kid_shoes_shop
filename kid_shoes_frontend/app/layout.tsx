@@ -8,18 +8,19 @@ import Footer from "@/app/components/Footer";
 import IntroVideoGate from "@/app/components/IntroVideoGate";
 import ToastContainer from "@/app/components/Toast";
 import VisitTracker from "@/app/components/VisitTracker";
+import StoreJsonLd from "@/app/components/StoreJsonLd";
+import { HOME_DESCRIPTION, HOME_TITLE, SEO_KEYWORDS, SITE_NAME } from "@/app/lib/seo";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://tak-i-tak.com"),
   title: {
-    default: "ТАК і ТАК — Магазин дитячого взуття",
-    template: "%s | ТАК і ТАК",
+    default: `${HOME_TITLE} | ${SITE_NAME}`,
+    template: `%s | ${SITE_NAME}`,
   },
-  description:
-    "Інтернет-магазин дитячого взуття ТАК і ТАК. Широкий вибір черевиків, кросівок, сандалів для дітей. Доставка Новою Поштою по всій Україні.",
-  keywords: ["дитяче взуття", "взуття для дітей", "купити дитяче взуття", "черевики для дітей", "кросівки дитячі"],
+  description: HOME_DESCRIPTION,
+  keywords: SEO_KEYWORDS,
   openGraph: {
     siteName: "ТАК і ТАК",
     locale: "uk_UA",
@@ -35,6 +36,7 @@ export default function RootLayout({
   return (
     <html lang="uk" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-white">
+        <StoreJsonLd />
         {GA_ID && (
           <>
             <Script
