@@ -88,7 +88,7 @@ export default function ProductsCatalog({
   const [restoredScrollY, setRestoredScrollY] = useState<number | null>(null);
   const skipNextFetchRef = useRef(
     (initialProducts.length > 0 || initialCount > 0) &&
-      isDefaultCatalogView({ page: 1 }),
+    isDefaultCatalogView({ page: 1 }),
   );
 
   const totalPages = Math.max(1, Math.ceil(totalCount / CATALOG_PAGE_SIZE));
@@ -270,9 +270,7 @@ export default function ProductsCatalog({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Магазин дитячого взуття</h1>
-      <p className="text-gray-600 mb-6">Каталог у Чернігові та з доставкою по Україні</p>
-
+      <h1 className="text-3xl font-bold text-gray-900 mb-2">Каталог дитячого взуття</h1>
       <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-48">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -424,8 +422,8 @@ export default function ProductsCatalog({
                 key={p}
                 onClick={() => setPage(p as number)}
                 className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${p === page
-                    ? "bg-teal-600 text-white"
-                    : "text-gray-600 hover:bg-gray-100"
+                  ? "bg-teal-600 text-white"
+                  : "text-gray-600 hover:bg-gray-100"
                   }`}
               >
                 {p}
