@@ -1,8 +1,8 @@
 /** Контакти та соцмережі — можна перевизначити через NEXT_PUBLIC_* у Vercel. */
 export const SITE_CONTACTS = {
   email: "tak.i.tak.original@gmail.com",
-  phone: "+380689276318",
-  phoneTel: "+380689276318",
+  phone: "+380938569255",
+  phoneTel: "+380938569255",
   social: {
     instagram:
       process.env.NEXT_PUBLIC_SOCIAL_INSTAGRAM ??
