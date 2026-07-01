@@ -1,4 +1,6 @@
-export const SITE_URL = "https://tak-i-tak.com";
+/** Канонічний URL сайту — лише без www. Задай SITE_BASE_URL на Vercel. */
+export const SITE_URL =
+  process.env.SITE_BASE_URL?.replace(/\/$/, "") ?? "https://tak-i-tak.com";
 export const SITE_NAME = "ТАК і ТАК";
 
 export const STORE_ADDRESS =

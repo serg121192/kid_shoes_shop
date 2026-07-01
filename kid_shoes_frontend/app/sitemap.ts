@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/app/lib/seo";
 
-const BASE_URL = process.env.SITE_BASE_URL ?? "https://tak-i-tak.com";
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 
 // Regenerate sitemap at most once per hour (compatible with static build on Vercel).
@@ -15,8 +15,8 @@ type ProductShort = {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const urls: MetadataRoute.Sitemap = [
-    { url: `${BASE_URL}/products`, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
-    { url: `${BASE_URL}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+    { url: `${SITE_URL}/products`, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
+    { url: `${SITE_URL}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
   ];
 
   try {
@@ -34,7 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       for (const p of results) {
         if (!p.slug) continue;
         const lastMod = p.updated_at ?? p.created_at ?? new Date().toISOString();
-        urls.push({ url: `${BASE_URL}/products/${p.slug}`, lastModified: new Date(lastMod) });
+        urls.push({ url: `${SITE_URL}/products/${p.slug}`, lastModified: new Date(lastMod) });
       }
 
       more = Boolean(data.next);

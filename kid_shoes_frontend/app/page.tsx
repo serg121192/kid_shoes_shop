@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import { HOME_DESCRIPTION, HOME_TITLE, SEO_KEYWORDS, SITE_URL } from "@/app/lib/seo";
 
 export const metadata: Metadata = {
@@ -12,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
-  redirect("/products");
+  permanentRedirect("/products");
 }

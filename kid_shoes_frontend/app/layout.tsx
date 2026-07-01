@@ -9,12 +9,12 @@ import IntroVideoGate from "@/app/components/IntroVideoGate";
 import ToastContainer from "@/app/components/Toast";
 import VisitTracker from "@/app/components/VisitTracker";
 import StoreJsonLd from "@/app/components/StoreJsonLd";
-import { HOME_DESCRIPTION, HOME_TITLE, SEO_KEYWORDS, SITE_NAME } from "@/app/lib/seo";
+import { HOME_DESCRIPTION, HOME_TITLE, SEO_KEYWORDS, SITE_NAME, SITE_URL } from "@/app/lib/seo";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://tak-i-tak.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: `${HOME_TITLE} | ${SITE_NAME}`,
     template: `%s | ${SITE_NAME}`,

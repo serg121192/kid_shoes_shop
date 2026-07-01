@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_URL } from "@/app/lib/seo";
 
 type Props = {
   params: {
@@ -39,7 +40,7 @@ export async function generateMetadata(
         images: product.images?.length ? [product.images[0].image] : [],
       },
       alternates: {
-        canonical: `https://tak-i-tak.com/products/${product.slug}`,
+        canonical: `${SITE_URL}/products/${product.slug}`,
       },
     };
   } catch {
