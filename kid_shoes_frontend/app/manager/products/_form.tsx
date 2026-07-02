@@ -7,6 +7,7 @@ import {
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import api, { getMediaUrl } from "@/app/lib/api";
+import { compressImageForUpload, isUploadTooLargeError } from "@/app/lib/compress-image";
 import { AxiosError } from "axios";
 import { useShop } from "@/app/context/ShopContext";
 import { ArrowLeft, Upload, X, Plus, Trash2, Star, Check } from "lucide-react";
@@ -14,6 +15,9 @@ import SizePriceTagQr from "@/app/components/SizePriceTagQr";
 import { Vendor, ProductImage, ProductSize, ProductVideo } from "@/app/types";
 
 function uploadErrorMessage(err: unknown, fallback: string): string {
+  if (isUploadTooLargeError(err)) {
+    return "Фото занадто велике для сервера. Спробуйте менший файл або знімок з меншою роздільністю.";
+  }
   if (err instanceof AxiosError) {
     const data = err.response?.data;
     if (typeof data === "string" && data) return data;
@@ -430,6 +434,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
       const imgs = files.filter((f) => f.type.startsWith("image/"));
       if (!imgs.length) return;
 
+      const prepared = await Promise.all(imgs.map((f) => compressImageForUpload(f)));
+
       const id = hasServerProduct ? activeProductId : await ensureDraftProduct();
 
       if (id) {
@@ -437,7 +443,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
         if (queued.length) setPendingImages([]);
         const batch = [
           ...queued.map((p) => ({ file: p.file, is_main: p.is_main })),
-          ...imgs.map((file, i) => ({
+          ...prepared.map((file, i) => ({
             file,
             is_main: queued.length === 0 && savedImages.length === 0 && i === 0,
           })),
@@ -454,7 +460,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
         const isFirstEver = prev.length === 0;
         return [
           ...prev,
-          ...imgs.map((file, i) => ({
+          ...prepared.map((file, i) => ({
             localId: uid(),
             file,
             preview: URL.createObjectURL(file),
@@ -916,7 +922,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
           <Upload size={22} className="mx-auto text-gray-400 mb-1.5" />
           <p className="text-sm text-gray-500">Перетягніть фото або натисніть для вибору</p>
           <p className="text-xs text-gray-400 mt-0.5">
-            JPG, PNG, WebP · після бренду та моделі завантажуються одразу
+            JPG, PNG, WebP · великі фото стискаються автоматично
           </p>
           <input ref={imgInputRef} type="file" multiple accept="image/*" onChange={onImgInput} className="hidden" />
         </div>
