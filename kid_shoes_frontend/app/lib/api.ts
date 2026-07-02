@@ -9,6 +9,12 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  if (config.data instanceof FormData) {
+    // Axios має сам виставити multipart boundary; інакше файл не доходить до Django/R2.
+    if (config.headers) {
+      delete config.headers["Content-Type"];
+    }
+  }
   if (config.url && !config.url.includes("?") && !config.url.endsWith("/")) {
     config.url = config.url + "/";
   }
@@ -57,7 +63,13 @@ api.interceptors.response.use(
 
 export default api;
 
-const MEDIA_BASE = process.env.NEXT_PUBLIC_MEDIA_BASE ?? "http://127.0.0.1:8000";
+const R2_PUBLIC = (process.env.NEXT_PUBLIC_R2_PUBLIC_DOMAIN ?? "")
+  .replace(/^https?:\/\//, "")
+  .replace(/\/$/, "");
+
+const MEDIA_BASE =
+  process.env.NEXT_PUBLIC_MEDIA_BASE?.replace(/\/$/, "") ??
+  (R2_PUBLIC ? `https://${R2_PUBLIC}` : "http://127.0.0.1:8000");
 
 export function getMediaUrl(path: string | null | undefined): string | null {
   if (!path) return null;

@@ -7,10 +7,27 @@ import {
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import api, { getMediaUrl } from "@/app/lib/api";
+import { AxiosError } from "axios";
 import { useShop } from "@/app/context/ShopContext";
 import { ArrowLeft, Upload, X, Plus, Trash2, Star, Check } from "lucide-react";
 import SizePriceTagQr from "@/app/components/SizePriceTagQr";
 import { Vendor, ProductImage, ProductSize, ProductVideo } from "@/app/types";
+
+function uploadErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof AxiosError) {
+    const data = err.response?.data;
+    if (typeof data === "string" && data) return data;
+    if (data && typeof data === "object") {
+      const detail = (data as { detail?: string; error?: string }).detail
+        ?? (data as { error?: string }).error;
+      if (detail) return detail;
+    }
+    if (err.response?.status === 403) {
+      return "Немає прав на завантаження (потрібен is_staff)";
+    }
+  }
+  return fallback;
+}
 
 // ─── Local types ──────────────────────────────────────────────────────────────
 
@@ -291,7 +308,6 @@ export default function ProductForm({ productId }: { productId?: number }) {
             const res = await api.post<ProductImage>(
               `/shop/products/${id}/upload_image/`,
               fd,
-              { headers: { "Content-Type": "multipart/form-data" } }
             );
             setSavedImages((prev) => {
               if (res.data.is_main) {
@@ -301,8 +317,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
             });
           })
         );
-      } catch {
-        throw new Error("upload failed");
+      } catch (err) {
+        throw err;
       }
     },
     []
@@ -318,7 +334,6 @@ export default function ProductForm({ productId }: { productId?: number }) {
       fd.append("order", String(savedVideos.length));
       try {
         const res = await api.post<ProductVideo>(`/shop/products/${id}/upload_video/`, fd, {
-          headers: { "Content-Type": "multipart/form-data" },
           onUploadProgress: (event) => {
             const pct = event.total ? Math.round((event.loaded / event.total) * 100) : 0;
             setEditUploadProgress((prev) => ({ ...prev, [progressKey]: pct }));
@@ -354,8 +369,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
             id,
             imgs.map((p) => ({ file: p.file, is_main: p.is_main }))
           );
-        } catch {
-          showToast("Не вдалося завантажити фото", "error");
+        } catch (err) {
+          showToast(uploadErrorMessage(err, "Не вдалося завантажити фото"), "error");
         }
       }
 
@@ -429,8 +444,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
         ];
         try {
           await uploadImagesToServer(id, batch);
-        } catch {
-          showToast("Не вдалося завантажити фото", "error");
+        } catch (err) {
+          showToast(uploadErrorMessage(err, "Не вдалося завантажити фото"), "error");
         }
         return;
       }
@@ -664,6 +679,19 @@ export default function ProductForm({ productId }: { productId?: number }) {
       } else {
         const res = await api.post<{ id: number }>("/shop/products/", body);
         const newId = res.data.id;
+        if (pendingImages.length) {
+          try {
+            await uploadImagesToServer(
+              newId,
+              pendingImages.map((p) => ({ file: p.file, is_main: p.is_main }))
+            );
+            setPendingImages([]);
+          } catch (err) {
+            showToast(uploadErrorMessage(err, "Товар створено, але фото не завантажились"), "error");
+            router.replace(`/manager/products/${newId}`);
+            return;
+          }
+        }
         for (const s of pendingSizes) {
           await api.post(`/shop/products/${newId}/set_size/`, s).catch(() => {});
         }
