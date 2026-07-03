@@ -1246,19 +1246,6 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
                     continue
             return ImageFont.load_default()
 
-        def centered_text(
-            draw: ImageDraw.ImageDraw,
-            y: int,
-            text: str,
-            font: ImageFont.ImageFont,
-            fill: tuple[int, int, int] = (17, 24, 39),
-        ) -> int:
-            bbox = draw.textbbox((0, 0), text, font=font)
-            width = bbox[2] - bbox[0]
-            height = bbox[3] - bbox[1]
-            draw.text(((canvas_width - width) / 2, y), text, font=font, fill=fill)
-            return y + height
-
         def centered_box_text(
             draw: ImageDraw.ImageDraw,
             box_x: int,
@@ -1290,10 +1277,6 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
                 size -= 2
             return load_font(min_size, bold=bold)
 
-        def price_label() -> str:
-            price = product.discounted_price or product.full_price
-            return f"{int(price):,}".replace(",", " ") + " UAH"
-
         # 80x50 mm at 300 DPI.
         canvas_width = 945
         canvas_height = 591
@@ -1301,52 +1284,66 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
         canvas = Image.new("RGB", (canvas_width, canvas_height), "white")
         draw = ImageDraw.Draw(canvas)
 
-        image_box = (300, 300)
+        content_height = canvas_height - padding * 2
+        image_box = (330, content_height)
         image_x = padding
-        image_y = (canvas_height - image_box[1]) // 2
+        image_y = padding
         main_image = product.images.filter(is_main=True).first() or product.images.first()
         if main_image and main_image.image:
             try:
                 with main_image.image.open("rb") as image_file:
                     product_img = Image.open(image_file).convert("RGB")
-                    product_img = ImageOps.contain(product_img, image_box)
-                    paste_x = image_x + (image_box[0] - product_img.width) // 2
-                    paste_y = image_y + (image_box[1] - product_img.height) // 2
-                    canvas.paste(product_img, (paste_x, paste_y))
+                    product_img = ImageOps.fit(
+                        product_img,
+                        image_box,
+                        method=Image.Resampling.LANCZOS,
+                        centering=(0.5, 0.5),
+                    )
+                    canvas.paste(product_img, (image_x, image_y))
             except Exception:
                 logger.exception("Failed to render product image in QR label")
 
-        text_x = 348
-        text_width = 250
-        current_y = 96
-        size_label = f"SIZE {product_size.size}"
-        title_font = fit_font(product.vendor.name, 60, text_width, bold=True, min_size=34)
-        model_font = fit_font(product.model_name, 52, text_width, bold=True, min_size=30)
-        size_font = fit_font(size_label, 56, text_width, bold=True, min_size=34)
-        price_font = fit_font(price_label(), 66, text_width, bold=True, min_size=38)
-
-        current_y = centered_box_text(
-            draw, text_x, current_y, text_width, product.vendor.name, title_font
-        )
-        current_y += 22
-        current_y = centered_box_text(
-            draw, text_x, current_y, text_width, product.model_name, model_font
-        )
-        current_y += 32
-        current_y = centered_box_text(
-            draw, text_x, current_y, text_width, size_label, size_font
-        )
-        current_y += 34
-        current_y = centered_box_text(
-            draw, text_x, current_y, text_width, price_label(), price_font
-        )
+        qr_size = 370
+        qr_x = canvas_width - padding - qr_size
+        text_x = image_x + image_box[0] + 18
+        text_width = qr_x - 18 - text_x
+        price_value = str(int(product.discounted_price or product.full_price))
+        text_lines = [
+            (
+                product.vendor.name,
+                fit_font(product.vendor.name, 58, text_width, bold=True, min_size=30),
+            ),
+            (
+                product.model_name,
+                fit_font(product.model_name, 54, text_width, bold=True, min_size=30),
+            ),
+            ("SIZE", fit_font("SIZE", 42, text_width, bold=True, min_size=30)),
+            (
+                str(product_size.size),
+                fit_font(str(product_size.size), 98, text_width, bold=True, min_size=54),
+            ),
+            (price_value, fit_font(price_value, 74, text_width, bold=True, min_size=46)),
+            ("UAH", fit_font("UAH", 40, text_width, bold=True, min_size=30)),
+        ]
+        heights = [
+            draw.textbbox((0, 0), text, font=font)[3]
+            - draw.textbbox((0, 0), text, font=font)[1]
+            for text, font in text_lines
+        ]
+        gap = max(2, (content_height - sum(heights)) / (len(text_lines) - 1))
+        current_y = padding
+        for index, (text, font) in enumerate(text_lines):
+            current_y = centered_box_text(
+                draw, text_x, int(current_y), text_width, text, font
+            )
+            if index < len(text_lines) - 1:
+                current_y += gap
 
         qr = qrcode.QRCode(border=1, box_size=16)
         qr.add_data(scan_url)
         qr.make(fit=True)
         qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-        qr_img = ImageOps.contain(qr_img, (300, 300), method=Image.Resampling.NEAREST)
-        qr_x = canvas_width - padding - qr_img.width
+        qr_img = ImageOps.contain(qr_img, (qr_size, qr_size), method=Image.Resampling.NEAREST)
         qr_y = (canvas_height - qr_img.height) // 2
         canvas.paste(qr_img, (qr_x, qr_y))
 
