@@ -1234,9 +1234,20 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
 
         def load_font(size: int, bold: bool = False):
             candidates = (
+                "DejaVuSansCondensed-Bold.ttf" if bold else "DejaVuSansCondensed.ttf",
+                "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf"
+                if bold
+                else "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
                 if bold
                 else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf"
+                if bold
+                else "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+                "/usr/local/share/fonts/DejaVuSans-Bold.ttf"
+                if bold
+                else "/usr/local/share/fonts/DejaVuSans.ttf",
                 "C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf",
             )
             for path in candidates:
@@ -1246,20 +1257,16 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
                     continue
             return ImageFont.load_default()
 
-        def centered_box_text(
+        def draw_label_text(
             draw: ImageDraw.ImageDraw,
-            box_x: int,
+            x: int,
             y: int,
-            box_width: int,
             text: str,
             font: ImageFont.ImageFont,
-            fill: tuple[int, int, int] = (17, 24, 39),
-        ) -> int:
+            fill: tuple[int, int, int] = (0, 0, 0),
+        ) -> None:
             bbox = draw.textbbox((0, 0), text, font=font)
-            width = bbox[2] - bbox[0]
-            height = bbox[3] - bbox[1]
-            draw.text((box_x + (box_width - width) / 2, y), text, font=font, fill=fill)
-            return y + height
+            draw.text((x - bbox[0], y - bbox[1]), text, font=font, fill=fill)
 
         def fit_font(
             text: str,
@@ -1303,48 +1310,33 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
             except Exception:
                 logger.exception("Failed to render product image in QR label")
 
-        qr_size = 370
+        qr_size = 345
         qr_x = canvas_width - padding - qr_size
-        text_x = image_x + image_box[0] + 18
-        text_width = qr_x - 18 - text_x
+        text_x = image_x + image_box[0] + 24
+        text_width = qr_x - 28 - text_x
         price_value = str(int(product.discounted_price or product.full_price))
-        text_lines = [
-            (
-                product.vendor.name,
-                fit_font(product.vendor.name, 58, text_width, bold=True, min_size=30),
-            ),
-            (
-                product.model_name,
-                fit_font(product.model_name, 54, text_width, bold=True, min_size=30),
-            ),
-            ("SIZE", fit_font("SIZE", 42, text_width, bold=True, min_size=30)),
-            (
-                str(product_size.size),
-                fit_font(str(product_size.size), 98, text_width, bold=True, min_size=54),
-            ),
-            (price_value, fit_font(price_value, 74, text_width, bold=True, min_size=46)),
-            ("UAH", fit_font("UAH", 40, text_width, bold=True, min_size=30)),
-        ]
-        heights = [
-            draw.textbbox((0, 0), text, font=font)[3]
-            - draw.textbbox((0, 0), text, font=font)[1]
-            for text, font in text_lines
-        ]
-        gap = max(2, (content_height - sum(heights)) / (len(text_lines) - 1))
-        current_y = padding
-        for index, (text, font) in enumerate(text_lines):
-            current_y = centered_box_text(
-                draw, text_x, int(current_y), text_width, text, font
-            )
-            if index < len(text_lines) - 1:
-                current_y += gap
+        price_suffix = (
+            "грн."
+            if isinstance(load_font(24, bold=True), ImageFont.FreeTypeFont)
+            else "UAH"
+        )
+        brand_font = fit_font(product.vendor.name, 88, text_width, bold=True, min_size=52)
+        model_font = fit_font(product.model_name, 84, text_width, bold=True, min_size=52)
+        size_font = fit_font(str(product_size.size), 88, text_width, bold=True, min_size=58)
+        price_text = f"{price_value} {price_suffix}"
+        price_font = fit_font(price_text, 62, canvas_width - text_x - padding, bold=True, min_size=42)
+
+        draw_label_text(draw, text_x, 126, product.vendor.name, brand_font)
+        draw_label_text(draw, text_x, 242, product.model_name, model_font)
+        draw_label_text(draw, text_x, 382, str(product_size.size), size_font)
+        draw_label_text(draw, text_x + 10, 505, price_text, price_font)
 
         qr = qrcode.QRCode(border=1, box_size=16)
         qr.add_data(scan_url)
         qr.make(fit=True)
         qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
         qr_img = ImageOps.contain(qr_img, (qr_size, qr_size), method=Image.Resampling.NEAREST)
-        qr_y = (canvas_height - qr_img.height) // 2
+        qr_y = 122
         canvas.paste(qr_img, (qr_x, qr_y))
 
         buffer = io.BytesIO()
