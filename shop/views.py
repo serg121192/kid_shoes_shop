@@ -1321,6 +1321,7 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
                         method=Image.Resampling.LANCZOS,
                         centering=(0.5, 0.5),
                     )
+                    product_img = ImageOps.grayscale(product_img).convert("RGB")
                     canvas.paste(product_img, (image_x, image_y))
             except Exception:
                 logger.exception("Failed to render product image in QR label")
