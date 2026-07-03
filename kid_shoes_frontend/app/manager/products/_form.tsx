@@ -6,18 +6,28 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import api, { getMediaUrl } from "@/app/lib/api";
 import { compressImageForUpload, isUploadTooLargeError } from "@/app/lib/compress-image";
+import { uploadProductImages, uploadProductVideo, videoUploadErrorMessage } from "@/app/lib/r2-upload";
 import { AxiosError } from "axios";
 import { useShop } from "@/app/context/ShopContext";
 import { ArrowLeft, Upload, X, Plus, Trash2, Star, Check } from "lucide-react";
-import SizePriceTagQr from "@/app/components/SizePriceTagQr";
 import { Vendor, ProductImage, ProductSize, ProductVideo } from "@/app/types";
+
+const SizeQrPanel = dynamic(() => import("@/app/components/SizeQrPanel"), {
+  ssr: false,
+});
 
 function uploadErrorMessage(err: unknown, fallback: string): string {
   if (isUploadTooLargeError(err)) {
-    return "Фото занадто велике для сервера. Спробуйте менший файл або знімок з меншою роздільністю.";
+    return "Файл занадто великий для сервера. Спробуйте менший файл або зменшіть роздільність.";
   }
+  if (err instanceof Error && err.message === "direct_upload_required") {
+    return "Відео не завантажилось напряму в сховище. Перевірте CORS на R2 bucket (PUT з tak-i-tak.com).";
+  }
+  const videoMsg = videoUploadErrorMessage(err, "");
+  if (videoMsg) return videoMsg;
   if (err instanceof AxiosError) {
     const data = err.response?.data;
     if (typeof data === "string" && data) return data;
@@ -58,6 +68,7 @@ interface PendingVideo {
 interface ProductDetail {
   id: number;
   vendor: string;
+  vendor_id?: number;
   model_name: string;
   prod_type: string;
   gender: string;
@@ -111,6 +122,10 @@ function uid() {
   return Math.random().toString(36).slice(2);
 }
 
+function yieldToMain() {
+  return new Promise<void>((resolve) => setTimeout(resolve, 0));
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ProductForm({ productId }: { productId?: number }) {
@@ -122,6 +137,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
   const activeProductId = productId ?? draftProductId ?? undefined;
   const hasServerProduct = activeProductId != null;
   const creatingDraftRef = useRef<Promise<number | null> | null>(null);
+  /** In-flight compress + upload — save waits for this to finish. */
+  const imageWorkRef = useRef<Promise<void> | null>(null);
 
   // ── Basic form ──────────────────────────────────────────────────────────────
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -161,9 +178,12 @@ export default function ProductForm({ productId }: { productId?: number }) {
   const [isDraggingVid, setIsDraggingVid] = useState(false);
   // localId → upload progress 0–100 (edit mode live uploads)
   const [editUploadProgress, setEditUploadProgress] = useState<Record<string, number>>({});
+  const [imageCompressProgress, setImageCompressProgress] = useState<{ current: number; total: number } | null>(null);
+  const [imageUploadProgress, setImageUploadProgress] = useState<number | null>(null);
   const [isSaving, setIsSaving]           = useState(false);
   const [isLoading, setIsLoading]         = useState(isEdit);
   const [duplicateCombo, setDuplicateCombo] = useState(false);
+  const [savingSizes, setSavingSizes] = useState<Set<number>>(new Set());
 
   const imgInputRef = useRef<HTMLInputElement>(null);
   const vidInputRef = useRef<HTMLInputElement>(null);
@@ -172,19 +192,35 @@ export default function ProductForm({ productId }: { productId?: number }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const vRes = await api.get<{ results?: Vendor[] } | Vendor[]>("/shop/vendors/");
+        const vendorsPromise = api.get<{ results?: Vendor[] } | Vendor[]>("/shop/vendors/");
+        if (!isEdit) {
+          const vRes = await vendorsPromise;
+          const list = Array.isArray(vRes.data)
+            ? vRes.data
+            : (vRes.data as { results?: Vendor[] }).results ?? [];
+          setVendors(list);
+          return;
+        }
+
+        const [vRes, pRes] = await Promise.all([
+          vendorsPromise,
+          api.get<ProductDetail>(`/shop/products/${productId}/`),
+        ]);
         const list = Array.isArray(vRes.data)
           ? vRes.data
           : (vRes.data as { results?: Vendor[] }).results ?? [];
         setVendors(list);
 
-        if (!isEdit) return;
-
-        const pRes = await api.get<ProductDetail>(`/shop/products/${productId}/`);
         const p = pRes.data;
-        const matched = list.find((v) => v.name === p.vendor);
+        const matched = list.find(
+          (v) => v.name.trim().toLowerCase() === p.vendor.trim().toLowerCase(),
+        );
         setForm({
-          vendor: matched ? String(matched.id) : "",
+          vendor: p.vendor_id
+            ? String(p.vendor_id)
+            : matched
+              ? String(matched.id)
+              : "",
           model_name: p.model_name,
           prod_type: p.prod_type,
           gender: p.gender,
@@ -266,7 +302,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
     if (productId) return productId;
     if (draftProductId) return draftProductId;
     const f = formRef.current;
-    if (!f.vendor || !f.model_name) return null;
+    if (!f.vendor || !f.model_name.trim()) return null;
     if (creatingDraftRef.current) return creatingDraftRef.current;
 
     creatingDraftRef.current = (async () => {
@@ -292,6 +328,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
   const uploadImagesToServer = useCallback(
     async (id: number, items: { file: File; is_main: boolean }[]) => {
       if (!items.length) return;
+
       let orderBase = 0;
       let hasMain = false;
       setSavedImages((prev) => {
@@ -299,51 +336,51 @@ export default function ProductForm({ productId }: { productId?: number }) {
         hasMain = prev.some((i) => i.is_main);
         return prev;
       });
+
       let mainAssigned = hasMain;
+      const prepared = items.map(({ file, is_main }, idx) => {
+        const setAsMain = !mainAssigned && (is_main || idx === 0);
+        if (setAsMain) mainAssigned = true;
+        return { file, is_main: setAsMain, order: orderBase + idx };
+      });
+
+      const mergeUploaded = (uploaded: ProductImage[]) => {
+        setSavedImages((prev) => {
+          let next = [...prev];
+          for (const img of uploaded) {
+            if (img.is_main) next = next.map((i) => ({ ...i, is_main: false }));
+            next.push(img);
+          }
+          return next;
+        });
+      };
+
+      setImageUploadProgress(0);
       try {
-        await Promise.all(
-          items.map(async ({ file, is_main }, idx) => {
-            const setAsMain = !mainAssigned && (is_main || idx === 0);
-            if (setAsMain) mainAssigned = true;
-            const fd = new FormData();
-            fd.append("image", file);
-            fd.append("is_main", setAsMain ? "true" : "false");
-            fd.append("order", String(orderBase + idx));
-            const res = await api.post<ProductImage>(
-              `/shop/products/${id}/upload_image/`,
-              fd,
-            );
-            setSavedImages((prev) => {
-              if (res.data.is_main) {
-                return [...prev.map((i) => ({ ...i, is_main: false })), res.data];
-              }
-              return [...prev, res.data];
-            });
-          })
-        );
-      } catch (err) {
-        throw err;
+        const uploaded = await uploadProductImages(id, prepared, setImageUploadProgress);
+        mergeUploaded(uploaded);
+      } finally {
+        setImageUploadProgress(null);
       }
     },
-    []
+    [],
   );
 
   const uploadVideoToServer = useCallback(
     async (id: number, file: File, title: string, localId?: string) => {
       const progressKey = localId ?? uid();
       setEditUploadProgress((prev) => ({ ...prev, [progressKey]: 0 }));
-      const fd = new FormData();
-      fd.append("video", file);
-      fd.append("title", title);
-      fd.append("order", String(savedVideos.length));
       try {
-        const res = await api.post<ProductVideo>(`/shop/products/${id}/upload_video/`, fd, {
-          onUploadProgress: (event) => {
-            const pct = event.total ? Math.round((event.loaded / event.total) * 100) : 0;
+        const res = await uploadProductVideo(
+          id,
+          file,
+          title,
+          savedVideos.length,
+          (pct) => {
             setEditUploadProgress((prev) => ({ ...prev, [progressKey]: pct }));
           },
-        });
-        setSavedVideos((prev) => [...prev, res.data]);
+        );
+        setSavedVideos((prev) => [...prev, res]);
       } finally {
         setEditUploadProgress((prev) => {
           const next = { ...prev };
@@ -352,7 +389,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
         });
       }
     },
-    [savedVideos.length]
+    [savedVideos.length],
   );
 
   // When brand + model appear, upload media that was queued locally first.
@@ -384,8 +421,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
         for (const v of vids) {
           try {
             await uploadVideoToServer(id, v.file, v.title, v.localId);
-          } catch {
-            showToast(`Не вдалося завантажити ${v.file.name}`, "error");
+          } catch (err) {
+            showToast(uploadErrorMessage(err, `Не вдалося завантажити ${v.file.name}`), "error");
           }
         }
       }
@@ -429,12 +466,22 @@ export default function ProductForm({ productId }: { productId?: number }) {
   };
 
   // ── Image drag-and-drop ──────────────────────────────────────────────────────
-  const handleImageFiles = useCallback(
+  const processImageFiles = useCallback(
     async (files: File[]) => {
       const imgs = files.filter((f) => f.type.startsWith("image/"));
       if (!imgs.length) return;
 
-      const prepared = await Promise.all(imgs.map((f) => compressImageForUpload(f)));
+      setImageCompressProgress({ current: 0, total: imgs.length });
+      const prepared: File[] = [];
+      try {
+        for (let i = 0; i < imgs.length; i++) {
+          prepared.push(await compressImageForUpload(imgs[i]));
+          setImageCompressProgress({ current: i + 1, total: imgs.length });
+          await yieldToMain();
+        }
+      } finally {
+        setImageCompressProgress(null);
+      }
 
       const id = hasServerProduct ? activeProductId : await ensureDraftProduct();
 
@@ -481,6 +528,17 @@ export default function ProductForm({ productId }: { productId?: number }) {
     ]
   );
 
+  const handleImageFiles = useCallback(
+    (files: File[]) => {
+      const task = processImageFiles(files);
+      imageWorkRef.current = task;
+      void task.finally(() => {
+        if (imageWorkRef.current === task) imageWorkRef.current = null;
+      });
+    },
+    [processImageFiles],
+  );
+
   const onImgDrop = (e: DragEvent) => {
     e.preventDefault();
     setIsDraggingImg(false);
@@ -505,8 +563,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
         for (const v of queued) {
           try {
             await uploadVideoToServer(id, v.file, v.title, v.localId);
-          } catch {
-            showToast(`Не вдалося завантажити ${v.file.name}`, "error");
+          } catch (err) {
+            showToast(uploadErrorMessage(err, `Не вдалося завантажити ${v.file.name}`), "error");
           }
         }
         for (const file of vids) {
@@ -516,8 +574,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
               file,
               file.name.replace(/\.[^/.]+$/, "")
             );
-          } catch {
-            showToast(`Не вдалося завантажити ${file.name}`, "error");
+          } catch (err) {
+            showToast(uploadErrorMessage(err, `Не вдалося завантажити ${file.name}`), "error");
           }
         }
         return;
@@ -602,33 +660,60 @@ export default function ProductForm({ productId }: { productId?: number }) {
     );
 
   // ── Size logic ───────────────────────────────────────────────────────────────
-  const handleAddOrUpdateSize = async () => {
+  const handleAddOrUpdateSize = () => {
     const sz = Number(newSize.size);
     const qty = Number(newSize.quantity);
 
     if (activeProductId) {
-      try {
-        const res = await api.post<ProductSize>(`/shop/products/${activeProductId}/set_size/`, {
-          size: sz, quantity: qty,
-        });
-        setSavedSizes((prev) => {
-          const exists = prev.find((s) => s.id === res.data.id);
-          return exists
-            ? prev.map((s) => (s.id === res.data.id ? res.data : s))
-            : [...prev, res.data];
-        });
-        showToast(`Розмір ${sz} збережено`);
-      } catch {
-        showToast("Помилка збереження розміру", "error");
-      }
-    } else {
-      setPendingSizes((prev) => {
+      const previous = savedSizes.find((s) => s.size === sz);
+      const optimistic: ProductSize = previous
+        ? { ...previous, quantity: qty }
+        : { id: 0, size: sz, quantity: qty };
+
+      setSavedSizes((prev) => {
         const exists = prev.find((s) => s.size === sz);
         return exists
-          ? prev.map((s) => (s.size === sz ? { size: sz, quantity: qty } : s))
-          : [...prev, { size: sz, quantity: qty }];
+          ? prev.map((s) => (s.size === sz ? optimistic : s))
+          : [...prev, optimistic];
       });
+      setSavingSizes((prev) => new Set(prev).add(sz));
+
+      void api
+        .post<ProductSize>(`/shop/products/${activeProductId}/set_size/`, {
+          size: sz,
+          quantity: qty,
+        })
+        .then((res) => {
+          setSavedSizes((prev) =>
+            prev.map((s) => (s.size === sz ? res.data : s)),
+          );
+          showToast(`Розмір ${sz} збережено`);
+        })
+        .catch(() => {
+          setSavedSizes((prev) =>
+            previous
+              ? prev.map((s) => (s.size === sz ? previous : s))
+              : prev.filter((s) => s.size !== sz),
+          );
+          showToast("Помилка збереження розміру", "error");
+        })
+        .finally(() => {
+          setSavingSizes((prev) => {
+            const next = new Set(prev);
+            next.delete(sz);
+            return next;
+          });
+        });
+      return;
     }
+
+    setPendingSizes((prev) => {
+      const exists = prev.find((s) => s.size === sz);
+      return exists
+        ? prev.map((s) => (s.size === sz ? { size: sz, quantity: qty } : s))
+        : [...prev, { size: sz, quantity: qty }];
+    });
+    showToast(`Розмір ${sz} додано`);
   };
 
   const handleDeleteSize = async (sizeId: number, sizeNum: number) => {
@@ -657,31 +742,76 @@ export default function ProductForm({ productId }: { productId?: number }) {
   };
 
   const handleSave = async () => {
-    if (!form.vendor || !form.model_name) {
-      showToast("Заповніть обов'язкові поля: бренд і назва моделі", "error");
+    setIsSaving(true);
+    try {
+      if (imageWorkRef.current) {
+        await imageWorkRef.current;
+      }
+    } catch {
+      showToast("Не вдалося завантажити фото", "error");
+      setIsSaving(false);
       return;
     }
-    if (!form.seasons.length) {
+
+    let f = formRef.current;
+
+    if (!f.vendor && showNewVendor && newVendorName.trim()) {
+      try {
+        const res = await api.post<Vendor>("/shop/vendors/", { name: newVendorName.trim() });
+        const created = res.data;
+        setVendors((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+        const vendorId = String(created.id);
+        setForm((p) => ({ ...p, vendor: vendorId }));
+        setShowNewVendor(false);
+        setNewVendorName("");
+        f = { ...f, vendor: vendorId };
+        formRef.current = { ...formRef.current, vendor: vendorId };
+      } catch {
+        showToast("Не вдалося створити бренд", "error");
+        setIsSaving(false);
+        return;
+      }
+    }
+
+    const model = f.model_name.trim();
+    if (!f.vendor || !model) {
+      showToast("Заповніть обов'язкові поля: бренд і назва моделі", "error");
+      setIsSaving(false);
+      return;
+    }
+    if (!f.seasons.length) {
       showToast("Оберіть хоча б один сезон", "error");
+      setIsSaving(false);
       return;
     }
     if (duplicateCombo || (await checkDuplicateCombo())) {
       setDuplicateCombo(true);
       showToast(DUPLICATE_MSG, "error");
+      setIsSaving(false);
       return;
     }
-    setIsSaving(true);
+
     const body = buildProductBody();
 
     try {
       if (activeProductId) {
         await api.patch(`/shop/products/${activeProductId}/`, body);
-        for (const s of pendingSizes) {
-          await api.post(`/shop/products/${activeProductId}/set_size/`, s).catch(() => {});
+        if (pendingSizes.length) {
+          const res = await api.post<ProductSize[]>(
+            `/shop/products/${activeProductId}/set_sizes/`,
+            { sizes: pendingSizes },
+          );
+          setSavedSizes((prev) => {
+            const bySize = new Map(prev.map((s) => [s.size, s]));
+            for (const s of res.data) bySize.set(s.size, s);
+            return [...bySize.values()];
+          });
         }
         setPendingSizes([]);
         showToast(isEdit ? "Товар оновлено" : "Товар створено");
-        router.replace(`/manager/products/${activeProductId}`);
+        if (!isEdit) {
+          router.replace(`/manager/products/${activeProductId}`);
+        }
       } else {
         const res = await api.post<{ id: number }>("/shop/products/", body);
         const newId = res.data.id;
@@ -698,8 +828,12 @@ export default function ProductForm({ productId }: { productId?: number }) {
             return;
           }
         }
-        for (const s of pendingSizes) {
-          await api.post(`/shop/products/${newId}/set_size/`, s).catch(() => {});
+        if (pendingSizes.length) {
+          const res = await api.post<ProductSize[]>(
+            `/shop/products/${newId}/set_sizes/`,
+            { sizes: pendingSizes },
+          );
+          setSavedSizes(res.data);
         }
         showToast("Товар створено");
         router.replace(`/manager/products/${newId}`);
@@ -723,6 +857,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
 
   const allImages = hasServerProduct ? savedImages : pendingImages;
   const allSizes  = hasServerProduct ? savedSizes  : pendingSizes;
+  const isImageBusy = imageCompressProgress !== null || imageUploadProgress !== null;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -764,7 +899,7 @@ export default function ProductForm({ productId }: { productId?: number }) {
               <select name="vendor" value={form.vendor} onChange={handleChange}
                 className={fieldClass(duplicateCombo)}>
                 <option value="">Оберіть...</option>
-                {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                {vendors.map((v) => <option key={v.id} value={String(v.id)}>{v.name}</option>)}
               </select>
             ) : (
               <div className="flex gap-2">
@@ -924,6 +1059,18 @@ export default function ProductForm({ productId }: { productId?: number }) {
           <p className="text-xs text-gray-400 mt-0.5">
             JPG, PNG, WebP · великі фото стискаються автоматично
           </p>
+          {(imageCompressProgress || imageUploadProgress !== null) && (
+            <div className="text-xs text-teal-600 mt-2 font-medium space-y-0.5">
+              <p>
+                {imageCompressProgress
+                  ? `Підготовка фото ${imageCompressProgress.current}/${imageCompressProgress.total}…`
+                  : `Завантаження на сервер ${imageUploadProgress}%…`}
+              </p>
+              <p className="text-teal-500/80 font-normal">
+                Інші поля можна заповнювати — фото йде у фоні
+              </p>
+            </div>
+          )}
           <input ref={imgInputRef} type="file" multiple accept="image/*" onChange={onImgInput} className="hidden" />
         </div>
 
@@ -1140,20 +1287,21 @@ export default function ProductForm({ productId }: { productId?: number }) {
                   <span className={`text-xs ${s.quantity === 0 ? "text-red-500" : "text-gray-400"}`}>
                     {s.quantity} шт
                   </span>
+                  {savingSizes.has(s.size) && (
+                    <span className="text-[10px] text-teal-500">…</span>
+                  )}
                   <button
                     onClick={() =>
-                      hasServerProduct && "id" in s
+                      hasServerProduct && "id" in s && (s as ProductSize).id > 0
                         ? handleDeleteSize((s as ProductSize).id, s.size)
                         : removePendingSize(s.size)
                     }
-                    className="text-gray-300 hover:text-red-500 transition-colors ml-auto"
+                    disabled={savingSizes.has(s.size)}
+                    className="text-gray-300 hover:text-red-500 disabled:opacity-40 transition-colors ml-auto"
                   >
                     <Trash2 size={12} />
                   </button>
                 </div>
-                {hasServerProduct && "id" in s && (s as ProductSize).id && (
-                  <SizePriceTagQr sizeId={(s as ProductSize).id} sizeLabel={s.size} />
-                )}
               </div>
             ))}
           </div>
@@ -1161,6 +1309,10 @@ export default function ProductForm({ productId }: { productId?: number }) {
 
         {allSizes.length === 0 && (
           <p className="text-xs text-gray-400">Розміри ще не додано</p>
+        )}
+
+        {isEdit && savedSizes.some((s) => s.id > 0) && (
+          <SizeQrPanel sizes={savedSizes} />
         )}
       </div>
 
@@ -1172,6 +1324,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
       >
         {isSaving
           ? isEdit || draftProductId ? "Зберігаємо..." : "Створюємо..."
+          : isImageBusy
+          ? "Зберегти (чекаємо на фото...)"
           : isEdit
           ? "Зберегти зміни"
           : draftProductId

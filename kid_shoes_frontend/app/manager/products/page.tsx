@@ -25,39 +25,36 @@ export default function ManagerProductsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [readyToPublishCount, setReadyToPublishCount] = useState(0);
   const [bulkLoading, setBulkLoading] = useState(false);
-  const PAGE_SIZE = 20;
-
-  const fetchReadyCount = useCallback(async () => {
-    try {
-      const res = await api.get<PaginatedResponse<ProductList>>("/shop/products/", {
-        params: { is_published: false, has_price: true, page: 1, page_size: 1 },
-      });
-      setReadyToPublishCount(res.data.count);
-    } catch {
-      setReadyToPublishCount(0);
-    }
-  }, []);
+  const PAGE_SIZE = 12;
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     try {
-      const params: Record<string, string | number | boolean> = { page };
+      const params: Record<string, string | number | boolean> = {
+        page,
+        page_size: PAGE_SIZE,
+      };
       if (search) params.search = search;
       if (catalogFilter === "published") params.is_published = true;
       if (catalogFilter === "hidden") params.is_published = false;
       if (catalogFilter === "no_price") params.has_price = false;
 
-      const res = await api.get<PaginatedResponse<ProductList>>("/shop/products/", { params });
+      const res = await api.get<PaginatedResponse<ProductList> & { ready_to_publish_count?: number }>(
+        "/shop/products/",
+        { params },
+      );
       setProducts(res.data.results);
       setTotal(res.data.count);
       setSelectedIds(new Set());
-      fetchReadyCount();
+      if (typeof res.data.ready_to_publish_count === "number") {
+        setReadyToPublishCount(res.data.ready_to_publish_count);
+      }
     } catch {
       setProducts([]);
     } finally {
       setIsLoading(false);
     }
-  }, [page, search, catalogFilter, fetchReadyCount]);
+  }, [page, search, catalogFilter]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
@@ -67,7 +64,6 @@ export default function ManagerProductsPage() {
       await api.delete(`/shop/products/${id}/`);
       showToast("Товар видалено");
       fetchProducts();
-      fetchReadyCount();
     } catch {
       showToast("Не вдалося видалити товар", "error");
     }
@@ -110,7 +106,6 @@ export default function ManagerProductsPage() {
       );
       showToast(`У каталозі: +${res.data.published} товарів`);
       fetchProducts();
-      fetchReadyCount();
     } catch {
       showToast("Не вдалося опублікувати товари", "error");
     } finally {

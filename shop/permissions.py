@@ -25,6 +25,15 @@ class IsStaffOrSeller(BasePermission):
         return can_manage_orders(request.user)
 
 
+class IsAdminOrVideoUploadToken(BasePermission):
+    """Staff cookie auth or signed X-Video-Upload-Token for direct Railway upload."""
+
+    def has_permission(self, request, view):
+        if request.user and request.user.is_authenticated and request.user.is_staff:
+            return True
+        return bool(request.headers.get("X-Video-Upload-Token"))
+
+
 class IsOwnerOrAdmin(BasePermission):
     """
     View-level: requires authentication.

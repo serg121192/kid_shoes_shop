@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProductList } from "@/app/types";
-import { getMediaUrl } from "@/app/lib/api";
+import { getMediaUrl, isCdnMediaUrl } from "@/app/lib/api";
 
 interface ProductCardProps {
   product: ProductList;
@@ -123,6 +123,7 @@ export default function ProductCard({
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               priority={priority}
+              unoptimized={isCdnMediaUrl(mainImageUrl)}
               className="object-cover hover:scale-105 transition-transform duration-300"
             />
           ) : (

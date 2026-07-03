@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import api from "@/app/lib/api";
 
 export default function VisitTracker() {
+  const pathname = usePathname();
+
   useEffect(() => {
+    if (pathname?.startsWith("/manager") || pathname?.startsWith("/seller")) return;
+
     const track = () => {
       const key = "visit_tracked_" + new Date().toISOString().slice(0, 10);
       if (sessionStorage.getItem(key)) return;
@@ -18,7 +23,7 @@ export default function VisitTracker() {
     }
     const timer = setTimeout(track, 2000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [pathname]);
 
   return null;
 }

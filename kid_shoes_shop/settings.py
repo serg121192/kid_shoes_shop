@@ -173,7 +173,7 @@ AUTH_USER_MODEL = "user.User"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# ── Cloudflare R2 (вмикається при DEBUG=False і наявності R2_BUCKET_NAME) ─────
+# ── Cloudflare R2 ─────────────────────────────────────────────────────────────
 _R2_BUCKET = os.getenv("R2_BUCKET_NAME", "")
 _R2_DOMAIN = (
     os.getenv("R2_PUBLIC_DOMAIN", "")
@@ -181,7 +181,7 @@ _R2_DOMAIN = (
     .removeprefix("http://")
 )
 
-if not DEBUG and _R2_BUCKET:
+if _R2_BUCKET:
     AWS_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
     AWS_STORAGE_BUCKET_NAME = _R2_BUCKET
@@ -190,12 +190,12 @@ if not DEBUG and _R2_BUCKET:
     AWS_DEFAULT_ACL = None
     AWS_QUERYSTRING_AUTH = False
     AWS_S3_FILE_OVERWRITE = False
-
     if _R2_DOMAIN:
         AWS_S3_CUSTOM_DOMAIN = _R2_DOMAIN
-        MEDIA_URL = f"https://{_R2_DOMAIN}/"
+        if not DEBUG:
+            MEDIA_URL = f"https://{_R2_DOMAIN}/"
 
-    # Django 4.2+ використовує STORAGES замість DEFAULT_FILE_STORAGE / STATICFILES_STORAGE
+if not DEBUG and _R2_BUCKET:
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
@@ -259,6 +259,20 @@ CORS_ALLOWED_ORIGINS = os.getenv(
     "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173",
 ).split(",")
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-video-upload-token",
+]
+
+BACKEND_PUBLIC_URL = os.getenv("BACKEND_URL", "").rstrip("/")
 
 CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS",

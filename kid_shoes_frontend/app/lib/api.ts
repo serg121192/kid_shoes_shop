@@ -76,3 +76,10 @@ export function getMediaUrl(path: string | null | undefined): string | null {
   if (path.startsWith("http")) return path;
   return `${MEDIA_BASE}${path}`;
 }
+
+/** Skip Next.js image optimizer for CDN URLs — direct R2 is faster on first load. */
+export function isCdnMediaUrl(url: string | null | undefined): boolean {
+  if (!url?.startsWith("https://")) return false;
+  if (R2_PUBLIC && url.includes(R2_PUBLIC)) return true;
+  return /\.r2\.(dev|cloudflarestorage\.com)/i.test(url);
+}

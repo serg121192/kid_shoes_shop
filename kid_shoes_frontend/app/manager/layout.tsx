@@ -29,11 +29,19 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
   }, [user, isLoading, router]);
 
   useEffect(() => {
-    if (user?.is_staff) {
-      fetchPendingCount();
+    if (!user?.is_staff) return;
+    const load = () => void fetchPendingCount();
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(load, { timeout: 3000 });
       const interval = setInterval(fetchPendingCount, 30_000);
-      return () => clearInterval(interval);
+      return () => {
+        window.cancelIdleCallback(id);
+        clearInterval(interval);
+      };
     }
+    load();
+    const interval = setInterval(fetchPendingCount, 30_000);
+    return () => clearInterval(interval);
   }, [user, fetchPendingCount]);
 
   if (isLoading || !user?.is_staff) {

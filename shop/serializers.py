@@ -153,7 +153,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     vendor = serializers.SlugRelatedField(
         many=False, read_only=True, slug_field="name"
     )
-    exists = serializers.CharField(source="quantity_message", read_only=True)
+    exists = serializers.SerializerMethodField()
     full_price = serializers.DecimalField(
         read_only=True, max_digits=10, decimal_places=2
     )
@@ -181,9 +181,29 @@ class ProductListSerializer(serializers.ModelSerializer):
             "is_published",
         ]
 
+    def _total_quantity(self, obj: Product) -> int:
+        annotated = getattr(obj, "_total_qty", None)
+        if annotated is not None:
+            return int(annotated)
+        return sum(s.quantity for s in obj.sizes.all())
+
+    def get_exists(self, obj: Product) -> str:
+        total = self._total_quantity(obj)
+        if total == 0:
+            return "Товар закінчився"
+        if total < 5:
+            return "Товар закінчується. Поспішіть придбати!"
+        return "В наявності"
+
     def get_main_image(self, obj):
-        imgs = list(obj.images.all())
-        img = next((i for i in imgs if i.is_main), None) or (imgs[0] if imgs else None)
+        img = None
+        for candidate in obj.images.all():
+            if candidate.is_main:
+                img = candidate
+                break
+        if img is None:
+            imgs = obj.images.all()
+            img = imgs[0] if imgs else None
         return img.image.url if img else None
 
 
@@ -226,6 +246,7 @@ class ProductRetrieveSerializer(serializers.ModelSerializer):
     vendor = serializers.SlugRelatedField(
         many=False, read_only=True, slug_field="name"
     )
+    vendor_id = serializers.IntegerField(source="vendor.id", read_only=True)
     exists = serializers.CharField(source="quantity_message", read_only=True)
     full_price = serializers.DecimalField(
         read_only=True, max_digits=10, decimal_places=2
@@ -246,6 +267,7 @@ class ProductRetrieveSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "vendor",
+            "vendor_id",
             "model_name",
             "exists",
             "prod_type",

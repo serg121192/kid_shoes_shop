@@ -9,6 +9,7 @@ import {
   useRef,
   ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import api from "@/app/lib/api";
 import { useAuth } from "@/app/context/AuthContext";
 import { Cart, Wishlist } from "@/app/types";
@@ -51,6 +52,9 @@ let toastIdCounter = 0;
 
 export function ShopProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
+  const pathname = usePathname();
+  const isStaffRoute =
+    pathname?.startsWith("/manager") || pathname?.startsWith("/seller");
   const [cartCount, setCartCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
   const [wishlistProductIds, setWishlistProductIds] = useState<Set<number>>(new Set());
@@ -122,10 +126,11 @@ export function ShopProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated]);
 
   useEffect(() => {
+    if (!isAuthenticated || isStaffRoute) return;
     return scheduleIdle(() => {
       void refreshCounts();
     });
-  }, [refreshCounts]);
+  }, [refreshCounts, isAuthenticated, isStaffRoute]);
 
   const showToast = useCallback((message: string, type: "success" | "error" = "success") => {
     const id = ++toastIdCounter;

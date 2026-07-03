@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
-import api, { getMediaUrl } from "@/app/lib/api";
+import api, { getMediaUrl, isCdnMediaUrl } from "@/app/lib/api";
 import { Product, ProductSizeWithCart, ProductImage, ProductVideo } from "@/app/types";
 import { useAuth } from "@/app/context/AuthContext";
 import { useShop } from "@/app/context/ShopContext";
@@ -265,6 +265,9 @@ export default function ProductDetailPage() {
                       fill
                       sizes="(max-width: 768px) 100vw, 50vw"
                       priority
+                      unoptimized={isCdnMediaUrl(
+                        getMediaUrl((activeItem.data as ProductImage).image),
+                      )}
                       className="object-cover"
                     />
                   ) : (
@@ -327,6 +330,9 @@ export default function ProductDetailPage() {
                           alt={`Фото ${idx + 1}`}
                           fill
                           sizes="64px"
+                          unoptimized={isCdnMediaUrl(
+                            getMediaUrl((item.data as ProductImage).image),
+                          )}
                           className="object-cover"
                         />
                       )}

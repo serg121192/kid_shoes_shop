@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 from datetime import timedelta
 
@@ -31,12 +32,22 @@ from shop.emails import (
     send_new_order_alert,
 )
 from shop.pagination import CatalogPagination
+from shop.r2_upload import (
+    is_r2_direct_upload_enabled,
+    presign_gallery_uploads,
+    presign_video_upload,
+    validate_gallery_key,
+    validate_video_key,
+    object_exists,
+)
 from shop.permissions import (
     IsAdminOrReadOnly,
+    IsAdminOrVideoUploadToken,
     IsOwnerOrAdmin,
     IsStaffOrSeller,
     can_manage_orders,
 )
+from shop.video_upload import make_video_upload_token, verify_video_upload_token
 from shop.filters import ProductFilter
 from shop.models import (
     Product,
@@ -183,7 +194,9 @@ class ProductViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Product.objects.select_related("vendor")
         if self.action == "list":
-            qs = qs.prefetch_related("sizes", "images")
+            qs = qs.prefetch_related("sizes", "images").annotate(
+                _total_qty=Sum("sizes__quantity")
+            )
         else:
             qs = qs.prefetch_related("sizes", "images", "videos")
         if self.request.query_params.get("size"):
@@ -201,6 +214,18 @@ class ProductViewSet(viewsets.ModelViewSet):
         if self.action == "retrieve":
             return ProductRetrieveSerializer
         return ProductSerializer
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page, many=True)
+        response = self.get_paginated_response(serializer.data)
+        user = request.user
+        if user.is_authenticated and user.is_staff:
+            response.data["ready_to_publish_count"] = Product.objects.filter(
+                is_published=False, full_price__gt=0
+            ).count()
+        return response
 
     @action(
         detail=False,
@@ -278,6 +303,150 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     @action(
         detail=True,
+        methods=["post"],
+        url_path="presign_images",
+        permission_classes=[IsAdminUser],
+    )
+    def presign_images(
+        self, request: Request, pk=None, slug=None, **kwargs
+    ) -> Response:
+        if not is_r2_direct_upload_enabled():
+            return Response({"direct_upload": False, "reason": "r2_not_configured"})
+
+        product = self.get_object()
+        items = request.data.get("images")
+        if not isinstance(items, list) or not items:
+            return Response(
+                {"error": "Передайте масив images з content_type"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            uploads = presign_gallery_uploads(product, items)
+        except Exception:
+            logging.exception("presign_images failed")
+            return Response({"direct_upload": False})
+
+        return Response({"direct_upload": True, "uploads": uploads})
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="confirm_images",
+        permission_classes=[IsAdminUser],
+    )
+    def confirm_images(
+        self, request: Request, pk=None, slug=None, **kwargs
+    ) -> Response:
+        if not is_r2_direct_upload_enabled():
+            return Response(
+                {"error": "Пряме завантаження недоступне"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        product = self.get_object()
+        items = request.data.get("images")
+        if not isinstance(items, list) or not items:
+            return Response(
+                {"error": "Передайте масив images з key, is_main, order"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        order_base = product.images.count()
+        has_main = product.images.filter(is_main=True).exists()
+        main_assigned = has_main
+        created: list[ProductImage] = []
+
+        for idx, item in enumerate(items):
+            key = item.get("key")
+            if not key or not validate_gallery_key(key, product):
+                return Response(
+                    {"error": f"Невірний ключ файлу: {key}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if not object_exists(key):
+                return Response(
+                    {"error": f"Файл не знайдено в сховищі: {key}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            is_main = bool(item.get("is_main", False))
+            order_num = int(item.get("order", order_base + idx))
+            set_as_main = not main_assigned and (is_main or idx == 0)
+            if set_as_main:
+                main_assigned = True
+                ProductImage.objects.filter(
+                    product=product, is_main=True
+                ).update(is_main=False)
+
+            pi = ProductImage(product=product, is_main=set_as_main, order=order_num)
+            pi.image.name = key
+            pi.image._committed = True
+            pi.save()
+            created.append(pi)
+
+        return Response(
+            ProductImageSerializer(
+                created, many=True, context={"request": request}
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="upload_images",
+        permission_classes=[IsAdminUser],
+    )
+    def upload_images(
+        self, request: Request, pk=None, slug=None, **kwargs
+    ) -> Response:
+        product = self.get_object()
+        files = request.FILES.getlist("images")
+        if not files:
+            return Response(
+                {"error": "Файли не завантажено"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        meta_raw = request.data.get("meta", "[]")
+        try:
+            meta = json.loads(meta_raw) if isinstance(meta_raw, str) else meta_raw
+        except (json.JSONDecodeError, TypeError):
+            meta = []
+
+        order_base = product.images.count()
+        has_main = product.images.filter(is_main=True).exists()
+        main_assigned = has_main
+        created: list[ProductImage] = []
+
+        for idx, image in enumerate(files):
+            item_meta = meta[idx] if idx < len(meta) else {}
+            is_main = bool(item_meta.get("is_main", False))
+            order_num = int(item_meta.get("order", order_base + idx))
+            set_as_main = not main_assigned and (is_main or idx == 0)
+            if set_as_main:
+                main_assigned = True
+                ProductImage.objects.filter(
+                    product=product, is_main=True
+                ).update(is_main=False)
+            pi = ProductImage.objects.create(
+                product=product,
+                image=image,
+                is_main=set_as_main,
+                order=order_num,
+            )
+            created.append(pi)
+
+        return Response(
+            ProductImageSerializer(
+                created, many=True, context={"request": request}
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=True,
         methods=["delete"],
         url_path=r"delete_image/(?P<image_id>[^/.]+)",
         permission_classes=[IsAdminUser],
@@ -315,13 +484,123 @@ class ProductViewSet(viewsets.ModelViewSet):
     @action(
         detail=True,
         methods=["post"],
-        url_path="upload_video",
+        url_path="prepare_video_upload",
         permission_classes=[IsAdminUser],
+    )
+    def prepare_video_upload(
+        self, request: Request, pk=None, slug=None, **kwargs
+    ) -> Response:
+        product = self.get_object()
+        content_type = request.data.get("content_type") or "video/mp4"
+        filename = request.data.get("filename") or ""
+
+        backend_base = getattr(settings, "BACKEND_PUBLIC_URL", "").rstrip("/")
+        backend_url = (
+            f"{backend_base}/api/shop/products/{product.pk}/upload_video/"
+            if backend_base
+            else ""
+        )
+
+        payload: dict = {
+            "backend": {
+                "url": backend_url,
+                "token": make_video_upload_token(product.pk),
+            },
+            "r2": None,
+        }
+
+        if is_r2_direct_upload_enabled():
+            try:
+                payload["r2"] = presign_video_upload(
+                    product, content_type, filename
+                )
+            except Exception:
+                logging.exception("prepare_video_upload presign failed")
+
+        return Response(payload)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="presign_video",
+        permission_classes=[IsAdminUser],
+    )
+    def presign_video(
+        self, request: Request, pk=None, slug=None, **kwargs
+    ) -> Response:
+        if not is_r2_direct_upload_enabled():
+            return Response({"direct_upload": False, "reason": "r2_not_configured"})
+
+        product = self.get_object()
+        content_type = request.data.get("content_type") or "video/mp4"
+        filename = request.data.get("filename") or ""
+
+        try:
+            upload = presign_video_upload(product, content_type, filename)
+        except Exception:
+            logging.exception("presign_video failed")
+            return Response({"direct_upload": False})
+
+        return Response({"direct_upload": True, "upload": upload})
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="confirm_video",
+        permission_classes=[IsAdminUser],
+    )
+    def confirm_video(
+        self, request: Request, pk=None, slug=None, **kwargs
+    ) -> Response:
+        if not is_r2_direct_upload_enabled():
+            return Response(
+                {"error": "Пряме завантаження недоступне"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        product = self.get_object()
+        key = request.data.get("key")
+        if not key or not validate_video_key(key, product):
+            return Response(
+                {"error": "Невірний ключ файлу"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not object_exists(key):
+            return Response(
+                {"error": "Файл не знайдено в сховищі"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        title = request.data.get("title", "")
+        order_num = int(request.data.get("order", product.videos.count()))
+        pv = ProductVideo(product=product, title=title, order=order_num)
+        pv.video.name = key
+        pv.video._committed = True
+        pv.save()
+
+        return Response(
+            ProductVideoSerializer(pv, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="upload_video",
+        permission_classes=[IsAdminOrVideoUploadToken],
     )
     def upload_video(
         self, request: Request, pk=None, slug=None, **kwargs
     ) -> Response:
         product = self.get_object()
+        if not (
+            request.user.is_authenticated
+            and request.user.is_staff
+        ):
+            token = request.headers.get("X-Video-Upload-Token", "")
+            if not verify_video_upload_token(token, product.id):
+                return Response(status=status.HTTP_403_FORBIDDEN)
+
         video_file = request.FILES.get("video")
         if not video_file:
             return Response(
@@ -382,6 +661,44 @@ class ProductViewSet(viewsets.ModelViewSet):
         return Response(
             ProductSizeListSerializer(ps).data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="set_sizes",
+        permission_classes=[IsAdminUser],
+    )
+    def set_sizes(
+        self, request: Request, pk=None, slug=None, **kwargs
+    ) -> Response:
+        product = self.get_object()
+        items = request.data.get("sizes")
+        if not isinstance(items, list) or not items:
+            return Response(
+                {"error": "Передайте масив sizes з полями size та quantity"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        saved: list[ProductSize] = []
+        for item in items:
+            size = item.get("size")
+            if size is None:
+                continue
+            quantity = int(item.get("quantity", 0))
+            ps, created = ProductSize.objects.get_or_create(
+                product=product,
+                size=int(size),
+                defaults={"quantity": quantity},
+            )
+            if not created:
+                ps.quantity = quantity
+                ps.save()
+            saved.append(ps)
+
+        return Response(
+            ProductSizeListSerializer(saved, many=True).data,
+            status=status.HTTP_200_OK,
         )
 
     @action(
