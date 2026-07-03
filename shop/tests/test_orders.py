@@ -1,3 +1,4 @@
+import io
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -294,3 +295,16 @@ class StoreQrSaleTests(APITestCase):
             f"/api/shop/product-sizes/{self.product_size.id}/scan_info/"
         )
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_qr_code_returns_print_label_png(self):
+        from PIL import Image
+
+        self.client.force_authenticate(user=self.seller)
+        res = self.client.get(
+            f"/api/shop/product-sizes/{self.product_size.id}/qr_code/"
+        )
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res["Content-Type"], "image/png")
+        image = Image.open(io.BytesIO(res.content))
+        self.assertEqual(image.size, (945, 591))

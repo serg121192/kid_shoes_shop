@@ -1226,12 +1226,142 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
     @action(detail=True, methods=["get"], url_path="qr_code")
     def qr_code(self, request: Request, pk=None) -> Response:
         import qrcode
+        from PIL import Image, ImageDraw, ImageFont, ImageOps
 
         product_size = get_object_or_404(self.queryset, pk=pk)
+        product = product_size.product
         scan_url = f"{settings.SITE_BASE_URL}/seller/scan/{product_size.id}"
-        img = qrcode.make(scan_url)
+
+        def load_font(size: int, bold: bool = False):
+            candidates = (
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+                if bold
+                else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf",
+            )
+            for path in candidates:
+                try:
+                    return ImageFont.truetype(path, size)
+                except OSError:
+                    continue
+            return ImageFont.load_default()
+
+        def centered_text(
+            draw: ImageDraw.ImageDraw,
+            y: int,
+            text: str,
+            font: ImageFont.ImageFont,
+            fill: tuple[int, int, int] = (17, 24, 39),
+        ) -> int:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            width = bbox[2] - bbox[0]
+            height = bbox[3] - bbox[1]
+            draw.text(((canvas_width - width) / 2, y), text, font=font, fill=fill)
+            return y + height
+
+        def centered_box_text(
+            draw: ImageDraw.ImageDraw,
+            box_x: int,
+            y: int,
+            box_width: int,
+            text: str,
+            font: ImageFont.ImageFont,
+            fill: tuple[int, int, int] = (17, 24, 39),
+        ) -> int:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            width = bbox[2] - bbox[0]
+            height = bbox[3] - bbox[1]
+            draw.text((box_x + (box_width - width) / 2, y), text, font=font, fill=fill)
+            return y + height
+
+        def fit_font(
+            text: str,
+            start_size: int,
+            max_width: int,
+            bold: bool = False,
+            min_size: int = 20,
+        ) -> ImageFont.ImageFont:
+            size = start_size
+            while size > min_size:
+                font = load_font(size, bold=bold)
+                bbox = draw.textbbox((0, 0), text, font=font)
+                if bbox[2] - bbox[0] <= max_width:
+                    return font
+                size -= 2
+            return load_font(min_size, bold=bold)
+
+        def price_label() -> str:
+            price = product.discounted_price or product.full_price
+            return f"{int(price):,}".replace(",", " ") + " грн"
+
+        # 80x50 mm at 300 DPI.
+        canvas_width = 945
+        canvas_height = 591
+        padding = 32
+        canvas = Image.new("RGB", (canvas_width, canvas_height), "white")
+        draw = ImageDraw.Draw(canvas)
+
+        image_box = (335, 335)
+        image_x = padding
+        image_y = padding
+        main_image = product.images.filter(is_main=True).first() or product.images.first()
+        if main_image and main_image.image:
+            try:
+                with main_image.image.open("rb") as image_file:
+                    product_img = Image.open(image_file).convert("RGB")
+                    product_img = ImageOps.contain(product_img, image_box)
+                    paste_x = image_x + (image_box[0] - product_img.width) // 2
+                    paste_y = image_y + (image_box[1] - product_img.height) // 2
+                    canvas.paste(product_img, (paste_x, paste_y))
+            except Exception:
+                logger.exception("Failed to render product image in QR label")
+
+        text_x = 390
+        text_width = 225
+        current_y = 70
+        title_font = fit_font(product.vendor.name, 40, text_width, bold=True, min_size=24)
+        model_font = fit_font(product.model_name, 34, text_width, min_size=22)
+        size_font = load_font(34, bold=True)
+        price_font = fit_font(price_label(), 46, text_width, bold=True, min_size=30)
+
+        current_y = centered_box_text(
+            draw, text_x, current_y, text_width, product.vendor.name, title_font
+        )
+        current_y += 22
+        current_y = centered_box_text(
+            draw, text_x, current_y, text_width, product.model_name, model_font
+        )
+        current_y += 34
+        current_y = centered_box_text(
+            draw, text_x, current_y, text_width, f"Розмір {product_size.size}", size_font
+        )
+        current_y += 30
+        current_y = centered_box_text(
+            draw, text_x, current_y, text_width, price_label(), price_font
+        )
+
+        qr = qrcode.QRCode(border=1, box_size=16)
+        qr.add_data(scan_url)
+        qr.make(fit=True)
+        qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+        qr_img = ImageOps.contain(qr_img, (285, 285), method=Image.Resampling.NEAREST)
+        qr_x = canvas_width - padding - qr_img.width
+        qr_y = 54
+        canvas.paste(qr_img, (qr_x, qr_y))
+
+        scan_font = load_font(18)
+        centered_box_text(
+            draw,
+            qr_x,
+            qr_y + qr_img.height + 14,
+            qr_img.width,
+            "Сканувати для продажу",
+            scan_font,
+            fill=(75, 85, 99),
+        )
+
         buffer = io.BytesIO()
-        img.save(buffer, format="PNG")
+        canvas.save(buffer, format="PNG", dpi=(300, 300))
         return HttpResponse(buffer.getvalue(), content_type="image/png")
 
 
