@@ -1292,18 +1292,18 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
 
         def price_label() -> str:
             price = product.discounted_price or product.full_price
-            return f"{int(price):,}".replace(",", " ") + " грн"
+            return f"{int(price):,}".replace(",", " ") + " UAH"
 
         # 80x50 mm at 300 DPI.
         canvas_width = 945
         canvas_height = 591
-        padding = 32
+        padding = 30
         canvas = Image.new("RGB", (canvas_width, canvas_height), "white")
         draw = ImageDraw.Draw(canvas)
 
-        image_box = (335, 335)
+        image_box = (300, 300)
         image_x = padding
-        image_y = padding
+        image_y = (canvas_height - image_box[1]) // 2
         main_image = product.images.filter(is_main=True).first() or product.images.first()
         if main_image and main_image.image:
             try:
@@ -1316,13 +1316,14 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
             except Exception:
                 logger.exception("Failed to render product image in QR label")
 
-        text_x = 390
-        text_width = 225
-        current_y = 70
-        title_font = fit_font(product.vendor.name, 40, text_width, bold=True, min_size=24)
-        model_font = fit_font(product.model_name, 34, text_width, min_size=22)
-        size_font = load_font(34, bold=True)
-        price_font = fit_font(price_label(), 46, text_width, bold=True, min_size=30)
+        text_x = 348
+        text_width = 250
+        current_y = 96
+        size_label = f"SIZE {product_size.size}"
+        title_font = fit_font(product.vendor.name, 60, text_width, bold=True, min_size=34)
+        model_font = fit_font(product.model_name, 52, text_width, bold=True, min_size=30)
+        size_font = fit_font(size_label, 56, text_width, bold=True, min_size=34)
+        price_font = fit_font(price_label(), 66, text_width, bold=True, min_size=38)
 
         current_y = centered_box_text(
             draw, text_x, current_y, text_width, product.vendor.name, title_font
@@ -1331,11 +1332,11 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
         current_y = centered_box_text(
             draw, text_x, current_y, text_width, product.model_name, model_font
         )
-        current_y += 34
+        current_y += 32
         current_y = centered_box_text(
-            draw, text_x, current_y, text_width, f"Розмір {product_size.size}", size_font
+            draw, text_x, current_y, text_width, size_label, size_font
         )
-        current_y += 30
+        current_y += 34
         current_y = centered_box_text(
             draw, text_x, current_y, text_width, price_label(), price_font
         )
@@ -1344,21 +1345,10 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
         qr.add_data(scan_url)
         qr.make(fit=True)
         qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
-        qr_img = ImageOps.contain(qr_img, (285, 285), method=Image.Resampling.NEAREST)
+        qr_img = ImageOps.contain(qr_img, (300, 300), method=Image.Resampling.NEAREST)
         qr_x = canvas_width - padding - qr_img.width
-        qr_y = 54
+        qr_y = (canvas_height - qr_img.height) // 2
         canvas.paste(qr_img, (qr_x, qr_y))
-
-        scan_font = load_font(18)
-        centered_box_text(
-            draw,
-            qr_x,
-            qr_y + qr_img.height + 14,
-            qr_img.width,
-            "Сканувати для продажу",
-            scan_font,
-            fill=(75, 85, 99),
-        )
 
         buffer = io.BytesIO()
         canvas.save(buffer, format="PNG", dpi=(300, 300))
