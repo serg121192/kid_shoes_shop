@@ -1233,22 +1233,37 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
         scan_url = f"{settings.SITE_BASE_URL}/seller/scan/{product_size.id}"
 
         def load_font(size: int, bold: bool = False):
-            candidates = (
-                "DejaVuSansCondensed-Bold.ttf" if bold else "DejaVuSansCondensed.ttf",
-                "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
-                "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf"
-                if bold
-                else "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf",
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-                if bold
-                else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf"
-                if bold
-                else "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
-                "/usr/local/share/fonts/DejaVuSans-Bold.ttf"
-                if bold
-                else "/usr/local/share/fonts/DejaVuSans.ttf",
-                "C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf",
+            candidates = []
+            try:
+                from importlib.resources import files
+
+                roboto_file = "Roboto-Bold.ttf" if bold else "Roboto-Regular.ttf"
+                candidates.append(str(files("font_roboto").joinpath("files", roboto_file)))
+            except Exception:
+                pass
+
+            candidates.extend(
+                (
+                    "DejaVuSansCondensed-Bold.ttf"
+                    if bold
+                    else "DejaVuSansCondensed.ttf",
+                    "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf"
+                    if bold
+                    else "/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+                    if bold
+                    else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                    "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf"
+                    if bold
+                    else "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+                    "/usr/local/share/fonts/DejaVuSans-Bold.ttf"
+                    if bold
+                    else "/usr/local/share/fonts/DejaVuSans.ttf",
+                    "C:/Windows/Fonts/arialbd.ttf"
+                    if bold
+                    else "C:/Windows/Fonts/arial.ttf",
+                )
             )
             for path in candidates:
                 try:
@@ -1315,11 +1330,8 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
         text_x = image_x + image_box[0] + 24
         text_width = qr_x - 28 - text_x
         price_value = str(int(product.discounted_price or product.full_price))
-        price_suffix = (
-            "грн."
-            if isinstance(load_font(24, bold=True), ImageFont.FreeTypeFont)
-            else "UAH"
-        )
+        suffix_font = load_font(24, bold=True)
+        price_suffix = "грн." if isinstance(getattr(suffix_font, "path", None), str) else "UAH"
         brand_font = fit_font(product.vendor.name, 88, text_width, bold=True, min_size=52)
         model_font = fit_font(product.model_name, 84, text_width, bold=True, min_size=52)
         size_font = fit_font(str(product_size.size), 88, text_width, bold=True, min_size=58)
