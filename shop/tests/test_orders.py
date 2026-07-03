@@ -307,4 +307,4 @@ class StoreQrSaleTests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res["Content-Type"], "image/png")
         image = Image.open(io.BytesIO(res.content))
-        self.assertEqual(image.size, (945, 591))
+        self.assertEqual(image.size, (591, 945))

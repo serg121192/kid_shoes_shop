@@ -1283,6 +1283,10 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
             bbox = draw.textbbox((0, 0), text, font=font)
             draw.text((x - bbox[0], y - bbox[1]), text, font=font, fill=fill)
 
+        def text_size(text: str, font: ImageFont.ImageFont) -> tuple[int, int]:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            return bbox[2] - bbox[0], bbox[3] - bbox[1]
+
         def fit_font(
             text: str,
             start_size: int,
@@ -1335,22 +1339,36 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
         price_suffix = "грн." if isinstance(getattr(suffix_font, "path", None), str) else "UAH"
         brand_font = fit_font(product.vendor.name, 88, text_width, bold=True, min_size=52)
         model_font = fit_font(product.model_name, 84, text_width, bold=True, min_size=52)
-        size_font = fit_font(str(product_size.size), 88, text_width, bold=True, min_size=58)
+        size_font = fit_font(str(product_size.size), 76, text_width, bold=True, min_size=50)
         price_text = f"{price_value} {price_suffix}"
-        price_font = fit_font(price_text, 62, canvas_width - text_x - padding, bold=True, min_size=42)
+        price_font = fit_font(price_text, 54, qr_size, bold=True, min_size=36)
 
-        draw_label_text(draw, text_x, 126, product.vendor.name, brand_font)
-        draw_label_text(draw, text_x, 242, product.model_name, model_font)
-        draw_label_text(draw, text_x, 382, str(product_size.size), size_font)
-        draw_label_text(draw, text_x + 10, 505, price_text, price_font)
+        qr_y = 122
+        label_lines = [
+            (product.vendor.name, brand_font),
+            (product.model_name, model_font),
+            (str(product_size.size), size_font),
+        ]
+        label_heights = [text_size(text, font)[1] for text, font in label_lines]
+        label_gap = (qr_size - sum(label_heights)) / (len(label_lines) - 1)
+        current_y = qr_y
+        for index, (text, font) in enumerate(label_lines):
+            draw_label_text(draw, text_x, int(current_y), text, font)
+            if index < len(label_lines) - 1:
+                current_y += label_heights[index] + label_gap
 
         qr = qrcode.QRCode(border=1, box_size=16)
         qr.add_data(scan_url)
         qr.make(fit=True)
         qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
         qr_img = ImageOps.contain(qr_img, (qr_size, qr_size), method=Image.Resampling.NEAREST)
-        qr_y = 122
         canvas.paste(qr_img, (qr_x, qr_y))
+
+        price_width, _price_height = text_size(price_text, price_font)
+        price_x = qr_x + (qr_size - price_width) / 2
+        draw_label_text(draw, int(price_x), qr_y + qr_size + 18, price_text, price_font)
+
+        canvas = canvas.transpose(Image.Transpose.ROTATE_270)
 
         buffer = io.BytesIO()
         canvas.save(buffer, format="PNG", dpi=(300, 300))
