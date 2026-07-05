@@ -12,7 +12,7 @@ export default function StoreJsonLd() {
     "@type": "ShoeStore",
     name: `${SITE_NAME} — Магазин дитячого взуття`,
     alternateName: JSON_LD_ALTERNATE_NAMES,
-    url: SITE_URL,
+    url: `${SITE_URL}/products`,
     logo: `${SITE_URL}/icon.svg`,
     image: `${SITE_URL}/icon.jpg`,
     telephone: SITE_CONTACTS.phoneTel,

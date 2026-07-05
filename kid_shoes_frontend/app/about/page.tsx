@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import AboutVideoSection from "@/app/about/AboutVideoSection";
-import { ABOUT_DESCRIPTION, ABOUT_TITLE, SEO_KEYWORDS, SITE_URL } from "@/app/lib/seo";
+import { ABOUT_DESCRIPTION, ABOUT_TITLE, SITE_URL, STORE_ADDRESS } from "@/app/lib/seo";
 
 export const metadata: Metadata = {
   title: ABOUT_TITLE,
   description: ABOUT_DESCRIPTION,
-  keywords: SEO_KEYWORDS,
+  robots: { index: false, follow: true },
   openGraph: {
     title: `${ABOUT_TITLE} | ТАК і ТАК`,
     description: ABOUT_DESCRIPTION,
@@ -15,8 +15,6 @@ export const metadata: Metadata = {
     canonical: `${SITE_URL}/about`,
   },
 };
-
-import { STORE_ADDRESS } from "@/app/lib/seo";
 
 export default function AboutPage() {
   return (

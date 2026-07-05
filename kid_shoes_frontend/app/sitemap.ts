@@ -16,7 +16,6 @@ type ProductShort = {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const urls: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/products`, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
-    { url: `${SITE_URL}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
   ];
 
   try {
