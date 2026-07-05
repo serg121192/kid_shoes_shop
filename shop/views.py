@@ -1337,17 +1337,18 @@ class ProductSizeViewSet(viewsets.GenericViewSet):
         price_value = str(int(product.discounted_price or product.full_price))
         suffix_font = load_font(24, bold=True)
         price_suffix = "грн." if isinstance(getattr(suffix_font, "path", None), str) else "UAH"
-        brand_font = fit_font(product.vendor.name, 88, text_width, bold=True, min_size=52)
         model_font = fit_font(product.model_name, 84, text_width, bold=True, min_size=52)
         size_font = fit_font(str(product_size.size), 76, text_width, bold=True, min_size=50)
+        cm_line = "______ см."
+        cm_font = fit_font(cm_line, 48, text_width, bold=True, min_size=28)
         price_text = f"{price_value} {price_suffix}"
         price_font = fit_font(price_text, 54, qr_size, bold=True, min_size=36)
 
         qr_y = 122
         label_lines = [
-            (product.vendor.name, brand_font),
             (product.model_name, model_font),
             (str(product_size.size), size_font),
+            (cm_line, cm_font),
         ]
         label_heights = [text_size(text, font)[1] for text, font in label_lines]
         label_gap = (qr_size - sum(label_heights)) / (len(label_lines) - 1)
