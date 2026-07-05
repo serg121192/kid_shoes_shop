@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import AboutVideoSection from "@/app/about/AboutVideoSection";
-import { ABOUT_DESCRIPTION, ABOUT_TITLE, SEO_KEYWORDS } from "@/app/lib/seo";
+import { ABOUT_DESCRIPTION, ABOUT_TITLE, SEO_KEYWORDS, SITE_URL } from "@/app/lib/seo";
 
 export const metadata: Metadata = {
   title: ABOUT_TITLE,
@@ -10,6 +10,9 @@ export const metadata: Metadata = {
     title: `${ABOUT_TITLE} | ТАК і ТАК`,
     description: ABOUT_DESCRIPTION,
     url: "/about",
+  },
+  alternates: {
+    canonical: `${SITE_URL}/about`,
   },
 };
 

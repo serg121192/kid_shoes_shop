@@ -28,6 +28,10 @@ export const ABOUT_TITLE = "Дитяче взуття Чернігів";
 export const ABOUT_DESCRIPTION =
   "Магазин дитячого взуття ТАК і ТАК у Чернігові — якісне взуття для дітей. Адреса магазину, самовивіз, доставка Новою Поштою.";
 
+export function productCanonicalUrl(slug: string): string {
+  return `${SITE_URL}/products/${encodeURIComponent(slug)}`;
+}
+
 export const JSON_LD_ALTERNATE_NAMES = [
   "Магазин дитячого взуття",
   "Дитяче взуття Чернігів",

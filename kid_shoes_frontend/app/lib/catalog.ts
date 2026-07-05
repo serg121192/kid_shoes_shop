@@ -47,6 +47,19 @@ export function isDefaultCatalogView(filters: CatalogFilters): boolean {
   );
 }
 
+export async function fetchProductForMetadata(slug: string, revalidateSeconds = 3600) {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/shop/products/${encodeURIComponent(slug)}/`, {
+      next: { revalidate: revalidateSeconds },
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchCatalogProducts(
   filters: CatalogFilters = {},
   revalidateSeconds = 60,
