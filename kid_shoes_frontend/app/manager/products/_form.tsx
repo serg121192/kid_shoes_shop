@@ -78,6 +78,8 @@ interface ProductDetail {
   is_published: boolean;
   description: string | null;
   seo_description: string | null;
+  seo_h1: string;
+  seo_title: string;
   sizes: ProductSize[];
   images: ProductImage[];
   videos: ProductVideo[];
@@ -156,6 +158,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
     is_published: false,
     description: "",
     seo_description: "",
+    seo_h1: "",
+    seo_title: "",
   });
   const formRef = useRef(form);
   formRef.current = form;
@@ -230,6 +234,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
           is_published: p.is_published,
           description: p.description ?? "",
           seo_description: p.seo_description ?? "",
+          seo_h1: p.seo_h1 ?? "",
+          seo_title: p.seo_title ?? "",
         });
         setSavedImages(p.images);
         setSavedSizes(p.sizes);
@@ -256,6 +262,8 @@ export default function ProductForm({ productId }: { productId?: number }) {
       discount: Number(f.discount) || 0,
       description: f.description || null,
       seo_description: f.seo_description || null,
+      seo_h1: f.seo_h1.trim() || null,
+      seo_title: f.seo_title.trim() || null,
       is_published: eligible ? f.is_published : false,
     };
   }, []);
@@ -1025,6 +1033,50 @@ export default function ProductForm({ productId }: { productId?: number }) {
             </button>
           </div>
         </div>
+
+        <div className="space-y-4 rounded-xl border border-teal-100 bg-teal-50/40 p-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-800">SEO заголовки</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Якщо залишити порожніми — згенеруються автоматично при збереженні. Для каталогу краще
+              заповнювати вручну.
+            </p>
+          </div>
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <label className="block text-sm font-medium text-gray-600">H1 (заголовок на сторінці)</label>
+              <span className={`text-xs ${form.seo_h1.length > 70 ? "text-amber-600" : "text-gray-400"}`}>
+                {form.seo_h1.length}/70
+              </span>
+            </div>
+            <input
+              name="seo_h1"
+              value={form.seo_h1}
+              onChange={handleChange}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
+              placeholder="Напр.: Дитячі сандалі BBT 881 для дівчинки"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <label className="block text-sm font-medium text-gray-600">Title (вкладка браузера та Google)</label>
+              <span className={`text-xs ${form.seo_title.length > 60 ? "text-amber-600" : "text-gray-400"}`}>
+                {form.seo_title.length}/60
+              </span>
+            </div>
+            <input
+              name="seo_title"
+              value={form.seo_title}
+              onChange={handleChange}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
+              placeholder="Напр.: Сандалі BBT 881 дівчинці 16–20"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              До заголовка автоматично додасться «| ТАК і ТАК» — не пишіть назву магазину в кінці.
+            </p>
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1">Короткий опис</label>
           <textarea name="description" value={form.description ?? ""} onChange={handleChange} rows={3}
