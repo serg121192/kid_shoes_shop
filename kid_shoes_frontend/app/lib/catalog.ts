@@ -14,6 +14,7 @@ export interface CatalogFilters {
   minPrice?: string;
   maxPrice?: string;
   hasDiscount?: boolean;
+  discount?: string | number;
   size?: string;
 }
 
@@ -29,6 +30,7 @@ export function buildCatalogParams(filters: CatalogFilters): Record<string, stri
   if (filters.minPrice) params.min_price = filters.minPrice;
   if (filters.maxPrice) params.max_price = filters.maxPrice;
   if (filters.hasDiscount) params.has_discount = true;
+  if (filters.discount) params.discount = filters.discount;
   if (filters.size) params.size = filters.size;
   return params;
 }
@@ -43,6 +45,7 @@ export function isDefaultCatalogView(filters: CatalogFilters): boolean {
     !filters.minPrice &&
     !filters.maxPrice &&
     !filters.hasDiscount &&
+    !filters.discount &&
     !filters.size
   );
 }

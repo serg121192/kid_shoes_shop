@@ -48,4 +48,5 @@ class ProductFilter(django_filters.FilterSet):
         fields = {
             "vendor": ["exact"],
             "prod_type": ["exact"],
+            "discount": ["exact"],
         }

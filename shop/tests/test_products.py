@@ -217,6 +217,18 @@ class ProductListTests(APITestCase):
         self.assertEqual(res.data["count"], 1)
         self.assertEqual(res.data["results"][0]["model_name"], "Air Max")
 
+    def test_filter_by_discount_exact(self):
+        sale30 = create_product(self.vendor, model_name="Sale 30", discount=30)
+        sale20 = create_product(self.vendor, model_name="Sale 20", discount=20)
+        create_product_size(sale30, size=26)
+        create_product_size(sale20, size=27)
+
+        res = self.client.get(PRODUCTS_URL, {"discount": 30})
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["count"], 1)
+        self.assertEqual(res.data["results"][0]["model_name"], "Sale 30")
+
     def test_search_by_model_name(self):
         other = create_product(self.vendor, model_name="React Zoom")
         create_product_size(other, size=26)

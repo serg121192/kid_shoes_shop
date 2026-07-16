@@ -9,6 +9,7 @@ import {
 } from "@/app/lib/catalog";
 import { ProductList, PaginatedResponse } from "@/app/types";
 import ProductCard from "@/app/components/ProductCard";
+import PromoDiscountButton from "@/app/components/PromoDiscountButton";
 import { useAuth } from "@/app/context/AuthContext";
 import { useShop } from "@/app/context/ShopContext";
 import { Search } from "lucide-react";
@@ -43,6 +44,7 @@ interface CatalogReturnState {
   minPrice: string;
   maxPrice: string;
   hasDiscount: boolean;
+  promoDiscount30: boolean;
   size: string;
   scrollY?: number;
 }
@@ -81,6 +83,7 @@ export default function ProductsCatalog({
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [hasDiscount, setHasDiscount] = useState(false);
+  const [promoDiscount30, setPromoDiscount30] = useState(false);
   const [size, setSize] = useState("");
   const [page, setPage] = useState(1);
 
@@ -103,9 +106,10 @@ export default function ProductsCatalog({
       minPrice,
       maxPrice,
       hasDiscount,
+      promoDiscount30,
       size,
     }),
-    [page, search, season, prodType, gender, minPrice, maxPrice, hasDiscount, size],
+    [page, search, season, prodType, gender, minPrice, maxPrice, hasDiscount, promoDiscount30, size],
   );
 
   const saveCatalogReturnState = useCallback(() => {
@@ -127,6 +131,7 @@ export default function ProductsCatalog({
         minPrice,
         maxPrice,
         hasDiscount,
+        discount: promoDiscount30 ? 30 : undefined,
         size,
       });
 
@@ -139,7 +144,7 @@ export default function ProductsCatalog({
     } finally {
       setIsLoading(false);
     }
-  }, [search, season, prodType, gender, minPrice, maxPrice, hasDiscount, size, page]);
+  }, [search, season, prodType, gender, minPrice, maxPrice, hasDiscount, promoDiscount30, size, page]);
 
   useEffect(() => {
     const pending = sessionStorage.getItem("catalogReturnPending");
@@ -162,6 +167,7 @@ export default function ProductsCatalog({
       setMinPrice(saved.minPrice || "");
       setMaxPrice(saved.maxPrice || "");
       setHasDiscount(saved.hasDiscount || false);
+      setPromoDiscount30(saved.promoDiscount30 || false);
       setSize(saved.size || "");
       setPage(saved.page || 1);
       skipNextFetchRef.current = false;
@@ -193,6 +199,7 @@ export default function ProductsCatalog({
         minPrice,
         maxPrice,
         hasDiscount,
+        discount: promoDiscount30 ? 30 : undefined,
         size,
       })
     ) {
@@ -254,7 +261,7 @@ export default function ProductsCatalog({
     }
   };
 
-  const hasActiveFilters = search || season || prodType || gender || minPrice || maxPrice || hasDiscount || size;
+  const hasActiveFilters = search || season || prodType || gender || minPrice || maxPrice || hasDiscount || promoDiscount30 || size;
 
   const handleReset = () => {
     setSearch("");
@@ -264,8 +271,18 @@ export default function ProductsCatalog({
     setMinPrice("");
     setMaxPrice("");
     setHasDiscount(false);
+    setPromoDiscount30(false);
     setSize("");
     setPage(1);
+  };
+
+  const handleTogglePromoDiscount30 = () => {
+    setPromoDiscount30((prev) => {
+      const next = !prev;
+      if (next) setHasDiscount(false);
+      return next;
+    });
+    resetPage();
   };
 
   return (
@@ -345,7 +362,11 @@ export default function ProductsCatalog({
           <input
             type="checkbox"
             checked={hasDiscount}
-            onChange={(e) => { setHasDiscount(e.target.checked); resetPage(); }}
+            onChange={(e) => {
+              setHasDiscount(e.target.checked);
+              if (e.target.checked) setPromoDiscount30(false);
+              resetPage();
+            }}
             className="accent-teal-600 w-4 h-4"
           />
           Тільки зі знижкою
@@ -359,6 +380,13 @@ export default function ProductsCatalog({
             Скинути
           </button>
         )}
+      </div>
+
+      <div className="mb-6">
+        <PromoDiscountButton
+          active={promoDiscount30}
+          onClick={handleTogglePromoDiscount30}
+        />
       </div>
 
       {!isLoading && totalCount > 0 && (
