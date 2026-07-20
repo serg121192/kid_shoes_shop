@@ -9,8 +9,19 @@ import { useAuth } from "@/app/context/AuthContext";
 import { useShop } from "@/app/context/ShopContext";
 import { ShoppingCart, Heart, ArrowLeft, Play, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import ReviewSection from "@/app/components/ReviewSection";
+import FootMeasureMedia from "@/app/components/FootMeasureMedia";
 
-function Accordion({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+function Accordion({
+  title,
+  children,
+  defaultOpen = false,
+  titleClassName = "",
+}: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  titleClassName?: string;
+}) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="border border-gray-100 rounded-xl overflow-hidden">
@@ -19,7 +30,7 @@ function Accordion({ title, children, defaultOpen = false }: { title: string; ch
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-teal-50 transition-colors text-left"
       >
-        <span className="font-semibold text-gray-800">{title}</span>
+        <span className={`font-semibold ${titleClassName || "text-gray-800"}`}>{title}</span>
         <ChevronDown
           size={20}
           className={`text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
@@ -542,7 +553,11 @@ export default function ProductDetailPage() {
           </Accordion>
 
           {/* 2. Інструкція з вимірювання стопи */}
-          <Accordion title="Інструкція з правильних замірів стопи дитини">
+          <Accordion 
+            title="Інструкція з правильних замірів стопи дитини"
+            defaultOpen={true}
+            titleClassName="text-red-600 font-bold"
+          >
             <div className="space-y-4">
               <p>
                 Правильно підібраний розмір взуття — запорука здоров'я та комфорту стопи дитини.
@@ -554,7 +569,7 @@ export default function ProductDetailPage() {
                 <li>Поставте дитину босою ногою на аркуш так, щоб п'ятка торкалась стіни або рівного краю.</li>
                 <li>Олівцем обведіть стопу по контуру, тримаючи олівець строго вертикально.</li>
                 <li>Виміряйте відстань від п'ятки до найдовшого пальця (зазвичай великого) — це <strong>довжина стопи</strong> у міліметрах.</li>
-                <li>Додайте до отриманого значення <strong>5–7 мм</strong> запасу для комфортного руху пальців.</li>
+                <li>Додайте до отриманого значення <strong>5–10 мм</strong> запасу для комфортного руху пальців.</li>
                 <li>Звірте результат з таблицею розмірів нижче або зверніться до нашого менеджера — ми допоможемо підібрати розмір!</li>
               </ol>
 
@@ -589,8 +604,10 @@ export default function ProductDetailPage() {
 
               {/* Placeholder для фото/відео — менеджер може додати через панель */}
               <p className="text-gray-400 text-xs italic mt-2">
-                Відео-інструкція буде додана найближчим часом.
+                Дана відео-інструкція наочно допоможе вам зробити точні заміри стопи Вашої дитини.<br/>
+                Нагально рекомендуємо до перегляду!
               </p>
+              <FootMeasureMedia />
             </div>
           </Accordion>
 
