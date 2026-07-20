@@ -10,6 +10,29 @@ interface StoreIntroVideoProps {
   videoClassName?: string;
   onEnded?: () => void;
   showPlayOverlay?: boolean;
+  /** Запросити нативний повноекранний режим після старту відтворення */
+  requestFullscreen?: boolean;
+}
+
+async function enterFullscreen(video: HTMLVideoElement) {
+  const webkitVideo = video as HTMLVideoElement & {
+    webkitEnterFullscreen?: () => void;
+  };
+  if (typeof webkitVideo.webkitEnterFullscreen === "function") {
+    webkitVideo.webkitEnterFullscreen();
+    return;
+  }
+  const target = video.parentElement ?? video;
+  if (target.requestFullscreen) {
+    await target.requestFullscreen();
+  }
+}
+
+export async function exitIntroFullscreen() {
+  if (typeof document === "undefined") return;
+  if (document.fullscreenElement) {
+    await document.exitFullscreen().catch(() => {});
+  }
 }
 
 export default function StoreIntroVideo({
@@ -18,6 +41,7 @@ export default function StoreIntroVideo({
   videoClassName = "",
   onEnded,
   showPlayOverlay = false,
+  requestFullscreen = false,
 }: StoreIntroVideoProps) {
   const src = getIntroVideoUrl();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -27,19 +51,32 @@ export default function StoreIntroVideo({
   const tryPlay = useCallback(async () => {
     const video = videoRef.current;
     if (!video) return;
-    try {
+
+    const startPlayback = async (muted: boolean) => {
+      video.muted = muted;
       await video.play();
       setNeedsTap(false);
       setIsPlaying(true);
+      if (requestFullscreen) {
+        await enterFullscreen(video).catch(() => {});
+      }
+    };
+
+    try {
+      await startPlayback(false);
     } catch {
-      setNeedsTap(true);
+      try {
+        await startPlayback(true);
+      } catch {
+        setNeedsTap(true);
+      }
     }
-  }, []);
+  }, [requestFullscreen]);
 
   useEffect(() => {
-    if (!autoPlay || !src || showPlayOverlay) return;
+    if (!autoPlay || !src) return;
     tryPlay();
-  }, [autoPlay, src, showPlayOverlay, tryPlay]);
+  }, [autoPlay, src, tryPlay]);
 
   if (!src) return null;
 
@@ -48,7 +85,7 @@ export default function StoreIntroVideo({
       <video
         ref={videoRef}
         src={src}
-        preload="none"
+        preload={autoPlay ? "auto" : "none"}
         playsInline
         controls={!showPlayOverlay || isPlaying}
         controlsList="nodownload"

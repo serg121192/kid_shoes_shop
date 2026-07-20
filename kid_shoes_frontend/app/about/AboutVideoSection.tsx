@@ -15,8 +15,8 @@ export default function AboutVideoSection() {
         Дізнайтесь більше про наш магазин — перегляньте коротку презентацію.
       </p>
       <StoreIntroVideo
-        className="aspect-video w-full overflow-hidden rounded-xl bg-black shadow-sm"
-        videoClassName="h-full w-full object-contain bg-black"
+        className="aspect-video w-full overflow-hidden rounded-xl bg-black/20 shadow-sm"
+        videoClassName="h-full w-full object-contain bg-black/15"
       />
     </section>
   );

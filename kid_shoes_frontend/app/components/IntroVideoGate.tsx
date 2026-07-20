@@ -54,7 +54,7 @@ export default function IntroVideoGate() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 sm:p-8"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 sm:p-8"
       role="dialog"
       aria-modal="true"
       aria-label="Презентація магазину"
@@ -62,22 +62,22 @@ export default function IntroVideoGate() {
       <button
         type="button"
         onClick={dismiss}
-        className="absolute top-4 right-4 z-10 flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur hover:bg-white/20 transition-colors"
+        className="absolute top-4 right-4 z-10 flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-medium text-white backdrop-blur hover:bg-white/30 transition-colors"
         aria-label="Пропустити презентацію"
       >
         <X size={18} />
         Пропустити
       </button>
 
-      <div className="w-full max-w-4xl">
+      <div className="w-full max-w-5xl">
         <StoreIntroVideo
-          autoPlay={false}
+          autoPlay
           showPlayOverlay
           onEnded={dismiss}
-          className="aspect-video w-full overflow-hidden rounded-2xl bg-black shadow-2xl"
-          videoClassName="h-full w-full object-contain bg-black"
+          className="aspect-video w-full overflow-hidden rounded-2xl bg-black/30 shadow-2xl ring-1 ring-white/20"
+          videoClassName="h-full w-full object-contain bg-black/20"
         />
-        <p className="mt-4 text-center text-sm text-white/70">
+        <p className="mt-4 text-center text-sm text-white/80 drop-shadow-sm">
           Після перегляду ви перейдете до каталогу товарів
         </p>
       </div>
