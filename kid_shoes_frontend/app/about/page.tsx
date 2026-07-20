@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AboutEmployeesSection from "@/app/about/AboutEmployeesSection";
 import AboutVideoSection from "@/app/about/AboutVideoSection";
 import { ABOUT_DESCRIPTION, ABOUT_TITLE, SITE_URL, STORE_ADDRESS } from "@/app/lib/seo";
 
@@ -26,6 +27,8 @@ export default function AboutPage() {
           <strong>ТАК і ТАК</strong> — магазин дитячого взуття в Чернігові. Ми підбираємо моделі від
           перевірених виробників: зручні, міцні та підходять для щоденного носіння й активних ігор.
         </p>
+
+        <AboutEmployeesSection />
 
         <AboutVideoSection />
 

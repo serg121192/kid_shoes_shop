@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
-const R2_DOMAIN = (process.env.R2_PUBLIC_DOMAIN ?? "").replace(/^https?:\/\//, "");
+const R2_DOMAIN = (process.env.R2_PUBLIC_DOMAIN ?? process.env.NEXT_PUBLIC_R2_PUBLIC_DOMAIN ?? "")
+  .replace(/^https?:\/\//, "")
+  .replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
