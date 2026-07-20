@@ -10,7 +10,7 @@ export default function AboutVideoSection() {
 
   return (
     <section>
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">Відеопрезентація</h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-3">Відео про наш магазин</h2>
       <p className="text-sm text-gray-500 mb-4">
         Дізнайтесь більше про наш магазин — перегляньте коротку презентацію.
       </p>
