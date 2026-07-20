@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Play } from "lucide-react";
-import { getIntroVideoUrl } from "@/app/lib/intro-video";
+import { getIntroVideoPosterUrl, getIntroVideoUrl } from "@/app/lib/intro-video";
 
 interface StoreIntroVideoProps {
   autoPlay?: boolean;
@@ -12,6 +12,8 @@ interface StoreIntroVideoProps {
   showPlayOverlay?: boolean;
   /** Запросити нативний повноекранний режим після старту відтворення */
   requestFullscreen?: boolean;
+  /** Обкладинка до старту; за замовчуванням з NEXT_PUBLIC_INTRO_VIDEO_POSTER_URL */
+  posterUrl?: string;
 }
 
 async function enterFullscreen(video: HTMLVideoElement) {
@@ -42,8 +44,10 @@ export default function StoreIntroVideo({
   onEnded,
   showPlayOverlay = false,
   requestFullscreen = false,
+  posterUrl,
 }: StoreIntroVideoProps) {
   const src = getIntroVideoUrl();
+  const poster = posterUrl?.trim() || getIntroVideoPosterUrl();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [needsTap, setNeedsTap] = useState(showPlayOverlay || !autoPlay);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -80,12 +84,15 @@ export default function StoreIntroVideo({
 
   if (!src) return null;
 
+  const showOverlay = showPlayOverlay && needsTap && !isPlaying;
+
   return (
     <div className={`relative ${className}`}>
       <video
         ref={videoRef}
         src={src}
-        preload={autoPlay ? "auto" : "none"}
+        poster={poster || undefined}
+        preload={autoPlay ? "auto" : "metadata"}
         playsInline
         controls={!showPlayOverlay || isPlaying}
         controlsList="nodownload"
@@ -102,17 +109,30 @@ export default function StoreIntroVideo({
         className={videoClassName}
       />
 
-      {showPlayOverlay && needsTap && !isPlaying && (
+      {showOverlay && (
         <button
           type="button"
           onClick={tryPlay}
-          className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/50 text-white"
+          className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white"
           aria-label="Увімкнути відео"
+          style={
+            poster
+              ? {
+                  backgroundImage: `url(${poster})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }
+              : undefined
+          }
         >
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-500 shadow-lg">
+          <span
+            className={`absolute inset-0 ${poster ? "bg-black/35" : "bg-gradient-to-br from-teal-700 to-teal-900"}`}
+            aria-hidden
+          />
+          <span className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full bg-teal-500 shadow-lg">
             <Play size={28} className="ml-1" fill="currentColor" />
           </span>
-          <span className="text-sm font-medium">Дивитись презентацію</span>
+          <span className="relative z-10 text-sm font-medium drop-shadow">Дивитись презентацію</span>
         </button>
       )}
     </div>
