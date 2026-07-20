@@ -41,15 +41,15 @@ export default function FootMeasureMedia() {
       </p>
 
       {photoUrl && (
-        <div className="overflow-hidden rounded-xl border border-teal-100 bg-teal-50/40">
+        <div className="mx-auto w-full max-w-[240px] overflow-hidden rounded-xl border border-teal-100 bg-teal-50/40">
           <Image
             src={photoUrl}
             alt="Як правильно заміряти стопу дитини"
-            width={1200}
-            height={800}
+            width={480}
+            height={640}
             unoptimized={isCdnMediaUrl(photoUrl)}
             className="h-auto w-full object-cover"
-            sizes="(max-width: 768px) 100vw, 700px"
+            sizes="240px"
           />
         </div>
       )}
