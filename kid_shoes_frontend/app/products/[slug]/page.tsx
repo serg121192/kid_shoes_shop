@@ -602,11 +602,6 @@ export default function ProductDetailPage() {
                 Якщо стопа дитини між двома розмірами — обирайте більший.
               </p>
 
-              {/* Placeholder для фото/відео — менеджер може додати через панель */}
-              <p className="text-gray-400 text-xs italic mt-2">
-                Дана відео-інструкція наочно допоможе вам зробити точні заміри стопи Вашої дитини.<br/>
-                Нагально рекомендуємо до перегляду!
-              </p>
               <FootMeasureMedia />
             </div>
           </Accordion>

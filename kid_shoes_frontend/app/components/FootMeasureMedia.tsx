@@ -13,7 +13,8 @@ import {
 export default function FootMeasureMedia() {
   const photoUrl = getFootMeasurePhotoUrl();
   const videoUrl = getFootMeasureVideoUrl();
-  const posterUrl = getFootMeasurePosterUrl();
+  const explicitPosterUrl = getFootMeasurePosterUrl();
+  const videoPosterUrl = photoUrl ? "" : explicitPosterUrl;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [needsTap, setNeedsTap] = useState(true);
@@ -34,75 +35,84 @@ export default function FootMeasureMedia() {
   if (!photoUrl && !videoUrl) return null;
 
   return (
-    <div className="space-y-4 pt-2">
-      <p className="text-gray-600 text-sm">
-        Дана відео-інструкція наочно допоможе вам зробити точні заміри стопи вашої дитини.
-        Нагально рекомендуємо до перегляду!
+    <div className="mx-auto w-full max-w-lg space-y-4 rounded-xl border border-teal-100 bg-teal-50/30 p-4 sm:p-5">
+      <p className="text-sm text-gray-600">
+        Перегляньте фото та відео-інструкцію — вони допоможуть зробити точні заміри стопи дитини.
       </p>
 
       {photoUrl && (
-        <div className="mx-auto w-full max-w-[320px] sm:max-w-[400px] md:max-w-[480px] overflow-hidden rounded-xl border border-teal-100 bg-teal-50/40">
-          <Image
-            src={photoUrl}
-            alt="Як правильно заміряти стопу дитини"
-            width={960}
-            height={1280}
-            unoptimized={isCdnMediaUrl(photoUrl)}
-            className="h-auto w-full object-cover"
-            sizes="(max-width: 640px) 320px, (max-width: 768px) 400px, 480px"
-          />
-        </div>
+        <figure className="space-y-2">
+          <figcaption className="text-xs font-medium uppercase tracking-wide text-teal-700">
+            Фото-інструкція
+          </figcaption>
+          <div className="overflow-hidden rounded-lg border border-teal-100 bg-white shadow-sm">
+            <Image
+              src={photoUrl}
+              alt="Як правильно заміряти стопу дитини"
+              width={960}
+              height={1280}
+              unoptimized={isCdnMediaUrl(photoUrl)}
+              className="h-auto w-full object-cover"
+              sizes="(max-width: 640px) 100vw, 512px"
+            />
+          </div>
+        </figure>
       )}
 
       {videoUrl && (
-        <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gray-100 shadow-sm">
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            poster={posterUrl || undefined}
-            preload="metadata"
-            playsInline
-            controls={!needsTap || isPlaying}
-            controlsList="nodownload"
-            onContextMenu={(e) => e.preventDefault()}
-            onPlay={() => {
-              setIsPlaying(true);
-              setNeedsTap(false);
-            }}
-            onPause={() => setIsPlaying(false)}
-            onEnded={() => setIsPlaying(false)}
-            className="h-full w-full object-contain bg-black/10"
-          />
+        <figure className="space-y-2">
+          <figcaption className="text-xs font-medium uppercase tracking-wide text-teal-700">
+            Відео-інструкція
+          </figcaption>
+          <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-teal-100 bg-white shadow-sm">
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              poster={videoPosterUrl || undefined}
+              preload="metadata"
+              playsInline
+              controls={!needsTap || isPlaying}
+              controlsList="nodownload"
+              onContextMenu={(e) => e.preventDefault()}
+              onPlay={() => {
+                setIsPlaying(true);
+                setNeedsTap(false);
+              }}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => setIsPlaying(false)}
+              className="h-full w-full object-contain bg-gray-900/5"
+            />
 
-          {needsTap && !isPlaying && (
-            <button
-              type="button"
-              onClick={tryPlay}
-              className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white"
-              aria-label="Дивитись відео-інструкцію"
-              style={
-                posterUrl
-                  ? {
-                      backgroundImage: `url(${posterUrl})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                    }
-                  : undefined
-              }
-            >
-              <span
-                className={`absolute inset-0 ${posterUrl ? "bg-black/35" : "bg-gradient-to-br from-teal-700 to-teal-900"}`}
-                aria-hidden
-              />
-              <span className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full bg-teal-500 shadow-lg">
-                <Play size={28} className="ml-1" fill="currentColor" />
-              </span>
-              <span className="relative z-10 text-sm font-medium drop-shadow">
-                Дивитись відео-інструкцію
-              </span>
-            </button>
-          )}
-        </div>
+            {needsTap && !isPlaying && (
+              <button
+                type="button"
+                onClick={tryPlay}
+                className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white"
+                aria-label="Дивитись відео-інструкцію"
+                style={
+                  videoPosterUrl
+                    ? {
+                        backgroundImage: `url(${videoPosterUrl})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }
+                    : undefined
+                }
+              >
+                <span
+                  className={`absolute inset-0 ${videoPosterUrl ? "bg-black/35" : "bg-gradient-to-br from-teal-700/90 to-teal-900/90"}`}
+                  aria-hidden
+                />
+                <span className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full bg-teal-500 shadow-lg">
+                  <Play size={24} className="ml-1" fill="currentColor" />
+                </span>
+                <span className="relative z-10 text-sm font-medium drop-shadow">
+                  Дивитись відео
+                </span>
+              </button>
+            )}
+          </div>
+        </figure>
       )}
     </div>
   );
