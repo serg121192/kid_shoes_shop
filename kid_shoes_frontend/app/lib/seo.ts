@@ -28,6 +28,10 @@ export const ABOUT_TITLE = "Про нас";
 export const ABOUT_DESCRIPTION =
   "Магазин дитячого взуття ТАК і ТАК у Чернігові — якісне взуття для дітей. Адреса магазину, самовивіз, доставка Новою Поштою.";
 
+export const RETURN_POLICY_TITLE = "Умови повернення та обміну товару";
+export const RETURN_POLICY_DESCRIPTION =
+  "Умови повернення та обміну дитячого взуття в магазині ТАК і ТАК у Чернігові.";
+
 export function productCanonicalUrl(slug: string): string {
   return `${SITE_URL}/products/${encodeURIComponent(slug)}`;
 }

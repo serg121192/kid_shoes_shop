@@ -125,6 +125,13 @@ export default function Header() {
                 Про нас
               </Link>
               <span className="h-6 w-px bg-gray-500 opacity-40 mx-1 inline-block" />
+              <Link
+                href="/return-policy"
+                className="text-base font-semibold text-gray-700 hover:text-teal-600 transition-colors"
+              >
+                Повернення та обмін
+              </Link>
+              <span className="h-6 w-px bg-gray-500 opacity-40 mx-1 inline-block" />
               {isAuthenticated ? (
                 <>
                   {user?.is_staff && (
@@ -233,6 +240,13 @@ export default function Header() {
             className="flex items-center gap-3 py-3 border-b border-[#b8caca] text-gray-700 hover:text-teal-600 transition-colors"
           >
             <span className="font-medium">Про нас</span>
+          </Link>
+          <Link
+            href="/return-policy"
+            onClick={closeMobile}
+            className="flex items-center gap-3 py-3 border-b border-[#b8caca] text-gray-700 hover:text-teal-600 transition-colors"
+          >
+            <span className="font-medium">Повернення та обмін</span>
           </Link>
           {isAuthenticated ? (
             <>
